@@ -7,11 +7,11 @@
 ## Install
 
 Git clone:<BR/>
-`git clone https://github.com/liaoherui/WideVariant-DL.git`<BR/>
+`git clone https://github.com/liaoherui/AccuSNV.git`<BR/>
 
 ### For Snakemake pipeline
 
-`cd WideVariant-DL/snake_pipeline`<BR/>
+`cd AccuSNV/snake_pipeline`<BR/>
 
 Build the conda environment:<BR/>
 `conda env create -n widevariant --file widevariant.yaml` or <BR/>`mamba env create -n widevariant --file widevariant.yaml` <BR/>
