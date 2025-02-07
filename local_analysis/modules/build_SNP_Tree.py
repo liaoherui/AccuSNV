@@ -167,9 +167,9 @@ def mutationtypes(tree, chart_raw,out):
 		else:
 			f1=open(tout+'/p_'+str(raw_pos[pidx])+'_'+str(a)+'.tree','w')
 			#f1=open(tout+'/'+'p_'+str(raw_pos[pidx])+'.tree','w')
-		t=open('tempnexus.txt','r').readlines()
-		for line in t:
-			f1.write(line)
+			t=open('tempnexus.txt','r').readlines()
+			for line in t:
+				f1.write(line)
 		pidx+=1
 	os.system('rm temptree.txt')
 	os.system('rm tempnexus.txt')
@@ -215,7 +215,13 @@ def annotateSNP(tree, dict, chromosome,pos):
 
 def nameswap(tree, dictionary):
 
-	f=open(dictionary).readlines()
+	fraw=open(dictionary).readlines()
+	f=[]
+	for r in fraw:
+		if not re.search('muts\t',r) and not re.search('type\t',r):
+			f.append(r)
+	#print(f,len(f))
+	#exit()
 	numStrains=len(f)
 	dict={}
 	annotation={}
@@ -258,6 +264,8 @@ def nameswap(tree, dictionary):
 	
 	for line in f:
 		line=line.strip()
+		#print(line)
+		line=re.sub(',reference_genome:0.00000,inferred_ancestor:0.00000','',line)
 		i=0
 		#print(line)
 		# Regular expression to extract key:value pairs
@@ -275,6 +283,10 @@ def nameswap(tree, dictionary):
 		# Replace keys using the dictionary and store the results
 		for match in matches:
 			key, value = match.split(":")
+			#print(key,value)
+			if key=='reference_genome' or key=='inferred_ancestor' or newname[key][-1] not in colors:
+				print(key)
+				continue
 			if key in newname:
 				# Replace the key with the corresponding value from the dictionary
 				new_key = newname[key]
@@ -322,7 +334,10 @@ def nameswap(tree, dictionary):
 	#write rest of nexus file
 	fo.write(';\nend\n\nbegin trees;\n\ttree tree_1=[&R] ')
 	for line in newtree:
+		#line=re.sub(',reference_genome:0.00000,inferred_ancestor:0.00000','',line)
+		#print(line)
 		fo.write(line)
+	#exit()
 	fo.write('end;\n\nbegin figtree;\n')
 	fo.write('\tset tipLabels.fontSize=10;\n')
 	fo.write('\tset rectilinearLayout.curvature=7000;\n')

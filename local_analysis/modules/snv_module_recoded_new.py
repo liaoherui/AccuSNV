@@ -507,7 +507,16 @@ class cmt_data_object:
         # get major and minor nucleotide identities
         # note: if counts for all bases are zero, sort will not change the order, so the major alelle will always be the fourth nucleotide and the minor allele will always be the third nucleotide
         counts_argsort = np.argsort(counts_by_allele,axis=2) # sort idx of nucleotides by number of reads
+        counts_major = np.squeeze( counts_sort[:,:,3:4], axis=2 ) # number of reads for most common nucleotide
+        counts_minor = np.squeeze( counts_sort[:,:,2:3], axis=2 ) # number of reads for next most common nucleotide
+        # 2024-12-28 - Add by Herui - check super large fp pos
+        self.counts_major=counts_major
+        self.counts_minor=counts_minor
+        #counts_argsort_fwd=np.argsort(self.counts[:,:,0:4])
+        #counts_argsort_rev=np.argsort(self.counts[:,:,4:8])
         self.major_nt = 1 + np.squeeze( counts_argsort[:,:,3:4],axis=2 ) # add major alelle attribute # 3:4 necessary to maintain 3d structure # +1 necessary because 0=N and 1-4=ATCG 
+        #self.major_nt_fwd = 1 + np.squeeze( counts_argsort_fwd[:,:,3:4],axis=2 )
+        #self.major_nt_rev = 1 + np.squeeze( counts_argsort_rev[:,:,3:4],axis=2 )
         self.minor_nt = 1 + np.squeeze( counts_argsort[:,:,2:3],axis=2 ) # add minor allele attribute # 2:3 necessary to maintain 3d structure # +1 necessary because 0=N and 1-4=ATCG
         x = np.sum(self.counts[:, :, 0:8], axis=2)
         self.major_nt[x == 0] = 0
@@ -585,9 +594,13 @@ class cmt_data_object:
                 self.fwd_cov = self.fwd_cov[samples_to_keep_bool,:]
                 self.rev_cov = self.rev_cov[samples_to_keep_bool,:]
                 self.major_nt = self.major_nt[samples_to_keep_bool,:]
+                self.major_nt_fwd = self.major_nt_fwd[samples_to_keep_bool,:]
+                self.major_nt_rev = self.major_nt_rev[samples_to_keep_bool,:]
                 self.minor_nt = self.minor_nt[samples_to_keep_bool,:]
                 self.major_nt_freq = self.major_nt_freq[samples_to_keep_bool,:]
                 self.minor_nt_freq = self.minor_nt_freq[samples_to_keep_bool,:]
+                self.counts_major = self.counts_major[samples_to_keep_bool, :]
+                self.counts_minor = self.counts_minor[samples_to_keep_bool, :]
                 # print results
                 print( "Number of samples in candidate mutation table reduced from " + str(num_samples_old) + " to " + str(self.num_samples) + "." )
             else:
@@ -620,6 +633,8 @@ class cmt_data_object:
                 self.minor_nt_rev=self.minor_nt_rev[:,positions_to_keep_bool]
                 self.major_nt_freq_fwd=self.major_nt_freq_fwd[:,positions_to_keep_bool]
                 self.major_nt_freq_rev = self.major_nt_freq_rev[:, positions_to_keep_bool]
+                self.counts_major = self.counts_major[:,positions_to_keep_bool]
+                self.counts_minor = self.counts_minor[ :,positions_to_keep_bool]
                 # print results
                 print( "Number of positions in candidate mutation table reduced from " + str(num_pos_old) + " to " + str(self.num_pos) + "." )
             else:
@@ -2723,23 +2738,80 @@ def generate_tokens_last(tokens,goodpos_idx,pre):
           len(res) - np.sum(res > 0) - np.sum(res == -1))
     return res
 
-def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p):
+def process_arrays(arr1, arr2, sample_num):
+    col_data_nonzero = [arr1[:, col][arr1[:, col] != 0] for col in range(arr1.shape[1])]
+    column_modes = [np.unique(col)[0] if len(np.unique(col)) == 1 else ( 1 if len(col)==0 else np.argmax(np.bincount(col))) for col in col_data_nonzero]
+    #print(arr2)
+    scount = np.sum(arr1 == column_modes, axis=0)
+    #print(scount)
+    mask = arr1 != np.array(column_modes)
+    arr2[mask] = 0
+    result = np.sum((arr2 > 0) & (arr2 < 1), axis=0)
+    #print(result/scount)
+    #exit()
+
+    return result/scount
+
+def cal_freq_amb_samples(all_p,my_cmt):
+    keep_col=[]
+    for p in my_cmt.p:
+        if p in all_p:
+            keep_col.append(True)
+        else:
+            keep_col.append(False)
+    keep_col=np.array(keep_col)
+    my_cmt.filter_positions(keep_col)
+    freq_arr=process_arrays(my_cmt.major_nt,my_cmt.major_nt_freq,my_cmt.major_nt.shape[0])
+    freq_d={}
+    c=0
+    for p in my_cmt.p:
+        freq_d[p]=freq_arr[c]
+        c+=1
+    return freq_d
+
+def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual):
+    if str(qual)=='1':
+        warr[0]='0'
+        warr[1]='0'
+        return '0'
+    if cnn=='1' and wd=='1':
+        return '1'
+    if cnn=='1' and wd=='0':
+        return '1'
+    if cnn=='0' or cnn=='skip':
+        if wd=='0':
+            return '0'
+        else:
+            if recomb=='1' or gap=='1' or freq>0.9:
+                return '0'
+            else:
+                warr[0]='1'
+                if not re.search('s',warr[1]):
+                    warr[1]=str(1-float(warr[1]))
+                else:
+                    warr[1]='1.0'
+                return '1'
+
+def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dgap,my_cmt):
     o=open(dir_output+'/snv_table_cnn_plus_filter.txt','w+')
-    o.write('genome_pos\tCNN_pred\tWideVariant_pred\tCNN_prob\tCov_filter (<5)\tQual_filter (<30)\tMAF_filter (>0.85)\tIndel_filter (<0.33)\tMFAS_filter (1)\tMMCP_filter (5)\tCPN_filter (4,7)\tFix_filter\tWhether_recomb\tConfidence_score\n')
+    o.write('genome_pos\tPred_label\tCNN_pred\tWideVariant_pred\tCNN_prob\tQual_filter (<30)\tCov_filter (<5)\tMAF_filter (>0.85)\tIndel_filter (<0.33)\tMFAS_filter (1)\tMMCP_filter (5)\tCPN_filter (4,7)\tFix_filter\tWhether_recomb\tFraction_ambigious_samples\tGap_filter\n')
     return_bool=[]
     return_bool_all=[]
     drb={}
     drba={}
+    warr=[]
+    freq_d=cal_freq_amb_samples(all_p,my_cmt)
     for p in all_p:
         #check_bool=False
         #check_bool_all=False
         drba[p] = ''
         if p not in dlab:
-            cnn_l='0'
-            cnn_p='0'
+            cnn_l='skip'
+            cnn_p='skip'
         else:
             cnn_l=str(dlab[p])
             cnn_p=str(dprob[p])
+        warr=[cnn_l,cnn_p]
         if p in filt_res:
             filt_l='1'
         else:
@@ -2756,7 +2828,15 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p):
         #drb[p]=''
         #return_bool.append(check_bool)
         #return_bool_all.append(check_bool_all)
-        o.write(str(p)+'\t'+cnn_l+'\t'+filt_l+'\t'+cnn_p+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\twait\n')
+        if p not in dgap:
+            gf='0'
+        else:
+            gf=dgap[p]
+        freq=freq_d[p]
+        #print(dgap)
+        fl=dec_final_lab(cnn_l,warr,filt_l,recomb,gf,freq,dpt['qual'][p])
+        freq="%.6f" % freq
+        o.write(str(p)+'\t'+fl+'\t'+warr[0]+'\t'+filt_l+'\t'+warr[1]+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+str(freq)+'\t'+gf+'\n')
     for p in cmt_p:
         if p in drb:
             return_bool.append(True)
@@ -2801,7 +2881,6 @@ def merge_two_tables(in_cnn_table,output_tsv_filename,out_merge_tsv):
         else:
             o.write('\n')
 
-
 def generate_html_with_thumbnails(input_file, output_file, chart_dir):
     df = pd.read_csv(input_file, sep='\t')
     d = {}
@@ -2812,7 +2891,7 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
     color_code = {'A': '#1f77b4', 'T': 'ff7f0e', 'C': '#2ca02c', 'G': '#d62728'}
     with open(output_file, 'w') as f:
         # Step 3: Start HTML structure
-        f.write('<html>\n<head>\n<title>SNP Table with Charts</title>\n')
+        f.write('<html>\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>SNP Table with Charts</title>\n')
         f.write('<style>\n')
         f.write('table {width: 100%; border-collapse: collapse;}\n')
         f.write('th, td {border: 1px solid black; padding: 8px; text-align: left;}\n')
@@ -2820,6 +2899,75 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         f.write('.snp{ background-color: #dae9f8;}\n')
         f.write('.pred{ background-color: #fbe2d5;}\n')
         f.write('.rotate{writing-mode: vertical-lr; white-space: nowrap;}\n')
+        pop_style = '''
+
+                .popup {
+                    display: none;
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 400px;
+                    max-width: 90%; 
+                    padding: 20px;
+                    background-color: white;
+                    border: 1px solid #333;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                    z-index: 1000;
+                }
+                .popup h2 {
+                    margin-top: 0;
+                }
+                .overlay {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    z-index: 999;
+                }
+                .close-btn {
+                    cursor: pointer;
+                    color: #333;
+                    text-align: right;
+                    font-weight: bold;
+                }
+                
+                .sequence-container {
+                    overflow-x: auto; 
+                    white-space: nowrap; 
+                    border-top: 1px solid #ddd;
+                    padding-top: 10px;
+                    margin-top: 10px;
+                    font-family: monospace; 
+                    height: 100px;
+                }
+                .copy-btn {
+                    display: inline-block;
+                    margin-top: 10px;
+                    padding: 6px 12px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 14px;
+                }
+                .copy-btn:hover {
+                    background-color: #45a049;
+                }
+
+                .rotate {
+                writing-mode: vertical-rl;
+                transform: rotate(180deg); 
+                transform-origin: center;
+                white-space: nowrap;
+                }
+
+
+                '''
+        f.write(pop_style + '\n')
         # f.write('img {width: 300px; height: auto;}')
         f.write('</style>\n</head>\n<body>\n')
         f.write('<h2>SNP Table with Bar Charts</h2>\n')
@@ -2834,7 +2982,8 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         c=0
         # Add column headers from dataframe
         for col in df.columns:
-            if c<34:
+            #print(col,c)
+            if c<36:
                 c+=1
                 continue
             if re.search('sequence',col):continue
@@ -2850,28 +2999,34 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             #print(row)
             #exit()
             # exit()
+            if str(row['protein_id'])=='nan':
+                link='nan'
+            elif str(row['protein_id'])=='.':
+                link = '.'
+            else:
+                link=f'''<a href="javascript:void(0);" onclick="showPopup(\'{row['protein_id']}\', \'{row['translation']}\')" style="text-decoration: none;  cursor: pointer;">{row['protein_id']}</a>'''
+            #exit()
             f.write('<tr>\n')
             # Add the thumbnail column (assuming a chart image exists for each row)
             # chart_filename = f"{chart_dir}/chart_{idx + 1}.png"
             f.write(f'<td rowspan="6"> {idx+1}</td>')
-            f.write(
-                f'<td rowspan="6"><a href="bar_charts/{d[str(row['genome_pos'])]}"><img src="bar_charts/{d[str(row['genome_pos'])]}" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
+            f.write('<td rowspan="6"><a href="bar_charts/' + d[str(row['genome_pos'])] + '"><img src="bar_charts/' + d[str(row['genome_pos'])] + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
             html_p1='''
             <th class="snp">genome_pos</th>
             <th class="snp">contig_idx</th>
             <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
             <th class="pred">CNN_pred</th>
-            <th class="pred">WideVariant_pred</th>
             <th class="pred">CNN_prob</th>
-            <th class="pred">Cov_filter (<5)</th>
             <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
             '''
             f.write(html_p1+'\n')
             # Write each cell value
             c=0
             for value in row:
                 #print(value)
-                if c<34:
+                if c<36:
                     c+=1
                     continue
                 #print(df.columns[c])
@@ -2891,11 +3046,11 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             <td><b><font color="#9900FF"> {row['genome_pos']}</font></b></td>
             <td>{row['contig_idx']}</td>
             <td>{row['contig_pos']}</td>
+            <td>{row['Pred_label']}</td>
             <td>{row['CNN_pred']}</td>
-            <td>{row['WideVariant_pred']}</td>
             <td>{row['CNN_prob']}</td>
-            <td>{row['Cov_filter (<5)']}</td>
             <td>{row['Qual_filter (<30)']}</td>
+            <td>{row['Cov_filter (<5)']}</td>
             </tr>
             <tr>
             <th class="snp">nt_pos</th>
@@ -2911,7 +3066,7 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
  
             <td>{row['nt_pos']}</td>
             <td>{row['aa_pos']}</td>
-            <td>{re.sub(',','',row['muts'])} / {row['type']}</td>
+            <td>{re.sub(',','',str(row['muts']))} / {row['type']}</td>
             <td>{row['MAF_filter (>0.85)']}</td>
             <td>{row['Indel_filter (<0.33)']}</td>
             <td>{row['MFAS_filter (1)']}</td>
@@ -2924,193 +3079,73 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             <th class="snp">locustag</th>
             <th class="pred">Fix_filter</th>
             <th class="pred">Whether_recomb</th>
-            <th class="pred">Confidence_score</th>
-            <th class="pred">-</th>
-            <th class="pred">-</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
         </tr>
         <tr>
             
             <td>{row['product']}</td>
-            <td>{row['protein_id']}</td>
+            <td>{link}</td>
             <td>{row['locustag']}</td>
             <td>{row['Fix_filter']}</td>
             <td>{row['Whether_recomb']}</td>
-            <td>{row['Confidence_score']}</td>
-            <td>-</td>
-            <td>-</td>
-        </tr>
-        <tr><th rowspan="2" colspan="100%"></th><tr>
-            '''
-            f.write(html_p2)
-            #exit()
-        # Step 6: Close the table and HTML tags
-        f.write('</table>\n')
-        f.write('</body>\n</html>\n')
-
-def generate_html_with_thumbnails_old(input_file, output_file, chart_dir):
-    #################################################################################
-    #### This function is the old version - with a lot of redundant information #####
-    #################################################################################
-    df = pd.read_csv(input_file, sep='\t')
-    d = {}
-    for fn in os.listdir(chart_dir):
-        if not re.search('chart', fn): continue
-        pre = re.split('_', fn)[1]
-        d[pre] = fn
-    color_code={'A':'#1f77b4','T':'ff7f0e','C':'#2ca02c','G':'#d62728'}
-    with open(output_file, 'w') as f:
-        # Step 3: Start HTML structure
-        f.write('<html>\n<head>\n<title>SNP Table with Charts</title>\n')
-        f.write('<style>\n')
-        f.write('table {width: 100%; border-collapse: collapse;}\n')
-        f.write('th, td {border: 1px solid black; padding: 8px; text-align: left;}\n')
-        f.write('th {background-color: #c8d4dc;}\n') # default color is #f2f2f2, now change to #c8d4dc
-        f.write('.snp{ background-color: #dae9f8;}\n')
-        f.write('.pred{ background-color: #fbe2d5;}\n')
-        f.write('.rotate{writing-mode: vertical-lr; white-space: nowrap;}\n')
-        # f.write('img {width: 300px; height: auto;}')
-        f.write('</style>\n</head>\n<body>\n')
-        f.write('<h2>SNP Table with Bar Charts</h2>\n')
-
-        # Step 4: Start the table
-        f.write('<table>\n<tr>\n')
-        # Add header for the new thumbnail column
-        f.write('<th>ID</th>\n')
-        f.write('<th>Bar charts</th>\n')
-        f.write('<th colspan="6">SNP information</th>\n')
-        f.write('<th colspan="5">Prediction information</th>')
-        c=0
-        # Add column headers from dataframe
-        for col in df.columns:
-            if c<34:
-                c+=1
-                continue
-            if re.search('sequence',col):continue
-            if re.search('transl',col):continue
-            f.write(f'<th ><div class="rotate">{col}</div></th>\n')
-
-        f.write('</tr>\n')
-        #exit()
-        # Step 5: Populate the table rows
-        for idx, row in df.iterrows():
-            # print(row['genome_pos'])
-            #print(idx)
-            #print(row)
-            #exit()
-            # exit()
-            f.write('<tr>\n')
-            # Add the thumbnail column (assuming a chart image exists for each row)
-            # chart_filename = f"{chart_dir}/chart_{idx + 1}.png"
-            f.write(f'<td rowspan="6"> {idx+1}</td>')
-            f.write(
-                f'<td rowspan="6"><a href="bar_charts/{d[str(row['genome_pos'])]}"><img src="bar_charts/{d[str(row['genome_pos'])]}" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
-            html_p1='''
-            <th class="snp">genome_pos</th>
-            <th class="snp">contig_idx</th>
-            <th class="snp">contig_pos</th>
-            <th class="snp">gene_num</th>
-            <th class="snp">gene_num_global</th>
-            <th class="snp">quality</th>
-            <th class="pred">CNN_pred</th>
-            <th class="pred">WideVariant_pred</th>
-            <th class="pred">CNN_prob</th>
-            <th class="pred">Cov_filter (<5)</th>
-            <th class="pred">Qual_filter (<30)</th>
-            '''
-            f.write(html_p1+'\n')
-            # Write each cell value
-            c=0
-            for value in row:
-                #print(value)
-                if c<34:
-                    c+=1
-                    continue
-                #print(df.columns[c])
-                if re.search('sequence', df.columns[c]): continue
-                if re.search('transl', df.columns[c]): continue
-                #print(value,color_code)
-
-
-                #f.write(f'<td rowspan="6">{value}</td>\n')
-
-                #print(value)
-                c+=1
-            #exit()
-            f.write('</tr>\n')
-            html_p2=f'''
-            <tr>
-            <td><b><font color="#9900FF"> {row['genome_pos']}</font></b></td>
-            <td>{row['contig_idx']}</td>
-            <td>{row['contig_pos']}</td>
-            <td>{row['gene_num']}</td>
-            <td>{row['gene_num_global']}</td>
-            <td>{row['quality']}</td>
-            <td>{row['CNN_pred']}</td>
+            <td>{row['Fraction_ambigious_samples']}</td>
+            <td>{row['Gap_filter']}</td>
             <td>{row['WideVariant_pred']}</td>
-            <td>{row['CNN_prob']}</td>
-            <td>{row['Cov_filter (<5)']}</td>
-            <td>{row['Qual_filter (<30)']}</td>
-            </tr>
-            <tr>
-            <th class="snp">strand</th>
-            <th class="snp">loc1</th>
-            <th class="snp">loc2</th>
-            <th class="snp">nt_pos</th>
-            <th class="snp">aa_pos</th>
-            <th class="snp">anc</th>
-            <th class="pred">MAF_filter (>0.85)</th>
-            <th class="pred">Indel_filter (<0.33)</th>
-            <th class="pred">MFAS_filter (1)</th>
-            <th class="pred">MMCP_filter (5)</th>
-            <th class="pred">CPN_filter (4,7)</th>
-        </tr>
-        <tr>
-            <td>{row['strand']}</td>
-            <td>{row['loc1']}</td>
-            <td>{row['loc2']}</td>
-            <td>{row['nt_pos']}</td>
-            <td>{row['aa_pos']}</td>
-            <td>{row['anc']}</td>
-            <td>{row['MAF_filter (>0.85)']}</td>
-            <td>{row['Indel_filter (<0.33)']}</td>
-            <td>{row['MFAS_filter (1)']}</td>
-            <td>{row['MMCP_filter (5)']}</td>
-            <td>{row['CPN_filter (4,7)']}</td>
-        </tr>
-        <tr>
-            <th class="snp">nts</th>
-            <th class="snp">muts</th>
-            <th class="snp">type</th>
-            <th class="snp">product</th>
-            <th class="snp">protein_id</th>
-            <th class="snp">locustag</th>
-            <th class="pred">Fix_filter</th>
-            <th class="pred">Whether_recomb</th>
-            <th class="pred">Confidence_score</th>
-            <th class="pred">-</th>
-            <th class="pred">-</th>
-        </tr>
-        <tr>
-            <td>{row['nts']}</td>
-            <td>{re.sub(',','',row['muts'])}</td>
-            <td>{row['type']}</td>
-            <td>{row['product']}</td>
-            <td>{row['protein_id']}</td>
-            <td>{row['locustag']}</td>
-            <td>{row['Fix_filter']}</td>
-            <td>{row['Whether_recomb']}</td>
-            <td>{row['Confidence_score']}</td>
-            <td>-</td>
-            <td>-</td>
         </tr>
         <tr><th rowspan="2" colspan="100%"></th><tr>
             '''
             f.write(html_p2)
             #exit()
-        # Step 6: Close the table and HTML tags
         f.write('</table>\n')
+        pop_script = '''
+
+            <div class="overlay" id="overlay" onclick="closePopup()"></div>
+
+
+            <div class="popup" id="popup">
+                <div class="close-btn" onclick="closePopup()">x</div>
+                <h2>Protein ID: <span id="popup-protein-id"></span></h2>
+                <div class="sequence-container" id="sequence-container">
+                    Sequence: <span id="popup-sequence"></span>
+                </div>
+                <button class="copy-btn" onclick="copySequence()">Copy</button>
+            </div>
+
+            <script>
+                function showPopup(proteinId, sequence) {
+
+                    document.getElementById("popup-protein-id").innerText = proteinId;
+                    document.getElementById("popup-sequence").innerText = sequence;
+
+
+                    document.getElementById("popup").style.display = "block";
+                    document.getElementById("overlay").style.display = "block";
+                }
+
+                function closePopup() {
+
+                    document.getElementById("popup").style.display = "none";
+                    document.getElementById("overlay").style.display = "none";
+                }
+
+                function copySequence() {
+
+                    const sequenceText = document.getElementById("popup-sequence").innerText;
+
+
+                    navigator.clipboard.writeText(sequenceText).then(() => {
+                        alert("Sequence copied to clipboard!");
+                    }).catch(err => {
+                        console.error("Could not copy text: ", err);
+                    });
+                }
+            </script>
+        '''
+        f.write(pop_script + '\n')
+        # Step 6: Close the table and HTML tags
+
         f.write('</body>\n</html>\n')
-
-
 
 
