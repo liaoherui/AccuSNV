@@ -1,0 +1,5 @@
+experiment_name: "test"
+sample_table: ./samples.csv
+myscripts_directory: ./scripts
+ref_genome_directory: reference_genomes
+outdir: SET_BY_USERS

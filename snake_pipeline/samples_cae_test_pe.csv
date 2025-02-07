@@ -1,0 +1,6 @@
+Path,Sample,FileName,Reference,Group,Outgroup,Type
+Test_data/Cae/subj-5_scrape-404_col-3/,subj-5_scrape-404_col-3,Q:404-Scr-Lc-1_t15,Cae_ref,subj-5,0,PE
+Test_data/Cae/subj-5_scrape-402_col-1/,subj-5_scrape-402_col-1,Q:402-Scr-tlBa-5_t15,Cae_ref,subj-5,0,PE
+Test_data/Cae/subj-5_scrape-402_col-2/,subj-5_scrape-402_col-2,Q:402-Scr-tlBa-4_t15,Cae_ref,subj-5,0,PE
+Test_data/Cae/subj-5_scrape-401_col-1/,subj-5_scrape-401_col-1,Q:401-Scr-trBa-4_t15,Cae_ref,subj-5,0,PE
+Test_data/Cae/subj-5_scrape-401_col-3/,subj-5_scrape-401_col-3,Q:401-Scr-trBa-2_t15,Cae_ref,subj-5,0,PE

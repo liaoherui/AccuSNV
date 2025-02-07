@@ -1,0 +1,9 @@
+name: sickle-trim
+channels:
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=main
+  - libgcc-ng=9.1.0=hdf63c60_0
+  - sickle-trim=1.33=hed695b0_5
+  - zlib=1.2.11=h7b6447c_3

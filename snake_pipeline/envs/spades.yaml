@@ -1,0 +1,36 @@
+name: spades
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=1_gnu
+  - _sysroot_linux-64_curr_repodata_hack=3=h5bd9786_13
+  - bzip2=1.0.8=h7f98852_4
+  - ca-certificates=2021.10.8=ha878542_0
+  - kernel-headers_linux-64=3.10.0=h4a8ded7_13
+  - ld_impl_linux-64=2.36.1=hea4e1c9_2
+  - libffi=3.3=h58526e2_2
+  - libgcc-ng=11.2.0=h1d223b6_11
+  - libgomp=11.2.0=h1d223b6_11
+  - libstdcxx-ng=11.2.0=he4da1e4_11
+  - libzlib=1.2.11=h36c2ea0_1013
+  - llvm-openmp=8.0.1=hc9558a2_0
+  - ncurses=6.2=h58526e2_4
+  - openmp=8.0.1=0
+  - openssl=1.1.1l=h7f98852_0
+  - pip=21.3.1=pyhd8ed1ab_0
+  - python=3.9.0=hffdb5ce_5_cpython
+  - python_abi=3.9=2_cp39
+  - readline=8.1=h46c0cb4_0
+  - setuptools=60.5.0=py39hf3d152e_0
+  - spades=3.15.3=h95f258a_1
+  - sqlite=3.37.0=h9cd32fc_0
+  - sysroot_linux-64=2.17=h4a8ded7_13
+  - tk=8.6.11=h27826a3_1
+  - tzdata=2021e=he74cb21_0
+  - wheel=0.37.1=pyhd8ed1ab_0
+  - xz=5.2.5=h516909a_1
+  - zlib=1.2.11=h36c2ea0_1013
+prefix: /scratch/users/jsbaker/miniconda3/envs/spades

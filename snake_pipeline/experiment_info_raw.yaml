@@ -1,0 +1,5 @@
+experiment_name: "test"
+sample_table: ./samples_kcp_test_mix_rebuild_c3de429478f411efb6bc141877711129.csv
+myscripts_directory: ./scripts
+ref_genome_directory: /users/PAS2387/heruiliao2/Herui_MIT/Github_widevariant_20240919/reference_genomes
+outdir: SET_BY_USERS

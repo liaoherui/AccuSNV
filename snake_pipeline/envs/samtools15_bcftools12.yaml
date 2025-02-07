@@ -1,0 +1,29 @@
+name: samtools15_bcftools12
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=0_gnu
+  - bcftools=1.2=h02bfda8_4
+  - bzip2=1.0.8=h516909a_2
+  - ca-certificates=2019.11.28=hecc5488_0
+  - curl=7.64.0=h646f8bb_0
+  - htslib=1.9=ha228f0b_7
+  - krb5=1.16.3=hc83ff2d_1000
+  - libcurl=7.64.0=h01ee5af_0
+  - libdeflate=1.0=h14c3975_1
+  - libedit=3.1.20170329=hf8c457e_1001
+  - libgcc=7.2.0=h69d50b8_2
+  - libgcc-ng=9.2.0=h24d8f2e_2
+  - libgomp=9.2.0=h24d8f2e_2
+  - libssh2=1.8.0=h1ad7b7a_1003
+  - libstdcxx-ng=9.2.0=hdf63c60_2
+  - ncurses=6.1=hf484d3e_1002
+  - openssl=1.0.2u=h516909a_0
+  - samtools
+  - tk=8.6.10=hed695b0_0
+  - xz=5.2.4=h14c3975_1001
+  - zlib=1.2.11=h516909a_1006
+

@@ -1,0 +1,6 @@
+Path,Sample,FileName,Reference,Group,Outgroup,Type
+Test_data/Kcp/Strain-2/,Strain-2,SRR515499,Kcp_ref,Kcp,0,SE
+Test_data/Kcp/Strain-3/,Strain-3,SRR515502,Kcp_ref,Kcp,0,SE
+Test_data/Kcp/Strain-4/,Strain-4,SRR515498,Kcp_ref,Kcp,0,SE
+Test_data/Kcp/Strain-5/,Strain-5,strain_5,Kcp_ref,Kcp,0,SE
+Test_data/Kcp/Strain-PE-add-by-herui/,Strain-PE-add-by-herui,ERR13492045,Kcp_ref,Kcp,0,PE
