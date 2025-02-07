@@ -56,10 +56,10 @@ def generate_positions_snakemake(positions_files_list, REFGENOMEDIRECTORY):
         with gzip.open(positions_files_list[i].rstrip('\n'),"rb") as f:
             positions=pickle.load(f)
         
-        if len(positions)>2:
-            x=chrpos2index(positions,chr_starts)
+        #if len(positions)>2:
+        x=chrpos2index(positions,chr_starts)
             
-            timesvariant[x]=timesvariant[x]+1
+        timesvariant[x]=timesvariant[x]+1
     
     
     #Keep positions that vary from the reference in at least one sample but
