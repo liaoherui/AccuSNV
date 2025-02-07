@@ -1,12 +1,14 @@
 import os
 import re
 import sys
-#from sklearn.model_selection import StratifiedKFold
+import copy
 import torch
 import random
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
+from scipy import stats
+from statsmodels.stats.power import TTestPower
 from torch.utils.data import Dataset, DataLoader
 #from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score,roc_auc_score,confusion_matrix, classification_report
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -222,9 +224,239 @@ def find_sm_top_x_test(arr, call_arr):
 
     return fmask
 
+def cal_major_freq_in_call(arr1):
+    #print(arr1.shape)
+    #print(arr1)
+    col_data_nonzero = [arr1[:, col][arr1[:, col] != 0] for col in range(arr1.shape[1])]
+    '''
+    for col in col_data_nonzero:
+        print(col,np.bincount(col))
+        print(np.argmax(np.bincount(col)))
+    '''
+    column_modes = [np.unique(col)[0] if len(np.unique(col)) == 1 else (1 if len(col) == 0 else np.argmax(np.bincount(col))) for col in col_data_nonzero]
+    #exit()
+    #print(column_modes)
+    scount = np.sum(arr1 == column_modes, axis=0)
+    #print(arr1==column_modes)
+    #exit()
+    return scount,arr1==column_modes
+
+
+
+def compare_arrays_nonparametric(large_array_raw, small_array_raw):
+
+    arr=[x for x in large_array_raw if x != 0]
+    sorted_arr = np.sort(arr)
+    n = len(sorted_arr)
+    k = int(np.ceil(n * 0.25))
+    large_array = sorted_arr[:k]
+
+    small_array=[x for x in small_array_raw if x != 0]
+    #print(large_array,small_array)
+    if len(small_array) == 0:
+        return "Empty arrays! Please check."
+        
+    elif len(small_array) == 1:
+        statistic, p_value = stats.wilcoxon(large_array - small_array[0])
+    else:
+        statistic, p_value = stats.mannwhitneyu(large_array, small_array)
+    return p_value
+
+def scan_real_gap(arr,check_arr):
+    arr.sort()
+    #print(arr)
+    B = {}
+
+    i, j = 0, 1
+    n = len(arr)
+    #print(arr)
+    while i < n:
+        j=i+1
+        #print('i,n:',i,',',n,'j,n:',j,',',n,'arr[j]-arr[i]:',arr[j],'-',arr[i])
+        while j < n and arr[j] - arr[i] <= 200:
+            #print(arr[j],arr[i])
+            if arr[j] - arr[i] > 0:
+                if arr[i] not in B:
+                    B[arr[i]]={arr[j]:''}
+                else:
+                    B[arr[i]][arr[j]]=''
+                if arr[j] not in B:
+                    B[arr[j]]={arr[i]:''}
+                else:
+                    B[arr[j]][arr[i]]=''
+
+            j += 1
+            #print(i,j)
+        i += 1
+        if j <= i:
+            j = i + 1
+    res=[]
+    #print(B)
+    #print(B[1899148])
+    '''
+    arr_B=sorted(list(B.keys()))
+    for key in B[arr_B[0]]:
+        for key2 in B[arr_B[0]]:
+            if not key==key2:
+                B[key][key2]=''
+    print(B)
+    '''
+    #print(check_arr)
+    #exit()
+    for p in B:
+        if len(B[p])>1:
+            if len(B[p])>2:
+                res.append(p)
+            else:
+                check=0
+                for s in B[p]:
+                    if s in check_arr:
+                        check+=1
+                if check==len(B[p]):
+                    res.append(p)
+        elif len(B[p])==1:
+            check=1
+            for e in B[p]:
+                if e in check_arr and p in check_arr:
+                    check=0
+            if check==0:
+                res.append(p)
+    return res
+
+def compare_arrays_ttest(large_array_raw, small_array_raw):
+    #print(large_array,small_array)
+    # from min to max | top 25%
+    large_array=[x for x in large_array_raw if x != 0]
+    '''
+    sorted_arr = np.sort(arr)
+    n = len(sorted_arr)
+    k = int(np.ceil(n * 0.25))
+    large_array = sorted_arr[:k]
+    '''
+
+    small_array=[x for x in small_array_raw if x != 0]
+    #print(large_array,small_array)
+    #exit()
+    n_small = len(small_array)
+    
+    if n_small == 0:
+        return "Empty array! Please check."
+        exit()
+    
+    elif n_small == 1:
+        target_value = small_array[0]
+        t_stat, p_value = stats.ttest_1samp(large_array, popmean=target_value)
+        return p_value
+    
+    else:
+        t_stat, p_value = stats.ttest_ind(large_array, small_array, equal_var=False)
+        return p_value
+
+def check_mm(arr1,counts_major):
+    #print(arr1[:,:10])
+    col_data_nonzero = [arr1[:, col][arr1[:, col] != 0] for col in range(arr1.shape[1])]
+    #print(col_data_nonzero)
+    #exit()
+    '''
+    column_modes=[]
+    for col in col_data_nonzero:
+        #print(col,np.bincount(col),np.unique(col))
+        if len(np.unique(col)) >= 2
+            nonzero_pairs = sorted([(x, i) for i, x in enumerate(np.bincount(col)) if x != 0], reverse=True)
+            minor=nonzero_pairs[1][1] if len(nonzero_pairs) > 1 else -1
+            
+        else:
+            if len(col) == 0:
+                minor=1
+            else:
+                minor=0
+        column_modes.append(minor)
+        #print(res)
+        exit()
+    '''
+    column_modes = [sorted([(x, i) for i, x in enumerate(np.bincount(col)) if x != 0], reverse=True)[1][1] if len(np.unique(col)) >= 2 and len([(x, i) for i, x in enumerate(np.bincount(col)) if x != 0]) > 1 else (1 if len(col) == 0 else 0) for col in col_data_nonzero]
+    #print(column_modes)
+    #exit()
+    #column_modes = [np.unique(col)[1] if len(np.unique(col)) >= 2 else (1 if len(col) == 0 else 0) for col in col_data_nonzero]
+    scount = np.sum(arr1 == column_modes, axis=0)
+    only_minor= arr1 == column_modes
+    #print(only_minor.shape,counts_major.shape)
+    #exit()
+    #print(scount)
+    check_minor_more_than_1=np.repeat([scount>1], arr1.shape[0], axis=0)
+    cmj_copy=copy.deepcopy(counts_major)
+    cmj_copy[~only_minor]=0
+    #print(counts_major)
+    min_v=[min(col[col != 0]) if len(col[col != 0]) > 0 else 0 for col in cmj_copy.T]
+    #print(min_v)
+    #exit()
+    c,b=cal_major_freq_in_call(arr1)
+    copy_minv=np.repeat([min_v],arr1.shape[0],axis=0)
+    #print('cminv:',copy_minv)
+    #print('cmajor:',counts_major)
+    x=counts_major-copy_minv
+    x[only_minor]=-1
+    #print('cmj-cmi:',x)
+
+    #print(counts_major,arr1)
+    #print(arr1.shape,check_minor_more_than_1.shape)
+    #exit()
+    ##print(column_modes)
+    #print(scount)
+    #print(arr1)
+    #c,b=cal_major_freq_in_call(arr1)
+    #minor_max = check_minor_more_than_1
+    minor_max = check_minor_more_than_1 & (x<0)
+    #exit()
+    #print(minor_max)
+    #print(arr1)
+    #exit()
+    
+    return minor_max,arr1==column_modes
+
+def process_arrays(arr1, arr2, sample_num):
+    col_data_nonzero = [arr1[:, col][arr1[:, col] != 0] for col in range(arr1.shape[1])]
+    column_modes = [np.unique(col)[0] if len(np.unique(col)) == 1 else ( 1 if len(col)==0 else np.argmax(np.bincount(col))) for col in col_data_nonzero]
+    #print(arr2)
+    scount = np.sum(arr1 == column_modes, axis=0)
+    #print(scount)
+    mask = arr1 != np.array(column_modes)
+    arr2[mask] = 0
+    result = np.sum((arr2 > 0) & (arr2 < 1), axis=0)
+    #print(result/scount)
+    #exit()
+
+    return result/scount
+
+def cal_freq_amb_samples(all_p,my_cmt):
+    #print(len(all_p))
+    #print(len(my_cmt.p))
+    #exit()
+    keep_col=[]
+    for p in my_cmt.p:
+        if p in all_p:
+            keep_col.append(True)
+        else:
+            keep_col.append(False)
+    keep_col=np.array(keep_col)
+    #print(len(my_cmt.p))
+    #print(len(keep_col))
+    #print(keep_col)
+    #exit()
+    my_cmt.filter_positions(keep_col)
+    #exit()
+    freq_arr=process_arrays(my_cmt.major_nt,my_cmt.major_nt_freq,my_cmt.major_nt.shape[0])
+    ##exit()
+    freq_d={}
+    c=0
+    for p in my_cmt.p:
+        freq_d[p]=freq_arr[c]
+        c+=1
+    return freq_d,freq_arr
+
 def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     raw_p=len(inp)
-    #print(np.where(inp==864972))
+    rawp=inp
     #print(inp.shape,combined_array[40])
     #exit()
     ######### Further Scan bad pos, eg: potential FPs caused by Low-Depth samples
@@ -243,6 +475,7 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
 
     my_cmt.filter_positions(keep_col)
     my_calls.filter_positions(keep_col)
+    #print(my_cmt.p)
     #exit()
     my_calls.filter_calls_by_element(
         my_cmt.fwd_cov < 1
@@ -251,12 +484,89 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     my_calls.filter_calls_by_element(
         my_cmt.rev_cov < 1
     )
-
+    my_calls_check=copy.deepcopy(my_calls)
+    scount_before,b=cal_major_freq_in_call(my_calls_check.calls)
+    #print(scount_before[:100])
+    #exit()
+    my_calls_check.filter_calls_by_element(
+            (my_cmt.fwd_cov < 11) & (my_cmt.rev_cov < 11)
+    )
+    scount_after,b=cal_major_freq_in_call(my_calls_check.calls)
+    #print(scount_after[:100])
+    fratio=scount_after/scount_before
+    #print(fratio)
+    count=np.sum(fratio > 0.5)
+    #print(count)
+    stat=count/len(fratio)
+    #print(stat)
+    #exit()
+    my_cmt_tem=copy.deepcopy(my_cmt)
+    freq_p,freq_arr=cal_freq_amb_samples(my_calls.p,my_cmt_tem)
+    freq_check=np.repeat([freq_arr>0],my_calls.calls.shape[0],axis=0) 
+    if count>10:
+        my_calls.filter_calls_by_element(
+            (my_cmt.fwd_cov < 3) & (my_cmt.rev_cov < 3) & freq_check
+        )
+    else:
+        if stat>=0.1:
+            my_calls.filter_calls_by_element(
+                    (my_cmt.fwd_cov < 3) & (my_cmt.rev_cov < 3) & freq_check
+            )
+    # if fwd type != rev type -> filter
+    #print(np.where(my_cmt.p==1161288))
+    my_calls.filter_calls_by_element(
+            (my_cmt.major_nt_fwd != my_cmt.major_nt_rev) & ((my_cmt.major_nt_fwd>0)&(my_cmt.major_nt_rev>0))
+    )
+    '''
+    # new rule - large fwd/rev and very samll rev/fwd - >70% sample fwd>4*rev or rev>4*fwd, and fwd or rev <10
+    my_calls_check=copy.deepcopy(my_calls)
+    cbefore=np.sum(my_calls_check.calls != 0, axis=0) 
+    my_calls_check.filter_calls_by_element(
+            ((my_cmt.fwd_cov - 4*my_cmt.rev_cov >0 ) | (my_cmt.rev_cov - 4*my_cmt.fwd_cov > 0)) & ((my_cmt.fwd_cov < 10) | (my_cmt.rev_cov < 10))
+            )
+    cafter=np.sum(my_calls_check.calls != 0, axis=0)
     
+    diff_ratio=1-cafter/cbefore
+    keep_col=[]
+    if my_calls_check.calls.shape[0]>10:
+        cut=0.6
+    else:
+        cut=0.7
+    for d in diff_ratio:
+        if d>cut:
+            keep_col.append(False)
+        else:
+            keep_col.append(True)
+    keep_col=np.array(keep_col)
+    my_cmt.filter_positions(keep_col)
+    my_calls.filter_positions(keep_col)
+    '''
+
+    #print(diff_ratio,my_calls_check.p)
+    #exit()
+
     my_calls.filter_calls_by_element(
         my_cmt.major_nt_freq < 0.7
     )
-    #print(median_cov.shape,median_cov)
+    #print(my_cmt.p[:10])
+    # print(my_cmt.counts_major.shape)
+    # print(my_cmt.counts_minor.shape)
+    # na=my_cmt.counts_major-5*my_cmt.counts_minor
+    # test=my_cmt.major_nt_freq < 0.7
+    # t2= my_cmt.counts_minor>20
+    #a=np.array(my_cmt.counts_major, dtype=np.int64)
+    #b=np.array(my_cmt.counts_minor, dtype=np.int64)
+    #print(my_calls.calls[:,np.where(my_cmt.p==1052499)])
+    # exit()
+    ### Super big fp pos filter - 2024-12-18
+    #rawp=my_c.p
+    #my_calls.filter_calls_by_element(
+    #    (my_cmt.counts_minor>30) & ((a-b*3)>0) & (my_cmt.counts_major>250)
+    #)
+    #print(my_cmt.counts_major[:,np.where(my_cmt.p==1052499)]-(my_cmt.counts_minor[:,np.where(my_cmt.p==1052499)]*10))
+    #print((a-b*10)[:,np.where(my_cmt.p==1052499)])
+    #exit()
+    #print('filter_low_quality_pos...')
     #exit()
     if np.median(median_cov)>9:
         my_calls.filter_calls_by_element(
@@ -281,6 +591,8 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
 
 
     keep_col = remove_same(my_calls)
+    #print(keep_col)
+    #exit()
     my_cmt.filter_positions(keep_col)
     my_calls.filter_positions(keep_col)
 
@@ -293,25 +605,90 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     keep_col_arr=np.array(keep_col_arr)
     inp=inp[keep_col_arr]
     combined_array=combined_array[keep_col_arr]
+    #print(my_cmt.p)
+    #exit()
     #### Filter low gap pos
+    #print('before-filt-gap:',my_cmt.p)
+    rawp=my_cmt.p # used to check positions removed by gap filter
+    #exit()
+    '''
+    # new rule - large fwd/rev and very samll rev/fwd - >70% sample fwd>4*rev or rev>4*fwd, and fwd or rev <10  & freq must >0
+    my_calls_check=copy.deepcopy(my_calls)
+    if my_calls_check.calls.shape[0]>10:
+        cut=0
+    else:
+        cut=0.2
+    freq_p,freq_arr=cal_freq_amb_samples(my_calls_check.p,my_cmt)
+    freq_check=np.repeat([freq_arr>cut],my_calls_check.calls.shape[0],axis=0) 
+
+    cbefore=np.sum(my_calls_check.calls != 0, axis=0)
+    my_calls_check.filter_calls_by_element(
+            ((my_cmt.fwd_cov - 4*my_cmt.rev_cov >0 ) | (my_cmt.rev_cov - 4*my_cmt.fwd_cov > 0)) & ((my_cmt.fwd_cov < 10) | (my_cmt.rev_cov < 10)) & freq_check
+            )
+    cafter=np.sum(my_calls_check.calls != 0, axis=0)
+
+    diff_ratio=1-cafter/cbefore
+    keep_col=[]
+    if my_calls_check.calls.shape[0]>10:
+        cut=0.6
+    else:
+        cut=0.7
+    for d in diff_ratio:
+        if d>cut:
+            keep_col.append(False)
+        else:
+            keep_col.append(True)
+    keep_col=np.array(keep_col)
+    my_cmt.filter_positions(keep_col)
+    my_calls.filter_positions(keep_col)
+    ########################### new rule done
+    '''
     med_cov_ratio_fwd=my_cmt.fwd_cov/median_cov[:, np.newaxis]
     med_cov_ratio_rev = my_cmt.rev_cov / median_cov[:, np.newaxis]
     med_cov_ratio_fwd = np.nan_to_num(med_cov_ratio_fwd, nan=0)
     med_cov_ratio_rev = np.nan_to_num(med_cov_ratio_rev, nan=0)
+    # Add super big fp filt in gap filt
+    a=np.array(my_cmt.counts_major, dtype=np.int64)
+    b=np.array(my_cmt.counts_minor, dtype=np.int64)
+    #print(a.shape)
+    #print(my_calls.calls[:,np.where(my_cmt.p==1052499)])
+    # exit()
+    #rawp=my_c.p
+    #print(my_calls.p)
+    minor_max,mbool=check_mm(my_calls.calls,a) # Whether the major  counts all < the min minor count & # of minor > 1
+    my_calls.filter_calls_by_element(
+        (my_cmt.counts_minor>30) & ((a-b*3)>0) & (my_cmt.counts_major>250) & minor_max
+    )
+    #print(my_cmt.fwd_cov)
+    #print((my_cmt.counts_minor>30) & ((a-b*3)>0) & (my_cmt.counts_major>250))
+    #print(((my_cmt.fwd_cov>200) | (my_cmt.rev_cov>200)))
+
+    #my_calls.filter_calls_by_element(
+    #    (my_cmt.counts_minor>30) & ((a-b*3)>0) & (my_cmt.counts_major>250)
+    #)
+    #print(my_cmt.p)
+    #print(my_cmt.fwd_cov.shape)
+    #print(my_cmt.fwd_cov)
+    #print(my_cmt.fwd_cov<200)
+    #print(my_calls.p)
     #print(combined_array[40][21])
     #print(med_cov_ratio_fwd[40][21])
     #print(med_cov_ratio_rev[40][21])
     #print(combined_array.shape,my_cmt.fwd_cov.shape)
     #exit()
     # Old methods: Use loose filtering
-    mask1 = find_sm_top_x(my_cmt.fwd_cov, 3, 20)
-    mask2 = find_sm_top_x(my_cmt.rev_cov, 3, 20)
+    #mask1 = find_sm_top_x(my_cmt.fwd_cov, 3, 20)
+    #mask2 = find_sm_top_x(my_cmt.rev_cov, 3, 20)
+    # old gap rule  - 2025-02-03
+    '''
     if combined_array.shape[1]<25:
         mask1=find_sm_top_x(my_cmt.fwd_cov, 3, 20)
         mask2=find_sm_top_x(my_cmt.rev_cov, 3, 20)
     else:
         mask1 = find_sm_top_x(my_cmt.fwd_cov, 5, 20)
         mask2 = find_sm_top_x(my_cmt.rev_cov, 5, 20)
+    '''
+
     ####### old done #########################
     #print(mask1.shape)
     #print(my_calls.calls.shape)
@@ -327,19 +704,167 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     #print(mask1[:,25])
     #exit()
 
-
+    # old gap rule - 2025-02-03
+    '''
     mask1 = mask1 & (med_cov_ratio_fwd< 0.1)
     mask2 = mask2 & (med_cov_ratio_rev < 0.1)
     mask=mask1 & mask2
     my_calls.filter_calls_by_element(
         mask
     )
+    '''
+
+
+    # Add gap rule: if all minor sample <=10 and one part must <=5, >=85% major sample not satisfy this rule and >=20, then should be gap fp
+    my_calls_tem=copy.deepcopy(my_calls)
+    #print(1899148 in my_calls_tem.p)
+    rawp_tem=my_calls_tem.p
+    scount_before,b=cal_major_freq_in_call(my_calls_tem.calls)
+    #count_combine=my_cmt.counts_major
+    count_combine_ratio=my_cmt.counts_major/median_cov[:, np.newaxis]
+    #print(my_cmt.counts_major,my_cmt.counts_major[:,temp])
+    #print(temp)
+    #exit()
+    #print(temp,my_cmt.counts_major,my_cmt.counts_major.shape,b.shape,mbool.shape)
+    #exit()
+    #c2=copy.deepcopy(count_combine)
+    c3=copy.deepcopy(count_combine_ratio)
+    #count_combine[~b]=0
+    count_combine_ratio[~b]=0
+    #c2[~mbool]=0
+    c3[~mbool]=0
+    p_arr=[]
+    p_arr_ratio=[]
+    tem=[]
+    tem2=[]
+    for i in range(count_combine_ratio.shape[1]):
+        #a_arr=count_combine[:,i]
+        #b_arr=c2[:,i]
+        c_arr=count_combine_ratio[:,i]
+        d_arr=c3[:,i]
+        #a1=[x for x in a_arr if x != 0]
+        #b1=[x for x in b_arr if x != 0]
+        c1=[x for x in c_arr if x != 0]
+        d1=[x for x in d_arr if x != 0]
+        tem.append([c1,d1])
+        #tem2.append([a1,b1])
+        #p2=compare_arrays_ttest(a_arr,b_arr) # Count
+        p=compare_arrays_ttest(c_arr,d_arr) # Ratio
+        #p,effect_size, power=compare_groups(c_arr, d_arr)
+        #p=compare_arrays_nonparametric(c_arr,d_arr) # Ratio
+        #p2=compare_arrays_nonparametric(a_arr,b_arr) # Count
+        #p_arr.append(p2)
+        p_arr_ratio.append(p)
+        #tem2.append([effect_size,power])
+        #p_arr_ratio.append(p)
+    #print(p_arr,p_arr_ratio)
+    gap_candidate=[]
+    tem_p=[]
+    for i in range(len(p_arr_ratio)):
+        #print(my_cmt.p[i],tem[i][1])
+        if p_arr_ratio[i]<0.05 and np.max(tem[i][1])<0.1 :
+            p=1
+            #print(my_cmt.p[i],p_arr_ratio[i],p_arr[i],tem[i][0],tem[i][1])
+            gap_candidate.append(my_cmt.p[i])
+            #gap_pos.append()
+            tem[i][0]=np.array(tem[i][0])
+            # old one with # '\nnorm_major_arr:',tem[i][0]
+            print('pos:',my_cmt.p[i],'\n','p-value:',p_arr_ratio[i],'\nnorm_major_mean:',np.mean(tem[i][0]),'\nnorm_major_median:',np.median(tem[i][0]),'\n# of major <0.1',np.sum(tem[i][0]<0.1),'\nthese elements are:',tem[i][0][tem[i][0]<0.1],'\nnorm_minor_arr:',tem[i][1])
+            if np.sum(tem[i][0]<0.1)>1:
+                if np.min(tem[i][0])<np.max(tem[i][1]) or np.min(tem[i][0])-np.max(tem[i][1])<0.01:
+                    print('\n')
+                else:
+                    p=compare_arrays_ttest(tem[i][0][tem[i][0]<0.1],tem[i][1]) 
+                    print('\np-value-major-s0.1-minor:',p)
+                    print('\nnorm_major_s0.1_median:',np.median(tem[i][0][tem[i][0]<0.1]))
+                    if p<0.05:
+                        tem_p.append(my_cmt.p[i])
+            else:
+                if np.sum(tem[i][0]<0.1)==1:
+                    print(tem[i][0][tem[i][0]<0.1][0])
+                    if not tem[i][0][tem[i][0]<0.1][0]<0.09:
+                        tem_p.append(my_cmt.p[i])
+                else:
+                    if np.min(tem[i][1])<0.05:
+                        tem_p.append(my_cmt.p[i])
+            '''
+            if np.sum(tem[i][0]<0.1)==0 or (np.sum(tem[i][0]<0.1)==1 and tem[i][0][0]>0.05) or (p<0.05 and np.median(tem[i][1])<np.median(tem[i][0][tem[i][0]<0.1])):
+                tem_p.append(my_cmt.p[i])
+            '''
+        
+            #print(p_arr[i],tem2[i][0],tem2[i][1])
+    #print(gap_candidate)
+    gap_pos=scan_real_gap(gap_candidate,tem_p)
+    for p in tem_p:
+        if p not in gap_pos:
+            gap_pos.append(p)
+    print('gap_pos:\n',gap_pos)
+    #print(p_arr[36],p_arr_ratio[36])
+    #exit()
+    #print(my_cmt.p[0],my_cmt.p[36])
+
+    #exit()
+    #print(scount_before)
+    #print('before:',my_calls_tem.calls)
+    #exit()
+    # old gap rule - 2025-02-03
+    '''
+    my_calls_tem.filter_calls_by_element(
+        ((my_cmt.fwd_cov <= 10) & (my_cmt.rev_cov <= 10)) & ((my_cmt.fwd_cov <= 5) | (my_cmt.rev_cov <= 5))
+    )
+
+    #print(my_cmt.major_nt,my_cmt.major_nt.shape)
+    #print(my_cmt.fwd_cov,my_cmt.fwd_cov.shape)
+    #exit()
+
+    my_calls_tem.filter_calls_by_element(
+            (my_cmt.fwd_cov <= 20) & (my_cmt.rev_cov <= 20) & b
+    )
+    
+    scount_after,b=cal_major_freq_in_call(my_calls_tem.calls)
+    keep_col_tem = remove_same(my_calls_tem)
+    #print(keep_col_tem)
+    if len(keep_col_tem)==0:
+        print('No SNPs detected! Exit.')
+        exit()
+    #exit()
+    my_calls_tem.filter_positions(keep_col_tem)
+    gap_ratio=scount_after/scount_before
+    dtem=dict(zip(rawp_tem,gap_ratio))
+    #print(dtem)
+    #print(scount_after)
+    #print('after:',my_calls_tem.calls)
+    #print(my_calls_tem.p,gap_ratio)
+    gap_pos=[]
+    for p in rawp_tem:
+        if p not in my_calls_tem.p:
+            if dtem[p]>=0.85:
+                gap_pos.append(p)
+    #exit()
+    #print(gap_pos)
+    #exit()
+    
+
+    '''
     #print(my_calls.p, len(my_calls.p))
-    keep_col = remove_same(my_calls)
+    keep_col_raw = remove_same(my_calls)
+    keep_col=[]
+    c=0
+    for k in keep_col_raw:
+        if my_calls.p[c] in gap_pos:
+            keep_col.append(False)
+        else:
+            keep_col.append(k)
+        c+=1
+    keep_col=np.array(keep_col)
     my_cmt.filter_positions(keep_col)
     my_calls.filter_positions(keep_col)
-    #print(my_calls.p, len(my_calls.p))
+    #print('after-filt-gap:',my_cmt.p)
+    pfgap=[p for p in rawp if p not in my_cmt.p] # position filterd due to gap
+    #print(len(pfgap))
     #exit()
+    #print(my_calls.p, len(my_calls.p))
+    #print(pfgap)
     keep_col_arr = []
     for s in inp:
         if s in my_calls.p:
@@ -351,9 +876,9 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     combined_array = combined_array[keep_col_arr]
 
     print('There are ',raw_p-len(inp),' pos filtered. Keep ',len(inp),' positions.')
-    #print(inp)
+    print([p for p in rawp if p not in inp])
     #exit()
-    return combined_array,inp
+    return combined_array,inp,pfgap,rawp
 
 
 # filter low-quality samples and low-quality positions
@@ -492,14 +1017,29 @@ def load_p(infile):
         d[int(ele[0])]=''
     return d
 
-def data_transform(infile,incov,fig_odir):
+def remove_exclude_samples(samples_to_exclude_bool,quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup):
+    in_outgroup=samples_to_exclude_bool
+    quals = quals[~in_outgroup]
+    counts = counts[~in_outgroup]
+    sample_names = sample_names[~in_outgroup]
+    indel_counter = indel_counter[~in_outgroup]
+    raw_cov_mat = raw_cov_mat[~in_outgroup]
+    in_outgroup=in_outgroup[~in_outgroup]
+    return quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup
+
+
+def data_transform(infile,incov,fig_odir,samples_to_exclude):
 
     # infile='../../../Scan_FP_TP_for_CNN/Cae_files/npz_files/Lineage_10c/candidate_mutation_table_cae_Lineage_10c.npz'
     [quals, p, counts, in_outgroup, sample_names, indel_counter] = \
         snv.read_candidate_mutation_table_npz(infile)
 
-    #print(quals.shape,indel_counter.shape,indel_counter.shape)
-    #exit()
+    #print(in_outgroup,in_outgroup.shape)
+    in_outgroup=np.array([False] * len(sample_names))
+    # Only for P15
+    #in_outgroup[2]=True
+    #in_outgroup[13]=True
+    #in_outgroup[13]=True
 
     ########  remove outgroup samples
     quals = quals[~in_outgroup]
@@ -509,6 +1049,9 @@ def data_transform(infile,incov,fig_odir):
     raw_cov_mat = snv.read_cov_mat_npz(incov)
     raw_cov_mat = raw_cov_mat[~in_outgroup]
     in_outgroup=in_outgroup[~in_outgroup]
+    #in_outgroup=np.array([False] * len(sample_names))
+    #in_outgroup[2]=True
+    #in_outgroup[13]=True
     
     my_cmt = snv.cmt_data_object(sample_names,
                                  in_outgroup,
@@ -517,6 +1060,10 @@ def data_transform(infile,incov,fig_odir):
                                  quals,
                                  indel_counter
                                  )
+    samples_to_exclude_bool = np.array( [x in samples_to_exclude for x in my_cmt.sample_names] )
+    my_cmt.filter_samples( ~samples_to_exclude_bool )
+    quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup=remove_exclude_samples(samples_to_exclude_bool,quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup)
+
     my_calls = snv.calls_object(my_cmt)
 
     keep_col = remove_same(my_calls)
@@ -608,15 +1155,24 @@ def data_transform(infile,incov,fig_odir):
     combined_array = reorder_norm(combined_array, my_cmt)
     #### Remove low quality samples
     #print(combined_array.shape,len(p))
+    #print(p,len(p))
     #exit()
     combined_array,p=remove_low_quality_samples(combined_array, 45,p)
     #print(np.where(p==864972))
     #exit()
-	#### Remove bad positions
-    combined_array,p=remove_lp(combined_array,p,my_cmt,my_calls,median_cov )
+    #### Remove bad positions
+    #pfgap=[]
+    combined_array,p,pfgap,praw=remove_lp(combined_array,p,my_cmt,my_calls,median_cov )
+    dgap={}
+    #praw=p
+    for s in praw:
+        if s not in pfgap:
+            dgap[s]='0'
+        else:
+            dgap[s]='1'
     
 
-    return combined_array,p
+    return combined_array,p,dgap
 
 
 def load_test_name(infile):
@@ -628,7 +1184,7 @@ def load_test_name(infile):
         dt[line]=''
     return dt
 
-def CNN_predict(data_file_cmt,data_file_cov,out):
+def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude):
     if not os.path.exists(out):
         os.makedirs(out)
     setup_seed(1234)
@@ -682,7 +1238,7 @@ def CNN_predict(data_file_cmt,data_file_cov,out):
 
     info=[]
     #print('Test data :'+pre)
-    odata,pos=data_transform(mut,cov,fig_odir)
+    odata,pos,dgap=data_transform(mut,cov,fig_odir,samples_to_exclude)
     #odata=odata[np.where(pos==864972)]
     #odata=odata[:,20:23,:,:]
     #print(odata,odata.shape)
@@ -761,8 +1317,8 @@ def CNN_predict(data_file_cmt,data_file_cov,out):
     #o=open('check_res_cnn_39features_multichannel_elife_sau_with_reorder_split_m2_basechannel_large_remove.txt','w+')
     #o=open('check_res_cnn_39features_multichannel_pnas_sau_with_reorder_split_m2_basechannel_large_remove.txt','w+')
     #o=open('check_res_cnn_39features_multichannel_elife_sau_with_mask.txt','w+')
-    o=open(out+'/cnn_res.txt','w+')
-    o.write('Pos_info\tPredicted_label\tProbability\n')
+    #o=open(out+'/cnn_res.txt','w+')
+    #o.write('Pos_info\tPredicted_label\tProbability\tGap_filt\n')
 
     #print('Train')
     model.eval()
@@ -790,13 +1346,15 @@ def CNN_predict(data_file_cmt,data_file_cov,out):
     #exit()
     # print(predictions)
     y_pred = predictions
-    c=0
+    #c=0
     #print('Predicted results:',np.count_nonzero(y_pred),' true SNPs, ',len(y_pred)-np.count_nonzero(y_pred),' false SNPs.')
+    '''
     for s in y_pred:
-        o.write(info[c]+'\t'+str(s)+'\t'+str(prob[c])+'\n')
+        o.write(info[c]+'\t'+str(s)+'\t'+str(prob[c])+'\t'+dgap[int(info[c])]+'\n')
         c+=1
+    '''
     # Return all reamining positions and CNN's predicted probabilities array
-    return pos,y_pred,prob
+    return pos,y_pred,prob,dgap
     # accuracy = accuracy_score(y_test, y_pred)
     # # Calculate precision
     # precision = precision_score(y_test, y_pred)
