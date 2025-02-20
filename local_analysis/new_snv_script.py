@@ -85,8 +85,8 @@ dir_py_scripts = script_dir+"/modules"
 sys.path.insert(0, dir_py_scripts)
 import snv_module_recoded_new as snv # SNV calling module
 import build_SNP_Tree as bst
-#import CNN_pred as cnn
-import CNN_pred_clabsi as cnn
+import CNN_pred as cnn
+
 
 # Get timestamp
 ts = time.time() 
