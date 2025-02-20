@@ -8,6 +8,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from scipy import stats
+from scipy.stats import norm
 from statsmodels.stats.power import TTestPower
 from torch.utils.data import Dataset, DataLoader
 #from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score,roc_auc_score,confusion_matrix, classification_report
@@ -245,11 +246,11 @@ def cal_major_freq_in_call(arr1):
 
 def compare_arrays_nonparametric(large_array_raw, small_array_raw):
 
-    arr=[x for x in large_array_raw if x != 0]
-    sorted_arr = np.sort(arr)
-    n = len(sorted_arr)
-    k = int(np.ceil(n * 0.25))
-    large_array = sorted_arr[:k]
+    large_array=[x for x in large_array_raw if x != 0]
+    #sorted_arr = np.sort(arr)
+    #n = len(sorted_arr)
+    #k = int(np.ceil(n * 0.25))
+    #large_array = sorted_arr[:k]
 
     small_array=[x for x in small_array_raw if x != 0]
     #print(large_array,small_array)
@@ -262,7 +263,26 @@ def compare_arrays_nonparametric(large_array_raw, small_array_raw):
         statistic, p_value = stats.mannwhitneyu(large_array, small_array)
     return p_value
 
-def scan_real_gap(arr,check_arr):
+
+def scan_continue_gap(arr):
+    arr.sort()
+    B = set()
+    i, j = 0, 1
+    n = len(arr)
+    while i < n:
+        while j < n and arr[j] - arr[i] <= 100:
+            if arr[j] - arr[i] > 0:
+                B.add(arr[i])
+                B.add(arr[j])
+            j += 1
+        i += 1
+        if j <= i:
+            j = i + 1
+
+    B = list(B)
+    return B
+
+def scan_continue_gap_revise(arr):
     arr.sort()
     #print(arr)
     B = {}
@@ -273,7 +293,7 @@ def scan_real_gap(arr,check_arr):
     while i < n:
         j=i+1
         #print('i,n:',i,',',n,'j,n:',j,',',n,'arr[j]-arr[i]:',arr[j],'-',arr[i])
-        while j < n and arr[j] - arr[i] <= 200:
+        while j < n and arr[j] - arr[i] <= 100:
             #print(arr[j],arr[i])
             if arr[j] - arr[i] > 0:
                 if arr[i] not in B:
@@ -304,6 +324,18 @@ def scan_real_gap(arr,check_arr):
     #print(check_arr)
     #exit()
     for p in B:
+        if len(B[p])>2:
+            res.append(p)
+        '''
+        else:
+            check=0
+            if len(B[p])==0:continue
+            for s in B[p]:
+                if s in check_arr:
+                    check+=1
+            if check==len(B[p]):
+                res.append(p)
+        # old code
         if len(B[p])>1:
             if len(B[p])>2:
                 res.append(p)
@@ -321,12 +353,30 @@ def scan_real_gap(arr,check_arr):
                     check=0
             if check==0:
                 res.append(p)
+        '''
     return res
+
+def zscore_variant(large_array,small_array):
+    mean_diff = np.mean(large_array) - np.mean(small_array)
+    std_err_diff = np.std(large_array, ddof=1)
+    z_score = mean_diff / std_err_diff
+    #p_value = 2 * (1 - stats.norm.cdf(abs(z_score)))
+    p_value=1 - stats.norm.cdf(abs(z_score))
+    #print(mean_diff,z_score,std_err_diff)
+    return z_score,p_value
 
 def compare_arrays_ttest(large_array_raw, small_array_raw):
     #print(large_array,small_array)
-    # from min to max | top 25%
     large_array=[x for x in large_array_raw if x != 0]
+    #print('-> raw_array:',large_array)
+    #mu=np.mean(large_array)
+    #sigma = np.std(large_array)
+    #alpha=0.01
+    #threshold=norm.ppf(alpha, loc=mu, scale=sigma) 
+    #print('-> threshold is ',threshold)
+    large_array=np.array(large_array)
+    #large_array_cdf=large_array[large_array<=threshold]
+    #print('-> new_array:',large_array_cdf)
     '''
     sorted_arr = np.sort(arr)
     n = len(sorted_arr)
@@ -338,7 +388,7 @@ def compare_arrays_ttest(large_array_raw, small_array_raw):
     #print(large_array,small_array)
     #exit()
     n_small = len(small_array)
-    
+    normc=1
     if n_small == 0:
         return "Empty array! Please check."
         exit()
@@ -346,11 +396,34 @@ def compare_arrays_ttest(large_array_raw, small_array_raw):
     elif n_small == 1:
         target_value = small_array[0]
         t_stat, p_value = stats.ttest_1samp(large_array, popmean=target_value)
-        return p_value
+        # new p-cdf with z-score variant
+        z_score,p_cdf=zscore_variant(large_array,small_array)
+        '''
+        if not (len(large_array_cdf)==0 or len(large_array_cdf)==1):
+            t_stat, p_cdf = stats.ttest_1samp(large_array_cdf, popmean=target_value)
+        else:
+            normc=0
+            p_cdf=p_value
+        '''
+        #print('-> 2 p-values: ',p_value,p_cdf)
+        if np.isnan(p_cdf):
+            normc=0
+        return p_value,p_cdf
     
     else:
         t_stat, p_value = stats.ttest_ind(large_array, small_array, equal_var=False)
-        return p_value
+        z_score,p_cdf=zscore_variant(large_array,small_array)
+        '''
+        if not (len(large_array_cdf)==0 or len(large_array_cdf)==1):
+            t_stat, p_cdf = stats.ttest_ind(large_array_cdf,small_array,equal_var=False)
+        else:
+            normc=0
+            p_cdf=p_value
+        '''
+        #print('-> 2 p-values: ',p_value,p_cdf)
+        if np.isnan(p_cdf):
+            normc=0
+        return p_value,p_cdf
 
 def check_mm(arr1,counts_major):
     #print(arr1[:,:10])
@@ -735,8 +808,11 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     c3[~mbool]=0
     p_arr=[]
     p_arr_ratio=[]
+    p_arr_ratio_cdf=[]
+    #normc=[]
     tem=[]
     tem2=[]
+    #p_non=[]
     for i in range(count_combine_ratio.shape[1]):
         #a_arr=count_combine[:,i]
         #b_arr=c2[:,i]
@@ -749,19 +825,62 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
         tem.append([c1,d1])
         #tem2.append([a1,b1])
         #p2=compare_arrays_ttest(a_arr,b_arr) # Count
-        p=compare_arrays_ttest(c_arr,d_arr) # Ratio
+        p,p_cdf=compare_arrays_ttest(c_arr,d_arr) # Ratio
         #p,effect_size, power=compare_groups(c_arr, d_arr)
-        #p=compare_arrays_nonparametric(c_arr,d_arr) # Ratio
+        #p2=compare_arrays_nonparametric(c_arr,d_arr) # Ratio
+        #p_non.append(p2)
         #p2=compare_arrays_nonparametric(a_arr,b_arr) # Count
         #p_arr.append(p2)
         p_arr_ratio.append(p)
         #tem2.append([effect_size,power])
-        #p_arr_ratio.append(p)
+        p_arr_ratio_cdf.append(p_cdf)
+        #normc.append(norm_check)
     #print(p_arr,p_arr_ratio)
     gap_candidate=[]
     tem_p=[]
+    #tpos=[3950318,2403312,78143,960515,1011874,624313,4129099]
+    #label=[0,0,0,1,1,1,1]
+    #dtl=dict(zip(tpos,label))
+    #o=open('position_vector_to_Tami/p11.txt','w+')
+    #for p in range(len(p_arr_ratio))
+    ct=0
     for i in range(len(p_arr_ratio)):
+        '''
+        if my_cmt.p[i] in tpos:
+            o.write('positions\tnorm_depth_major_isolates\tnorm_depth_minor_isolates\tlabel\n')
+            o.write(str(my_cmt.p[i])+'\t'+','.join(map(str, tem[i][0]))+'\t'+','.join(map(str, tem[i][1]))+'\t'+str(dtl[my_cmt.p[i]])+'\n')
+        '''   
+
+        if p_arr_ratio_cdf[i] <0.01:
+            tem[i][0]=np.array(tem[i][0])
+            if max(tem[i][1])<min(tem[i][0]) and max(tem[i][1])<0.05:
+                #raw: if max(tem[i][0])>0.1 and len(tem[i][0][tem[i][0]<0.2])/len(tem[i][0])<0.5:
+                if max(tem[i][0])>0.2:
+                    gap_candidate.append(my_cmt.p[i])
+                '''
+                # old rule
+                if normc[i]==1:
+                    #if len(tem[i][0][tem[i][0]<0.1])/len(tem[i][0])<0.5:
+                    if max(tem[i][0])>0.1:
+                        gap_candidate.append(my_cmt.p[i])
+                else:
+                    #print('')
+                    #if len(tem[i][0][tem[i][0]<0.1])/len(tem[i][0])<0.3:
+                    #print(tem[i][0])
+                    if len(tem[i][0][tem[i][0]>0.1])/len(tem[i][0])>=0.7:
+                        gap_candidate.append(my_cmt.p[i])
+                '''
+            '''
+            elif min(tem[i][1])>max(tem[i][0]) and min(tem[i][1])>0.05 and max(tem[i][0])<0.05:
+                gap_candidate.append(my_cmt.p[i])
+            '''
+        if p_arr_ratio_cdf[i] <0.01 or p_arr_ratio[i] <0.05:
+            if np.max(tem[i][1])<0.1 and len(tem[i][1])<=3 and max(tem[i][0])>0.2:
+                tem_p.append(my_cmt.p[i])
+            tem[i][0]=np.array(tem[i][0])
+            print('pos:',my_cmt.p[i],'\n','p-value:',p_arr_ratio[i],'\np-value-z-score:',p_arr_ratio_cdf[i],'\nnorm_major_mean:',np.mean(tem[i][0]),'\nnorm_major_median:',np.median(tem[i][0]),'\n# of major <0.2',np.sum(tem[i][0]<0.2),'\nthese elements are:',tem[i][0][tem[i][0]<0.2],'\nnorm_minor_arr:',tem[i][1])
         #print(my_cmt.p[i],tem[i][1])
+        '''
         if p_arr_ratio[i]<0.05 and np.max(tem[i][1])<0.1 :
             p=1
             #print(my_cmt.p[i],p_arr_ratio[i],p_arr[i],tem[i][0],tem[i][1])
@@ -771,7 +890,7 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
             # old one with # '\nnorm_major_arr:',tem[i][0]
             print('pos:',my_cmt.p[i],'\n','p-value:',p_arr_ratio[i],'\nnorm_major_mean:',np.mean(tem[i][0]),'\nnorm_major_median:',np.median(tem[i][0]),'\n# of major <0.1',np.sum(tem[i][0]<0.1),'\nthese elements are:',tem[i][0][tem[i][0]<0.1],'\nnorm_minor_arr:',tem[i][1])
             if np.sum(tem[i][0]<0.1)>1:
-                if np.min(tem[i][0])<np.max(tem[i][1]) or np.min(tem[i][0])-np.max(tem[i][1])<0.01:
+                if np.min(tem[i][0])<np.max(tem[i][1]) or np.min(tem[i][0])-np.max(tem[i][1])<0.01 or np.sum(tem[i][0]<0.1)>0.2*len(tem[i][0]):
                     print('\n')
                 else:
                     p=compare_arrays_ttest(tem[i][0][tem[i][0]<0.1],tem[i][1]) 
@@ -781,23 +900,31 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
                         tem_p.append(my_cmt.p[i])
             else:
                 if np.sum(tem[i][0]<0.1)==1:
-                    print(tem[i][0][tem[i][0]<0.1][0])
-                    if not tem[i][0][tem[i][0]<0.1][0]<0.09:
+                    #print(tem[i][0][tem[i][0]<0.1][0])
+                    if  np.min(tem[i][1])>0.05:
+                        print('\n')
+                    elif not tem[i][0][tem[i][0]<0.1][0]<0.09:
+                        tem_p.append(my_cmt.p[i])
+                    elif np.max(tem[i][1])<0.02 and np.min(tem[i][0])-np.max(tem[i][1])>0.05:
                         tem_p.append(my_cmt.p[i])
                 else:
                     if np.min(tem[i][1])<0.05:
                         tem_p.append(my_cmt.p[i])
-            '''
-            if np.sum(tem[i][0]<0.1)==0 or (np.sum(tem[i][0]<0.1)==1 and tem[i][0][0]>0.05) or (p<0.05 and np.median(tem[i][1])<np.median(tem[i][0][tem[i][0]<0.1])):
-                tem_p.append(my_cmt.p[i])
-            '''
+            #if np.sum(tem[i][0]<0.1)==0 or (np.sum(tem[i][0]<0.1)==1 and tem[i][0][0]>0.05) or (p<0.05 and np.median(tem[i][1])<np.median(tem[i][0][tem[i][0]<0.1])):
+                #tem_p.append(my_cmt.p[i])
         
             #print(p_arr[i],tem2[i][0],tem2[i][1])
+        '''
     #print(gap_candidate)
-    gap_pos=scan_real_gap(gap_candidate,tem_p)
-    for p in tem_p:
+    #exit()
+    gap_pos_add=scan_continue_gap_revise(tem_p)
+    #gap_pos_add=[]
+    gap_pos=gap_candidate
+    
+    for p in gap_pos_add:
         if p not in gap_pos:
             gap_pos.append(p)
+    
     print('gap_pos:\n',gap_pos)
     #print(p_arr[36],p_arr_ratio[36])
     #exit()
