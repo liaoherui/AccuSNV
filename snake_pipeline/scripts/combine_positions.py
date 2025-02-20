@@ -64,7 +64,8 @@ def generate_positions_snakemake(positions_files_list, REFGENOMEDIRECTORY):
     
     #Keep positions that vary from the reference in at least one sample but
     #that don't vary from the reference in ALL samples
-    combined_pos = np.where((timesvariant > 0) & (timesvariant < len(positions_files_list)))[0]
+    combined_pos = np.where((timesvariant > 0))[0]
+    #combined_pos = np.where((timesvariant > 0) & (timesvariant < len(positions_files_list)))[0]
     
     return combined_pos
     
