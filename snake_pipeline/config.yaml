@@ -35,7 +35,7 @@ cluster:
 #note that resource names should use underscore _ instead of dash -
 
 default-resources:
-   #- partition="sched_mit_tami"
+   - partition="all"
    - time="1:00:00"
    - ntasks=1
    - cpus_per_task=1
