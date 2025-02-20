@@ -60,7 +60,12 @@ The first portion of WideVariant aligns raw sequencing data from bacterial isola
 
 #### 1.1 Update - 2024-09-22: A user-friendly Python script is now available to help users run the pipeline more easily. Instructions are provided below:
 
+
 Make sure to configure your `config.yaml` file and `script/run_snakemake.slurm` before starting the steps below..
+
+Also,please ensure the right permission of the file `slurm_status_script.py`:
+
+`chmod 777 slurm_status_script.py`<BR/>
 
 Step-1: run the python script: <BR/>
 
