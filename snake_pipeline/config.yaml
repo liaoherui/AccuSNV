@@ -13,7 +13,7 @@ jobs: 400
 latency-wait: 30
 keep-going: True
 configfile: ./experiment_info.yaml
-conda-prefix: ~/miniconda3/envs/widevariant_github
+conda-prefix: ~/miniconda3/envs/accusnv
 cluster-status: ./slurm_status_script.py
 reason: True
 # dryrun: True
