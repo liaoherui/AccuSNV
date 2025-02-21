@@ -58,12 +58,12 @@ The pipeline is split into two main components, as described below. A complete t
 
 The first portion of WideVariant aligns raw sequencing data from bacterial isolates to a reference genome, identifies candidate SNV positions, and creates useful data structure for supervised local data filtering. This step is implemented in a workflow management system called [Snakemake](http://snakemake.readthedocs.io) and is executed on a [SLURM cluster](https://slurm.schedmd.com/documentation.html). More information is available [here](readme_files/readme_snake_main.md).
 
-#### 1.1 Update - 2024-09-22: A user-friendly Python script is now available to help users run the pipeline more easily. Instructions are provided below:
+<!--- #### 1.1 Update - 2025-02-21: A user-friendly Python script is now available to help users run the pipeline more easily. Instructions are provided below:
 
 
-Make sure to configure your `config.yaml` file and `script/run_snakemake.slurm` before starting the steps below..
+Make sure to configure your `config.yaml` file and `script/run_snakemake.slurm` before starting the steps below.. -->
 
-Also,please ensure the right permission of the file `slurm_status_script.py`:
+Please ensure the right permission of the file `slurm_status_script.py`:
 
 `chmod 777 slurm_status_script.py`<BR/>
 
