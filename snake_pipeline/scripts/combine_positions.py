@@ -57,15 +57,18 @@ def generate_positions_snakemake(positions_files_list, REFGENOMEDIRECTORY):
             positions=pickle.load(f)
         
         #if len(positions)>2:
+
         x=chrpos2index(positions,chr_starts)
-            
+        #if 307924 in positions:
+        #    print(positions_files_list[i],x)            
         timesvariant[x]=timesvariant[x]+1
     
-    
+    #print(timesvariant[307924])
     #Keep positions that vary from the reference in at least one sample but
     #that don't vary from the reference in ALL samples
-    combined_pos = np.where((timesvariant > 0))[0]
     #combined_pos = np.where((timesvariant > 0) & (timesvariant < len(positions_files_list)))[0]
+    combined_pos = np.where((timesvariant > 0))[0]
+    #print(307924 in combined_pos)
     
     return combined_pos
     

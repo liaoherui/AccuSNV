@@ -35,6 +35,8 @@ def generate_positions_single_sample(path_to_variant_vcf,path_to_output_position
     # Initialize boolean vector for positions to include as candidate SNPs that
     # vary from the reference genome
     include = np.zeros((genome_length,1))
+    #map_atgc={'A':1,'T':2,'G':3,'C':4}
+    #base_type=np.zeros((genome_length,1))
     
     #For outgroup samples only
     if outgroup_bool==True:
@@ -75,9 +77,18 @@ def generate_positions_single_sample(path_to_variant_vcf,path_to_output_position
                 if float(fq) < maxFQ: #better than maxFQ
                     include[position-1]=1
                     #-1 converts position (1-indexed) to index
-    
+                    '''
+                    if alt in map_atgc:
+                        base_type[position-1]=map_atgc[alt]
+                    '''
+    #print(base_type[np.nonzero(include)].shape,np.nonzero(include)[0].shape)
+    #print(base_type[np.nonzero(include)])
+    #print(np.nonzero(include)[0]+1)
+    #exit()
+    #remain_base=np.nonzero(base_type)[0] 
     #+1 converts index back to position for p2chrpos
     Var_positions=ghf.p2chrpos(np.nonzero(include)[0]+1,chr_starts)
+    #Var_positions=Var_positions.astype(int)
     
     #save
     with gzip.open(path_to_output_positions,"wb") as f:

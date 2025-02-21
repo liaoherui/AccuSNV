@@ -49,7 +49,7 @@ flag="all" #options are 'all' (mapping+case), 'mapping', 'case', 'assembly', 'br
 #exit()
 #print(PATH_ls)
 # Write sample_info.csv for each sample
-split_samplesCSV(PATH_ls, SAMPLE_ls, FILENAME_ls, REF_Genome_ls, GROUP_ls, OUTGROUP_ls,TYPE_ls)
+split_samplesCSV(PATH_ls, SAMPLE_ls, FILENAME_ls, REF_Genome_ls, GROUP_ls, OUTGROUP_ls,TYPE_ls,outdir)
 #exit()
 
 UNIQ_GROUP_ls = set(GROUP_ls)
@@ -106,9 +106,9 @@ if flag=="mapping":
     input_all.append(expand(outdir+"/1-Mapping/vcf/{sampleID}_ref_{references}_aligned.sorted.strain.variant.vcf.gz",zip, sampleID=SAMPLE_ls, references=REF_Genome_ls))
     input_all.append(expand(outdir+"/1-Mapping/quals/{sampleID}_ref_{references}_outgroup{outgroup}.quals.pickle.gz",zip, sampleID=SAMPLE_ls, references=REF_Genome_ls,outgroup=OUTGROUP_ls))
     input_all.append(expand(outdir+"/1-Mapping/diversity/{sampleID}_ref_{references}_outgroup{outgroup}.diversity.pickle.gz",zip, sampleID=SAMPLE_ls, references=REF_Genome_ls,outgroup=OUTGROUP_ls))
-    input_all.append(expand(outdir+"/1-Mapping/bowtie2_qc/alignment_stats_ref_{references}.csv",references=set(REF_Genome_ls)))
+    #input_all.append(expand(outdir+"/1-Mapping/bowtie2_qc/alignment_stats_ref_{references}.csv",references=set(REF_Genome_ls)))
 if flag=="case" or flag=="all":
-    input_all.append(expand(outdir+"/1-Mapping/bowtie2_qc/alignment_stats_ref_{references}.csv",references=set(REF_Genome_ls)))
+    #input_all.append(expand(outdir+"/1-Mapping/bowtie2_qc/alignment_stats_ref_{references}.csv",references=set(REF_Genome_ls)))
     input_all.append(expand(outdir+"/2-Case/candidate_mutation_table/group_{cladeID}_candidate_mutation_table.npz",cladeID=UNIQ_GROUP_ls))
     # Include the following two lines ONLY if you also want coverage matrices. 
     # Be sure include -c and -n options when py script is called candidate_mutation_table rule and to uncomment the two extra outputs in the candidate_mutation_table rule.
@@ -168,7 +168,7 @@ def mdl_input_rev(wildcards):# returns all paths for reverse reads for a given s
 
 def get_mdl_paths(SID): # returns all list of paths and filenames for a given samplename
   
-  path_to_sample_info_csv = 'data/'+SID+'/sample_info.csv'
+  path_to_sample_info_csv = outdir+'/data/'+SID+'/sample_info.csv'
   #print(path_to_sample_info_csv)
   #exit()
   
@@ -188,8 +188,8 @@ rule all:
     # Snakemake will only execute the steps (rules) necessary to create these output files.
     input:
         input_all,
-        expand("data/{sampleID}/R1.filt.fq.gz",sampleID=SAMPLE_ls),
-        expand("data/{sampleID}/R2.filt.fq.gz",sampleID=SAMPLE_ls),
+        expand(outdir+"/data/{sampleID}/R1.filt.fq.gz",sampleID=SAMPLE_ls),
+        expand(outdir+"/data/{sampleID}/R2.filt.fq.gz",sampleID=SAMPLE_ls),
 
 
 # DATA PROCESSING ####################################################################################################
@@ -221,6 +221,7 @@ rule cutadapt:
       "{wildcards.path_to_raw_data}{wildcards.fn}_1.fastq.gz "
       "1> {params.manifest} ;"
       "touch {output.fq2o}; "
+      "touch {output.fq2o}_zero;"
       "fi"
 
 rule sickle:
@@ -238,14 +239,17 @@ rule sickle:
       fq2o = "{path_to_raw_data}{fn}/R2_filt.fq.gz",
       fqSo = "{path_to_raw_data}{fn}/filt_sgls.fq.gz",
   shell:
-      "if [ -f {input.fq1i} ] && [ -f {input.fq2i} ]; then "
+      #"if [ -f {input.fq1i} ] && [ -f {input.fq2i} ]; then "
+      "if [ ! -f {input.fq2i}_zero ]; then "
       "sickle pe -f {input.fq1i} -r {input.fq2i} "
                 "-t sanger "
                 "-o {output.fq1o} -p {output.fq2o} "
                 "-s {output.fqSo} "
                 "-g -q {params.qual} -l {params.readlen} -x -n "
                 "1>> {params.manifest} ;"
-      "echo 'sickle command line params: minqual={params.qual} minreadlen={params.readlen}' 1>> {params.manifest} ;"
+      "echo 'sickle-pe command line params: minqual={params.qual} minreadlen={params.readlen}' 1>> {params.manifest} ;"
+      #"echo '{input.fq1i}' ;"
+      #"echo '{input.fq2i}' ;"
       "rm {input.fq1i} ;"
       "rm {input.fq2i} ;"
       "else "
@@ -254,10 +258,14 @@ rule sickle:
                 "-o {output.fq1o} "
                 "-g -q {params.qual} -l {params.readlen} -x -n "
                 "1>> {params.manifest} ;"
-      "echo 'sickle command line params: minqual={params.qual} minreadlen={params.readlen}' 1>> {params.manifest} ;"
+      "echo 'sickle-se command line params: minqual={params.qual} minreadlen={params.readlen}' 1>> {params.manifest} ;"
       "touch {output.fq2o}; "
       "touch {output.fqSo}; "
+      "touch {output.fq1o}_zero;"
+      "touch {output.fq2o}_zero;"
       "rm {input.fq1i} ;"
+      #"rm {input.fq2i} ;"
+      #"rm {input.fq2i}_zero ;"
       " fi"
 
 # Makes symbolic links to data files
@@ -285,24 +293,26 @@ else:
         fwd=mdl_input_fwd,
         rev=mdl_input_rev,
       output:
-        fq1o='data/{sampleID}/R1.filt.fq.gz',
-        fq2o='data/{sampleID}/R2.filt.fq.gz',
+        fq1o=outdir+'/data/{sampleID}/R1.filt.fq.gz',
+        fq2o=outdir+'/data/{sampleID}/R2.filt.fq.gz',
       run:
         if len(input.fwd) > 1: # if there is more than one file, concatenate and zip
           fwdstr=' '.join(input.fwd)
           revstr=' '.join(input.rev)
-          print(f"zcat {fwdstr} | gzip > data/{wildcards.sampleID}/R1.filt.fq.gz")
-          subprocess.run(f"zcat {fwdstr} | gzip > data/{wildcards.sampleID}/R1.filt.fq.gz", shell=True)
-          subprocess.run(f"zcat {revstr} | gzip > data/{wildcards.sampleID}/R2.filt.fq.gz", shell=True)
+          print(f"zcat {fwdstr} | gzip > {outdir}/data/{wildcards.sampleID}/R1.filt.fq.gz")
+          subprocess.run(f"zcat {fwdstr} | gzip > {outdir}/data/{wildcards.sampleID}/R1.filt.fq.gz", shell=True)
+          subprocess.run(f"zcat {revstr} | gzip > {outdir}/data/{wildcards.sampleID}/R2.filt.fq.gz", shell=True)
         else: # otherwise, just make a link
           #print(f"ln -s -T {input.fwd} data/{wildcards.sampleID}/R1.filt.fq.gz")
           #exit()
-          runs=" data/"+wildcards.sampleID.strip()
+          runs=" "+outdir+"/data/"+wildcards.sampleID.strip()
           runs=re.sub(' ','',runs)
           print(f"ln -s -T {input.fwd} "+runs+"/R1.filt.fq.gz")
-          print(f"ln -s -T {input.fwd} "+runs+"/R1.filt.fq.gz")
+          print(f"ln -s -T {input.rev} "+runs+"/R2.filt.fq.gz")
           subprocess.run(f"ln -s -T {input.fwd} "+runs+"/R1.filt.fq.gz", shell=True)
           subprocess.run(f"ln -s -T {input.rev} "+runs+"/R2.filt.fq.gz", shell=True)
+          subprocess.run(f"if [  -f {input.rev}_zero ] ; then touch "+runs+"/R2.filt.fq.gz_zero ; fi ", shell=True)
+          print(f"if [  -f {input.rev}_zero ] ; then touch "+runs+"/R2.filt.fq.gz_zero ; fi ")
           #else:
           #  print(f"ln -s -T {input.fwd} "+runs+"/R1.filt.fq.gz")
           #  subprocess.run(f"ln -s -T {input.fwd} "+runs+"/R1.filt.fq.gz", shell=True)
@@ -344,11 +354,11 @@ if flag=="mapping" or flag=="all":
         params:
             REF_GENOME_DIRECTORY+"/{reference}/genome_bowtie2",
         output:
-            bowtie2idx = REF_GENOME_DIRECTORY+"/{reference}/genome_bowtie2.1.bt2",
+            bowtie2idx = REF_GENOME_DIRECTORY+"/{reference}/genome.fasta.bwt",
         conda:
-            "envs/bowtie2.yaml",
+            "envs/bwa.yaml",
         shell:
-            "bowtie2-build -q {input.fasta} {params} ;"
+            "bwa index {input.fasta} ;"
 
 
     # Aligns reads to the reference genome with bowtie2
@@ -358,35 +368,37 @@ if flag=="mapping" or flag=="all":
             fq2 = rules.make_data_links.output.fq2o,
             bowtie2idx = ancient(rules.refGenome_index.output.bowtie2idx) # put here, so rule bowtie2 only executed after rule refGenome_index done
         params:
-            refGenome = REF_GENOME_DIRECTORY+"/{reference}/genome_bowtie2",
+            refGenome = REF_GENOME_DIRECTORY+"/{reference}/genome.fasta",
         output:
             samA = outdir+"/1-Mapping/bowtie2/{sampleID}_ref_{reference}_aligned.sam",
         log:
             log = outdir+"/1-Mapping/bowtie2/bowtie2_{sampleID}_ref_{reference}.txt", # necessary for bowtie2qc
         conda:
-            "envs/bowtie2.yaml"
+            "envs/bwa.yaml"
         shell:
             # 8 threads coded into json
-            "if [ -f {input.fq1} ] && [ -f {input.fq2}  ]; then "
-            "bowtie2 --threads 8 -X 2000 --no-mixed --no-unal --dovetail -x {params.refGenome} -1 {input.fq1} -2 {input.fq2} -S {output.samA} 2> {log} ; "
+            #"if [ -f {input.fq1} ] && [ -f {input.fq2}  ]; then "
+            " if [ ! -f {input.fq2}_zero ]; then "
+            "bwa mem -t 48 {params.refGenome}  {input.fq1} {input.fq2}  > {output.samA}  ; "
+            "echo 'bwa-pe' ; "
             "else "
-            "bowtie2 --threads 8 -X 2000 --no-mixed --no-unal --dovetail -x {params.refGenome} -U {input.fq1}  -S {output.samA} 2> {log} ; "
+            "bwa mem -t 48  {params.refGenome} {input.fq1} > {output.samA} ; "
+            "echo 'bwa-se' ;"
             " fi"
             
 
-
     # Runs a QC script to summarize results of bowtie2 mapping
-    rule bowtie2qc:
-        input:
-            get_bt2qc_input,
-        output:
-            alignment_stats = outdir+"/1-Mapping/bowtie2_qc/alignment_stats_ref_{reference}.csv",
-        params:
-            outfile_noextension = outdir+"/1-Mapping/bowtie2_qc/alignment_stats_ref_{reference}",
-        conda:
-            "envs/bowtie2qc.yaml",
-        shell:
-            "python3 {SCRIPTS_DIRECTORY}/bowtie2qc.py -s {spls} -r {wildcards.reference} -d {CURRENT_DIRECTORY} -o {params.outfile_noextension}"
+    #rule bowtie2qc:
+    #    input:
+    #        get_bt2qc_input,
+    #    output:
+    #        alignment_stats = outdir+"/1-Mapping/bowtie2_qc/alignment_stats_ref_{reference}.csv",
+    #    params:
+    #        outfile_noextension = outdir+"/1-Mapping/bowtie2_qc/alignment_stats_ref_{reference}",
+    #    conda:
+    #        "envs/bowtie2qc.yaml",
+    #    shell:
+    #        "python3 {SCRIPTS_DIRECTORY}/bowtie2qc.py -s {spls} -r {wildcards.reference} -d {CURRENT_DIRECTORY} -o {params.outfile_noextension}"
 
 
     # Compresses SAM file into BAM file (and removes duplicate reads)
@@ -400,7 +412,7 @@ if flag=="mapping" or flag=="all":
             DupStats = outdir+"/1-Mapping/bowtie2/{sampleID}_ref_{reference}_markdup_stats.txt",
         output:
             bamA = outdir+"/1-Mapping/bowtie2/{sampleID}_ref_{reference}_aligned.sorted.bam",
-            bamAidx = outdir+"/Mapping/clade_assemblies/3-bowtie2/{sampleID}_ref_{reference}_aligned.sorted.bam.bai",
+            bamAidx = outdir+"/1-Mapping/bowtie2/{sampleID}_ref_{reference}_aligned.sorted.bam.bai",
         conda:
             "envs/samtools116.yaml",
         shadow: # avoids leaving leftover temp files esp if job aborted
@@ -424,8 +436,14 @@ if flag=="mapping" or flag=="all":
             bamDup = outdir+"/1-Mapping/bowtie2/{sampleID}_ref_{reference}_aligned_dups.bam",
             bamDupMate = outdir+"/1-Mapping/bowtie2/{sampleID}_ref_{reference}_aligned_dups.mates.bam",
             bamDupMateSort = outdir+"/1-Mapping/bowtie2/{sampleID}_ref_{reference}_aligned_dups.sorted.mates.bam",
+	    #fq1o="{path_to_raw_data}{fn}/R1_filt.fq.gz",
+ 	    #fq2o="{path_to_raw_data}{fn}/R2_filt.fq.gz",
+            #fq1="{path_to_raw_data}{fn}/R1_trim.fq.gz",
+	    #fq2="{path_to_raw_data}{fn}/R2_trim.fq.gz",
+	    #fqs="{path_to_raw_data}{fn}/filt_sgls.fq.gz",
         output:
             outdir+"/1-Mapping/bowtie2/{sampleID}_ref_{reference}_cleanup_done.txt", 
+	    #"{path_to_raw_data}{fn}/fq_clean.txt",
 
         priority: 100, # prioritizes this rule to get rid of big sam files as fast as possible; default priority for other rules is 0
         shell:
@@ -485,6 +503,11 @@ if flag=="mapping" or flag=="all":
         shell:
             "mkdir -p {outdir}/1-Mapping/quals/ ;"
             "python {SCRIPTS_DIRECTORY}/vcf2quals_snakemake.py -i {input.vcf_strain} -r {params.refGenomeDir} -o {output.file_quals} ;"
+	    #"if [ -s {output.file_quals} ]; then "
+	    #" rm {input.vcf_strain} ;"
+ 	    #"else "
+	    #" echo 'skip delete-vcf_strain' ;"
+	    #" fi "
 
 
     # Parses pileup with python script
@@ -501,6 +524,11 @@ if flag=="mapping" or flag=="all":
         shell:
             "mkdir -p {outdir}/1-Mapping/diversity/ ;"
             "python {SCRIPTS_DIRECTORY}/pileup2diversity.py -i {input.pileup} -r {params.refGenomeDir} -o {output.file_diversity} -c {output.file_coverage} ;"
+	    "if [ -s {output.file_diversity} ]; then "
+	    " rm {input.pileup} ;"
+	    "else "
+	    " echo 'skip delete-file_diversity' ;"
+	    " fi "
 
 
 

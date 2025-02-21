@@ -178,9 +178,17 @@ def pileup2diversity(input_pileup, path_to_ref):
             nt_count=np.count_nonzero(simplecalls == ord(nts[nt]))
             if nt_count > 0:
                 temp[nt]=nt_count
-                temp[nt+8]=round(np.sum(bq[simplecalls == ord(nts[nt])])/temp[nt])-Phred_offset
-                temp[nt+16]=round(np.sum(mq[simplecalls == ord(nts[nt])])/temp[nt])-33
-                temp[nt+24]=round(np.sum(td[simplecalls == ord(nts[nt])])/temp[nt])
+                # tem = (simplecalls == ord(nts[nt]))
+                # if len(bq) < len(tem):
+                #     print(lineinfo[1],' skips due to dimension problem.')
+                #     continue
+                try:
+                    temp[nt+8]=round(np.sum(bq[simplecalls == ord(nts[nt])])/temp[nt])-Phred_offset
+                    temp[nt+16]=round(np.sum(mq[simplecalls == ord(nts[nt])])/temp[nt])-33
+                    temp[nt+24]=round(np.sum(td[simplecalls == ord(nts[nt])])/temp[nt])
+                except:
+                    print(lineinfo[1],' error at line 186-188! Skip!')
+
         
         #-1 is needed to turn 1-indexed positions to python 0-indexed
         data[position-1,:38]=temp[:38]

@@ -1,8 +1,13 @@
+#python new_snv_script.py -i test_data/cae_pe_test/group_pe_test_candidate_mutation_table.npz -c  test_data/cae_pe_test/group_pe_test_coverage_matrix_raw.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_pe
+
+python new_snv_script.py -i test_data/cae_se_test/group_se_test_candidate_mutation_table.npz -c  test_data/cae_se_test/group_se_test_coverage_matrix_raw.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_se_new
+
+
 # Default test Cae datasets
 #python new_snv_script.py -i ../npz_of_Test_data/cae_pe/candidate_mutation_table/group_subj-5_candidate_mutation_table.npz -c ../npz_of_Test_data/cae_pe/candidate_mutation_table/group_subj-5_coverage_matrix_raw.npz -r reference_genomes/Cae_ref -o cae_pe_local
 
 # Kcp Science
-python new_snv_script.py -i ../../../Other_datasets/ScienceTM_KCp/npz_files_from_server/S20/group_Kcp_candidate_mutation_table.npz -c ../../../Other_datasets/ScienceTM_KCp/npz_files_from_server/S20/group_Kcp_coverage_matrix_raw.npz -r reference_genomes/Kcp_ref -o kcp_science_local_new
+#python new_snv_script.py -i ../../../Other_datasets/ScienceTM_KCp/npz_files_from_server/S20/group_Kcp_candidate_mutation_table.npz -c ../../../Other_datasets/ScienceTM_KCp/npz_files_from_server/S20/group_Kcp_coverage_matrix_raw.npz -r reference_genomes/Kcp_ref -o kcp_science_local_new
 
 # Cdi Plos
 #python new_snv_script.py -i ../../../Other_datasets/Plos-One-Cdi-2024/npz_from_servers/group_Plos-Cdi_candidate_mutation_table.npz -c ../../../Other_datasets/Plos-One-Cdi-2024/npz_from_servers/group_Plos-Cdi_coverage_matrix_raw.npz -r reference_genomes/Cdi_plos_ref -o cdi_plos_local_new

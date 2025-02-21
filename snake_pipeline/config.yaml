@@ -22,6 +22,7 @@ reason: True
 cluster:
   mkdir -p ./logs/ &&
   sbatch
+    --partition={resources.partition}
     --ntasks={resources.ntasks}
     --cpus-per-task={resources.cpus_per_task}
     --mem={resources.mem}
@@ -35,7 +36,7 @@ cluster:
 #note that resource names should use underscore _ instead of dash -
 
 default-resources:
-   - partition="ALL"
+   - partition="sched_mit_tami,mit_normal,newnodes,sched_mit_chisholm,sched_mit_hill"
    - time="1:00:00"
    - ntasks=1
    - cpus_per_task=1

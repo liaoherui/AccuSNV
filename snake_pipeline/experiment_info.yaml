@@ -1,5 +1,5 @@
 experiment_name: "test"
-sample_table: ./samples.csv
+sample_table: ./samples_cae_test_pe.csv
 myscripts_directory: ./scripts
-ref_genome_directory: reference_genomes
-outdir: SET_BY_USERS
+ref_genome_directory: ./reference_genomes
+outdir: cae_se_test

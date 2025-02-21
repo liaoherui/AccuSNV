@@ -43,7 +43,7 @@ def read_samples_CSV(spls):
     return [list_path,list_splID,list_fileN,list_refG,list_group,list_outgroup,list_seqtype]
 
 
-def split_samplesCSV(PATH_ls,SAMPLE_ls,FILENAME_ls,REF_Genome_ls,GROUP_ls,OUTGROUP_ls,TYPE_ls):
+def split_samplesCSV(PATH_ls,SAMPLE_ls,FILENAME_ls,REF_Genome_ls,GROUP_ls,OUTGROUP_ls,TYPE_ls,outdir):
     '''Take info from samples.csv, concat by sample name & save each line as sample_info.csv in data/{sampleID}'''
     
     #Loop through unique samples
@@ -60,12 +60,12 @@ def split_samplesCSV(PATH_ls,SAMPLE_ls,FILENAME_ls,REF_Genome_ls,GROUP_ls,OUTGRO
         sample_info_csv=list(zip(sample_paths,[sample]*sum(sample_info_bool),sample_filenames,sample_references,sample_groups,sample_outgroups,sample_type))
         
         # make data directory for this sample if it doesn't already exist
-        if not(os.path.isdir('data/' + sample)):
-            os.makedirs('data/' + sample, exist_ok=True)
+        if not(os.path.isdir(outdir+'/data/' + sample)):
+            os.makedirs(outdir+'/data/' + sample, exist_ok=True)
         # check to see if this mini csv with sample info already exists
-        if os.path.isfile('data/' + sample + '/sample_info.csv'):
+        if os.path.isfile(outdir+'/data/' + sample + '/sample_info.csv'):
             # if so, read file
-            old_file = open('data/' + sample + '/sample_info.csv','r')
+            old_file = open(outdir+'/data/' + sample + '/sample_info.csv','r')
             old_info_read = csv.reader(old_file)
             old_info = list(map(tuple, old_info_read))
             old_file.close()
@@ -74,14 +74,14 @@ def split_samplesCSV(PATH_ls,SAMPLE_ls,FILENAME_ls,REF_Genome_ls,GROUP_ls,OUTGRO
             if not(old_info == sample_info_csv):
                 # if not, remove the old file and save sample info in a new file
                 # print('Information file must be updated.')
-                os.remove('data/' + sample + '/sample_info.csv')
-                with open('data/' + sample + '/sample_info.csv', "w") as f:
+                os.remove(outdir+'/data/' + sample + '/sample_info.csv')
+                with open(outdir+'/data/' + sample + '/sample_info.csv', "w") as f:
                     writer = csv.writer(f)
                     for row in sample_info_csv:
                         writer.writerow(row)
         else: # if mini csv with sample info does not already exist
             # save sample info in mini csv
-            with open('data/' + sample + '/sample_info.csv', "w") as f:
+            with open(outdir+'/data/' + sample + '/sample_info.csv', "w") as f:
                 writer = csv.writer(f)
                 for row in sample_info_csv:
                     writer.writerow(row)
@@ -101,8 +101,8 @@ def findfastqfile(dr, smple, filename):
     #print('target...',target_f)
     #exit()
     # Search for filename as a prefix
-    files_F = [f for f in target_f if re.search(f"{filename}_?.*?R?1({'|'.join(file_suffixs)})", f)]
-    files_R = [f for f in target_f if re.search(f"{filename}_?.*?R?2({'|'.join(file_suffixs)})", f)]
+    files_F = [f for f in target_f if re.search(f"{filename}_?.*?R1({'|'.join(file_suffixs)})", f)]
+    files_R = [f for f in target_f if re.search(f"{filename}_?.*?R2({'|'.join(file_suffixs)})", f)]
     #print(dr,smple,filename,glob.glob(f"{dr}/*"))
     # Search for filename as a directory
     file_F = []
@@ -113,9 +113,9 @@ def findfastqfile(dr, smple, filename):
             if not os.path.islink(f):
                 target_f.append(f)
         files_F = files_F + [f"{filename}/{f}" for f in target_f
-                             if re.search(f"{filename}/.*_?.*?R?1({'|'.join(file_suffixs)})", f)]
+                             if re.search(f"{filename}/.*_?.*?R1({'|'.join(file_suffixs)})", f)]
         files_R = files_R + [f"{filename}/{f}" for f in target_f
-                             if re.search(f"{filename}/.*_?.*?R?2({'|'.join(file_suffixs)})", f)]
+                             if re.search(f"{filename}/.*_?.*?R2({'|'.join(file_suffixs)})", f)]
     #print(files_F,files_R)
     if len(files_F) == 0 and len(files_R) == 0:
         # Can be single-end reads and no "1" or "2" ID in the filename
@@ -387,6 +387,30 @@ def p2chrpos(p, ChrStarts):
         chrpos = np.column_stack((chromo,p))
     return chrpos
 
+
+def p2chrpos_add_base(p, ChrStarts, base_type):
+    '''Convert 1col list of pos to 2col array with chromosome and pos on chromosome
+
+    Args:
+        p (TYPE): DESCRIPTION.
+        ChrStarts (TYPE): DESCRIPTION.
+
+    Returns:
+        chrpos (TYPE): DESCRIPTION.
+
+    '''
+
+    # get chr and pos-on-chr
+    chromo = np.ones(len(p), dtype=int)
+    if len(ChrStarts) > 1:
+        for i in ChrStarts[1:]:
+            chromo = chromo + (
+                        p > i)  # when (p > i) evaluates 'true' lead to plus 1 in summation. > bcs ChrStarts start with 0...genomestats()
+        positions = p - ChrStarts[chromo - 1]  # [chr-1] -1 due to 0based index
+        chrpos = np.column_stack((chromo, positions,base_type))
+    else:
+        chrpos = np.column_stack((chromo, p,base_type))
+    return chrpos
 
 # def get_clade_wildcards(cladeID):
 #     is_clade = [int(i == cladeID) for i in GROUP_ls]
