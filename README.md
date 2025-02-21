@@ -69,8 +69,9 @@ Also,please ensure the right permission of the file `slurm_status_script.py`:
 
 Step-1: run the python script: <BR/>
 
-`python widevariant.py -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
+`python accusnv_snakemake.py -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
 
+One example with test data can be found in `snake_pipeline/test_run.sh`
 
 Step-2: check the pipeline using "dry-run"<BR/>
 
@@ -84,6 +85,10 @@ Step-3: submit your slurm job.<BR/>
 
 
 ### 2. Local python analysis
+
+`python new_snv_script.py -i <input_mutation_table> -c <input_raw_coverage_matrix> -r <ref_dir> -o <output_dir>`
+
+One example with test data can be found in `local_analysis/test_local.sh`
 
 The second portion of WideVariant filters candidate SNVs based on data arrays generated in the first portion and generates a high-quality SNV table and a parsimony tree. This step is implemented with a custom python script. More information can be found [here](readme_files/readme_local_main.md).
 
