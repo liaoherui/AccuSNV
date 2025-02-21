@@ -10,6 +10,6 @@
 #SBATCH --mail-type=ALL
 # Activate conda environment (may need to change name of env)
 #source activate snakemake
-snakemake  --profile cae_se_test/conf
+snakemake  --profile .
 # Print "Done!!!" at end of main log file
 echo Done!!!
