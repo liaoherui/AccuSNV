@@ -1,7 +1,7 @@
 # High-accuracy SNV calling for bacterial isolates using AccuSNV (Local test version by Herui)
 -------------------------------------------------
 
-### Version: Vxxxx (update on 2024-09-19)
+### Version: Vxxxx (update on 2025-02-21)
 -------------------------------------------------
 
 Note: This tool is powered by Lieberman Lab SNP calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
