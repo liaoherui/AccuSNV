@@ -798,17 +798,20 @@ if num_goodpos_all > 0:
                                         axis=0)  # first column now outgroup_nts; outgroup_nts[:, None] to make ndims (2) same for both
     sampleNamesDnapars_all = np.append(['Sanc', 'Sref'], sampleNamesDnapars)
     treesampleNamesLong_all = np.append(['inferred_ancestor', 'reference_genome'], treesampleNamesLong)
-
-    # Build tree
-    snv.generate_tree( \
-        calls_for_tree_all.transpose(), \
-        treesampleNamesLong_all, \
-        sampleNamesDnapars_all, \
-        ref_genome_name, \
-        dir_output, \
-        "snv_tree_" + ref_genome_name, \
-        buildTree='PS' \
-        )
+    
+    try:
+        # Build tree
+        snv.generate_tree( \
+            calls_for_tree_all.transpose(), \
+            treesampleNamesLong_all, \
+            sampleNamesDnapars_all, \
+            ref_genome_name, \
+            dir_output, \
+            "snv_tree_" + ref_genome_name, \
+            buildTree='PS' \
+            )
+    except:
+        print('#### error skip #####: something wrong in snv.generate_tree... skip...')
 
 
 
@@ -840,7 +843,10 @@ if num_goodpos>0:
     #exit()
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
     # Generate the tree for each identified SNPs
-    bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations.tsv',dir_output)
+    try:
+        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations.tsv',dir_output)
+    except:
+        print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
     # # Contain all positions identified by CNN or WideVariant - even those false positions
     # snv.write_mutation_table_as_tsv( \
     #     p_goodpos_all, \
