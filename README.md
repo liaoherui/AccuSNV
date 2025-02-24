@@ -15,6 +15,9 @@ Git clone:<BR/>
 
 `cd AccuSNV/snake_pipeline`<BR/>
 
+If you don't have `gdown`, pleae install it first:<BR/>
+`pip install gdown`
+
 Download pre-built environments:<BR/>
 `sh download_install_env.sh`
 
