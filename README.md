@@ -11,7 +11,7 @@ Note: This tool is powered by Lieberman Lab SNP calling pipeline - [WideVariant]
 Git clone:<BR/>
 `git clone https://github.com/liaoherui/AccuSNV.git`<BR/>
 
-### Option-1 (via pre-built conda env)
+### Option-1 (via pre-built conda env, recommended!)
 
 `cd AccuSNV/snake_pipeline`<BR/>
 
