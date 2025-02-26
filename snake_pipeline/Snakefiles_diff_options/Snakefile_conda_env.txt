@@ -455,7 +455,7 @@ else:
                     f"zcat {revstr} | gzip > {outdir}/data/{wildcards.sampleID}/R2.filt.fq.gz", shell=True)
             else:  # otherwise, just make a link
                 # print(f"ln -s -T {input.fwd} data/{wildcards.sampleID}/R1.filt.fq.gz")
-                # exit()
+                revstr = input.rev
                 runs = " " + outdir + "/data/" + wildcards.sampleID.strip()
                 runs = re.sub(' ', '', runs)
                 print(f"ln -s -T {input.fwd} " + runs + "/R1.filt.fq.gz")
@@ -464,9 +464,9 @@ else:
                     f"ln -s -T {input.fwd} " + runs + "/R1.filt.fq.gz", shell=True)
                 subprocess.run(
                     f"ln -s -T {input.rev} " + runs + "/R2.filt.fq.gz", shell=True)
-                subprocess.run(f"if [  -f {input.rev}_zero ] ; then touch " +
+                subprocess.run(f"if [  -f "+" ".join(map(str, revstr)).strip()+"_zero ] ; then touch " +
                                runs + "/R2.filt.fq.gz_zero ; fi ", shell=True)
-                print(f"if [  -f {input.rev}_zero ] ; then touch " +
+                print(f"if [  -f "+" ".join(map(str, revstr)).strip()+"_zero ] ; then touch " +
                       runs + "/R2.filt.fq.gz_zero ; fi ")
                 # else:
                 #  print(f"ln -s -T {input.fwd} "+runs+"/R1.filt.fq.gz")
