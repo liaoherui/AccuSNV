@@ -33,7 +33,7 @@ set-resources:
    # sickle
    - sickle:cpus_per_task=1
    # bowtie2
-   - bowtie2:cpus_per_task=1
+   - bowtie2:cpus_per_task=4
    # sam2bam
    - sam2bam:cpus_per_task=1
    # mpileup2vcf
