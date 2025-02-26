@@ -189,14 +189,15 @@ def build_dir(indir):
         os.makedirs(indir)
 
 
-def copy_config_files(sfile,uid,odir,all_p,idle_p):
+def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm):
 	cond=odir+'/conf'
 	build_dir(cond)
 	#os.system('cp config.yaml slurm_status_script.py '+cond)
 	nexp='experiment_info_'+uid+'_tem.yaml'
 	os.system('cp experiment_info.yaml ' + nexp)
-
 	o=open(cond+'/config.yaml','w+')
+	if tf_slurm == 1:
+		os.system('cp config_files/config_no_slurm.yaml ./config.yaml')
 	f=open('config.yaml','r')
 	while True:
 		line=f.readline()
@@ -221,7 +222,7 @@ def copy_config_files(sfile,uid,odir,all_p,idle_p):
 	else:
 		o3.write('#SBATCH -n 1\n#SBATCH -p ' + ','.join(idle_p) + '\n')
 	o3.write('#SBATCH --time=10:00:00\n')
-	o3.write('#SBATCH --mem=10GB\n')
+	o3.write('#SBATCH --mem=50GB\n')
 	o3.write('#SBATCH -o mainout.txt\n')
 	o3.write('#SBATCH -e mainerr.txt\n')
 	o3.write('#SBATCH --mail-user=YOUR_EMAIL_HERE\n')
@@ -236,7 +237,7 @@ def copy_config_files(sfile,uid,odir,all_p,idle_p):
 	
 	
 
-def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p):
+def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm):
 	f=open(infile,'r')
 	tfile='exp_'+uid+'_tem.yaml'
 	o=open(tfile,'w+')
@@ -254,7 +255,7 @@ def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p):
 			o.write(line+'\n')
 	o.close()
 	os.system(' mv '+tfile+' '+infile)
-	copy_config_files(sfile,uid,outdir,all_p,idle_p)
+	copy_config_files(sfile,uid,outdir,all_p,idle_p,tf_slurm)
 
 
 def is_partition_valid(partition_name):
@@ -315,19 +316,22 @@ def main():
 	# Get para
 	parser=argparse.ArgumentParser(prog='AccuSNV',description=usage)
 	parser.add_argument('-i','--input_sample_info',dest='input_sp',type=str,required=True,help="The dir of input sample info file --- Required")
-	#parser.add_argument('-j','--input_fastq_2',dest='input_fq2',type=str,help="The dir of input fastq data (for pair-end data).")
+	parser.add_argument('-s','--turn_off_slurm',dest='tf_slurm',type=int,help="If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node. (Default: 0)")
 	parser.add_argument('-r','--ref_dir',dest='ref_dir',type=str,help="The dir of your reference genomes")
 	parser.add_argument('-o','--output_dir',dest='out_dir',type=str,help='Output dir (default: current dir/wd_out_(uid), uid is generated randomly)') # uid=uuid.uuid1().hex
 	args = parser.parse_args()
 	input_file=args.input_sp
 	out_dir=args.out_dir
 	ref_dir=args.ref_dir
+	tf_slurm = args.tf_slurm
 
 	uid=uuid.uuid1().hex
 	if not out_dir:
 		out_dir = pwd+'/wd_out_'+uid
 	if not ref_dir:
 		ref_dir=''
+	if not tf_slurm:
+		tf_slurm=0
     #build_dir(out_dir )
 	all_p_raw = subprocess.check_output("sinfo -h -o '%P' | sort -u", shell=True, text=True).split()
 	all_p=[]
@@ -346,7 +350,7 @@ def main():
 	#print(all_p,idle_p)
 	#exit()
 	sfile=process_input_sfile(input_file,uid)
-	reset_exp_file(script_dir+'/experiment_info.yaml',out_dir,uid,sfile,ref_dir,all_p,idle_p)
+	reset_exp_file(script_dir+'/experiment_info.yaml',out_dir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm)
 
 	
 
