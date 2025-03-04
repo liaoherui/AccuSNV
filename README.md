@@ -19,7 +19,8 @@ If you don't have `gdown`, pleae install it first:<BR/>
 `pip install gdown`
 
 Download pre-built environments:<BR/>
-`sh download_install_env.sh`
+`sh download_install_env.sh`<BR/><BR/>
+Note: Please ignore the error message: `tar: Exiting with failure status due to previous errors`. You can use the environment directly..
 
 Activate the pre-built environment<BR/>
 `source accusnv_env/bin/activate`
