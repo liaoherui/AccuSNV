@@ -98,6 +98,11 @@ def findfastqfile(dr, smple, filename):
     for f in glob.glob(f"{dr}/*"):
         if not os.path.islink(f):
             target_f.append(f)
+        else:
+            link_abs_path = os.path.abspath(f)
+            link_name = os.path.basename(f)
+            target_f.append(link_abs_path+'/'+link_name)
+            
     #print('target...',target_f)
     #exit()
     # Search for filename as a prefix
@@ -112,6 +117,11 @@ def findfastqfile(dr, smple, filename):
         for f in glob.glob(f"{dr}/{filename}/*"):
             if not os.path.islink(f):
                 target_f.append(f)
+            else:
+                link_abs_path = os.path.abspath(f)
+                link_name = os.path.basename(f)
+                target_f.append(link_abs_path+'/'+link_name)
+                
         files_F = files_F + [f"{filename}/{f}" for f in target_f
                              if re.search(f"{filename}/.*_?.*?R1({'|'.join(file_suffixs)})", f)]
         files_R = files_R + [f"{filename}/{f}" for f in target_f
@@ -119,7 +129,7 @@ def findfastqfile(dr, smple, filename):
     #print(files_F,files_R)
     if len(files_F) == 0 and len(files_R) == 0:
         # Can be single-end reads and no "1" or "2" ID in the filename
-        print(f'No file found in {dr} for sample {smple} with prefix {filename}! Go single-end checking!')
+        #print(f'No file found in {dr} for sample {smple} with prefix {filename}! Go single-end checking!')
         files_F = [f for f in target_f if re.search(f"{filename}.*_?.*({'|'.join(file_suffixs)})", f)]
 
         if os.path.isdir(f"{dr}/{filename}"):
