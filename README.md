@@ -99,7 +99,7 @@ Step-3: submit your slurm job.<BR/>
 
 `sbatch script/run_snakemake.slurm`<BR/>
 
-Note: If you need to modify any slurm job configuration, you can edit the config.file generated in your output folder: `<output_dir>/conf/config.yaml`
+Note: If you need to modify any slurm job configuration, you can edit the config.yaml file generated in your output folder: `<output_dir>/conf/config.yaml`
 
 
 
