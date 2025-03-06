@@ -109,7 +109,7 @@ Note: If you need to modify any slurm job configuration, you can edit the config
 
 One example with test data can be found in `local_analysis/test_local.sh`
 
-The second portion of WideVariant filters candidate SNVs based on data arrays generated in the first portion and generates a high-quality SNV table and a parsimony tree. This step is implemented with a custom python script. More information can be found [here](readme_files/readme_local_main.md).
+The second portion of AccuSNV filters candidate SNVs based on data arrays generated in the first portion and generates a high-quality SNV table and a parsimony tree. This step utilizes deep learning and is implemented with a custom Python script. More information can be found [here](readme_files/readme_local_main.md).
 
 
 ## Output
