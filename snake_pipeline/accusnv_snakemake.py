@@ -7,8 +7,12 @@ import uuid
 import subprocess
 ### Herui - 2024-09
 
-usage="AccuSNV - SNV calling tool for bacterial isolates."
+usage="AccuSNV - SNV calling tool for bacterial isolates using deep learning."
 script_dir=os.path.split(os.path.abspath(__file__))[0]
+
+def build_dir(indir):
+    if not os.path.exists(indir):
+        os.makedirs(indir)
 
 def findfastqfile(dr, smple, filename):
     ##### Add by Herui - 20240919 - Modified function based on the codes from Evan
@@ -18,8 +22,10 @@ def findfastqfile(dr, smple, filename):
     # Check whether the file is the soft link
     target_f=[]
     for f in glob.glob(f"{dr}/*"):
+        #print(f,dr)
         if not os.path.islink(f):
             target_f.append(f)
+
     #print('target...',target_f)
     #exit()
     # Search for filename as a prefix
@@ -42,7 +48,7 @@ def findfastqfile(dr, smple, filename):
     #exit()
     if len(files_F) == 0 and len(files_R) == 0:
         # Can be single-end reads and no "1" or "2" ID in the filename
-        #print(f'No file found in {dr} for sample {smple} with prefix {filename}! Go single-end checking!')
+        print(f'No file found in {dr} for sample {smple} with prefix {filename}! Go single-end checking!')
         files_F = [f for f in target_f if re.search(f"{filename}.*_?.*({'|'.join(file_suffixs)})", f)]
 
         if os.path.isdir(f"{dr}/{filename}"):
@@ -115,15 +121,15 @@ def pre_check_type(infile):
 
 
 
-def process_input_sfile(infile,uid):
-# This function will choose Snakefile according to the input type and set the soft link for input file
+def process_input_sfile(infile,out_dir,uid,tem_dir):
+	# This function will choose Snakefile according to the input type and set the soft link for input file
 	# Generate new sample file for input file
 	f=open(infile,'r')
 	file_prefix = os.path.splitext(os.path.basename(infile))[0]
 	pre_check=pre_check_type(infile)
 	#print(file_prefix)
 	#exit()
-	o=open(file_prefix+'_rebuild_'+uid+'_tem.csv','w+')
+	o=open(tem_dir+'/'+file_prefix+'_rebuild_'+uid+'_tem.csv','w+')
 	line=f.readline()
 	o.write(line)
 	d={} # used to check whether the sequencing type contains 1. only SE? 2. only PE? 3. Both SE and PE.
@@ -132,16 +138,16 @@ def process_input_sfile(infile,uid):
 		if not line:break
 		ele=re.split(',',line)
 		files=findfastqfile(ele[0], ele[1], ele[2])
-		if os.path.exists('data/'+ele[1]):
-			os.system('rm -rf data/'+ele[1])
+
 		abspath=os.path.abspath(ele[0])
+		abspath_link=os.path.abspath(out_dir+'/link/')
 		if pre_check:
-			newpath1=abspath+'/'+ele[2]+'_1.fastq.gz'
-			newpath2 = abspath +'/'+ ele[2] + '_2.fastq.gz'
-			newpath1s=abspath+'/'+ele[2]+'_1.fastq.gz'
+			newpath1=out_dir+'/link/'+ele[2]+'_1.fastq.gz'
+			newpath2 = out_dir +'/link/'+ ele[2] + '_2.fastq.gz'
+			newpath1s= out_dir +'/link/'+ele[2]+'_1.fastq.gz'
 		else:
-			newpath1=abspath+'/'+ele[2]+'_1.fastq.gz'
-			newpath2 = abspath +'/'+ ele[2] + '_2.fastq.gz'
+			newpath1=out_dir+'/link/'+ele[2]+'_1.fastq.gz'
+			newpath2 = out_dir +'/link/'+ ele[2] + '_2.fastq.gz'
 		if ele[-1]=='SE':
 			if pre_check:
 				newpath=newpath1s
@@ -167,12 +173,12 @@ def process_input_sfile(infile,uid):
 				subprocess.run('ln -s ' + os.path.abspath(files[1]) + ' ' + newpath2, shell=True)
 			else:
 				print(newpath2+' exists! Skip data links.')
-		ele[0]=abspath+'/'
+		ele[0]=abspath_link+'/'
 		o.write(','.join(ele)+'\n')
 		d[ele[-1]]=''
 	o.close()
-	print('New sample info file:',file_prefix+'_rebuild_'+uid+'_tem.csv',' is generated for you. Please use it for the Snakemake pipeline!')
-	return file_prefix+'_rebuild_'+uid+'_tem.csv'
+	print('New sample info file:',tem_dir+'/'+file_prefix+'_rebuild_'+uid+'_tem.csv',' is generated for you. Please use it for the Snakemake pipeline!')
+	return tem_dir+'/'+file_prefix+'_rebuild_'+uid+'_tem.csv'
 	# choose Snakefile according to the input type
 	'''
 	if len(d)==1:
@@ -184,16 +190,14 @@ def process_input_sfile(infile,uid):
 		os.system('cp ' + script_dir + '/Snakefile-3cases/Snakefile_se_pe Snakefile')
 	'''
 
-def build_dir(indir):
-    if not os.path.exists(indir):
-        os.makedirs(indir)
 
 
-def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm):
+
+def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm,tem_dir):
 	cond=odir+'/conf'
 	build_dir(cond)
 	#os.system('cp config.yaml slurm_status_script.py '+cond)
-	nexp='experiment_info_'+uid+'_tem.yaml'
+	nexp=tem_dir+'/experiment_info_'+uid+'_tem.yaml'
 	os.system('cp experiment_info.yaml ' + nexp)
 	o=open(cond+'/config.yaml','w+')
 	if tf_slurm == 1:
@@ -237,9 +241,9 @@ def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm):
 	
 	
 
-def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm):
+def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm,tem_dir):
 	f=open(infile,'r')
-	tfile='exp_'+uid+'_tem.yaml'
+	tfile=tem_dir+'/exp_'+uid+'_tem.yaml'
 	o=open(tfile,'w+')
 	while True:
 		line=f.readline().strip()
@@ -255,7 +259,7 @@ def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm):
 			o.write(line+'\n')
 	o.close()
 	os.system(' mv '+tfile+' '+infile)
-	copy_config_files(sfile,uid,outdir,all_p,idle_p,tf_slurm)
+	copy_config_files(sfile,uid,outdir,all_p,idle_p,tf_slurm,tem_dir)
 
 
 def is_partition_valid(partition_name):
@@ -332,7 +336,10 @@ def main():
 		ref_dir=''
 	if not tf_slurm:
 		tf_slurm=0
-    #build_dir(out_dir )
+	tem_dir=out_dir+'/temp'
+	data_dir = out_dir + '/link'
+	build_dir(tem_dir)
+	build_dir(data_dir)
 	all_p_raw = subprocess.check_output("sinfo -h -o '%P' | sort -u", shell=True, text=True).split()
 	all_p=[]
 	for s in all_p_raw:
@@ -349,8 +356,8 @@ def main():
 	#out_dir=os.path.abspath(out_dir)
 	#print(all_p,idle_p)
 	#exit()
-	sfile=process_input_sfile(input_file,uid)
-	reset_exp_file(script_dir+'/experiment_info.yaml',out_dir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm)
+	sfile=process_input_sfile(input_file,out_dir,uid,tem_dir)
+	reset_exp_file(script_dir+'/experiment_info.yaml',out_dir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm,tem_dir)
 
 	
 
