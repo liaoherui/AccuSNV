@@ -4,7 +4,7 @@
 ### Version: Vxxxx (update on 2025-02-21)
 -------------------------------------------------
 
-Note: This tool is powered by Lieberman Lab SNP calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
+Note: This tool is powered by Lieberman Lab SNV calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
 
 ## Install
 
