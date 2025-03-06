@@ -74,7 +74,7 @@ The pipeline is split into two main components, as described below. A complete t
 
 ### 1. Snakemake pipeline
 
-The first portion of WideVariant aligns raw sequencing data from bacterial isolates to a reference genome, identifies candidate SNV positions, and creates useful data structure for supervised local data filtering. This step is implemented in a workflow management system called [Snakemake](http://snakemake.readthedocs.io) and is executed on a [SLURM cluster](https://slurm.schedmd.com/documentation.html). More information is available [here](readme_files/readme_snake_main.md).
+The first portion of AccuSNV aligns raw sequencing data from bacterial isolates to a reference genome, identifies candidate SNV positions, and creates useful data structure for supervised local data filtering. This step is implemented in a workflow management system called [Snakemake](http://snakemake.readthedocs.io) and is executed on a [SLURM cluster](https://slurm.schedmd.com/documentation.html). More information is available [here](readme_files/readme_snake_main.md).
 
 <!--- #### 1.1 Update - 2025-02-21: A user-friendly Python script is now available to help users run the pipeline more easily. Instructions are provided below:
 
@@ -112,7 +112,9 @@ One example with test data can be found in `local_analysis/test_local.sh`
 The second portion of WideVariant filters candidate SNVs based on data arrays generated in the first portion and generates a high-quality SNV table and a parsimony tree. This step is implemented with a custom python script. More information can be found [here](readme_files/readme_local_main.md).
 
 
-## Tutorial Table of Contents
+## Output
+
+<!--- ## Tutorial Table of Contents
 
 [Main WideVariant pipeline README](README.md)
 * [Snakemake pipeline](readme_files/readme_snake_main.md)
@@ -131,6 +133,6 @@ The second portion of WideVariant filters candidate SNVs based on data arrays ge
 Previous iterations of this pipeline have been used to study:
 * [_C. acnes_ biogeography in the human skin microbiome](https://www.sciencedirect.com/science/article/pii/S1931312821005783)
 * [Adaptive evolution of _S. aureus_ on patients with atopic dermatitis](https://www.biorxiv.org/content/10.1101/2021.03.24.436824v3)
-* [Adaptive evolution of _B. fragilis_ on healthy people](https://www.sciencedirect.com/science/article/pii/S1931312819301593)
+* [Adaptive evolution of _B. fragilis_ on healthy people](https://www.sciencedirect.com/science/article/pii/S1931312819301593) -->
 
 
