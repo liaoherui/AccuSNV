@@ -2799,6 +2799,7 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
     return_bool_all=[]
     drb={}
     drba={}
+    filt={}
     warr=[]
     freq_d=cal_freq_amb_samples(all_p,my_cmt)
     for p in all_p:
@@ -2836,8 +2837,15 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
         #print(dgap)
         fl=dec_final_lab(cnn_l,warr,filt_l,recomb,gf,freq,dpt['qual'][p])
         freq="%.6f" % freq
+        if int(fl)==0 and int(warr[0])==0 and int(filt_l)==0:
+            filt[p]=''
+            continue
         o.write(str(p)+'\t'+fl+'\t'+warr[0]+'\t'+filt_l+'\t'+warr[1]+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+str(freq)+'\t'+gf+'\n')
     for p in cmt_p:
+        if p in filt:
+            return_bool.append(False)
+            return_bool_all.append(False)
+            continue
         if p in drb:
             return_bool.append(True)
         else:
