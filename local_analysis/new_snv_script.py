@@ -269,7 +269,7 @@ timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S') # 
 parser=argparse.ArgumentParser(prog='Local analysis module of AccuSNV',description='Apply filters and CNN to call SNVs for closely related bacterial isolates.')
 parser.add_argument('-i','--input_mat',dest='input_mat',type=str,required=True,help="The input mutation table in npz file")
 parser.add_argument('-c','--input_cov',dest='input_cov',type=str,help="The input coverage table in npz file")
-parser.add_argument('-e','--excluse_samples',dest='exclude_samp',type=str,help="The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as \"-e 1,000\", any sample with more than 1,000 SNVs will be automatically excluded.")
+parser.add_argument('-e','--excluse_samples',dest='exclude_samp',type=str,help="The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as \"-e 1000\", any sample with more than 1,000 SNVs will be automatically excluded.")
 
 parser.add_argument('-g','--generate_report',dest='generate_rep',type=str,help="If not generate html report and other related files, set to 0. (default: 1)")
 parser.add_argument('-r','--rer',dest='ref_genome',type=str,help="The reference genome")
