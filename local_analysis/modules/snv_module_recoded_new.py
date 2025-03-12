@@ -2837,7 +2837,11 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
         #print(dgap)
         fl=dec_final_lab(cnn_l,warr,filt_l,recomb,gf,freq,dpt['qual'][p])
         freq="%.6f" % freq
-        if int(fl)==0 and int(warr[0])==0 and int(filt_l)==0:
+        if re.search('skip',str(warr[0])):
+            tem_warr=0
+        else:
+            tem_warr=warr[0]
+        if int(fl)==0 and int(tem_warr)==0 and int(filt_l)==0:
             filt[p]=''
             continue
         o.write(str(p)+'\t'+fl+'\t'+warr[0]+'\t'+filt_l+'\t'+warr[1]+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+str(freq)+'\t'+gf+'\n')
