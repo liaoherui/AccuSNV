@@ -67,6 +67,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 import datetime, time
+import matplotlib.pyplot as plt
 
 
 # Some functions needed for subsequent steps
@@ -79,6 +80,179 @@ def search_ref_name(refg):
 
             break
     return pre
+def remove_same(my_calls_in):
+    keep_col = []
+    for i in range(my_calls_in.calls.shape[1]):
+        unique_nonzero_elements = np.unique(my_calls_in.calls[:, i][my_calls_in.calls[:, i] != 0])
+        if len(unique_nonzero_elements) < 2:
+            my_calls_in.calls[:, i] = 0
+            keep_col.append(False)
+        else:
+            keep_col.append(True)
+    keep_col = np.array(keep_col)
+    return keep_col
+
+def is_digit(input_string):
+    return input_string.isdigit()
+
+def plot_snv_counts_gpt(data_dict, odir=None, title="SNV Counts by Sample", figsize=(10, 6),
+                    color='#1f77b4', marker='o', markersize=100,
+                    xlabel="Sample Name", ylabel="SNV Count", dpi=400):
+    """
+    Creates a scatter plot of SNV counts for different samples.
+
+    Parameters:
+    -----------
+    data_dict : dict
+        Dictionary with sample names as keys and SNV counts as values
+    odir : str
+        Output directory path where the figure will be saved. If None, figure is not saved
+    title : str
+        Title of the plot
+    figsize : tuple
+        Figure size (width, height) in inches
+    color : str
+        Color of the markers
+    marker : str
+        Marker style
+    markersize : int
+        Size of the markers
+    xlabel : str
+        Label for x-axis
+    ylabel : str
+        Label for y-axis
+    dpi : int
+        Resolution of the output image in dots per inch
+
+    Returns:
+    --------
+    fig, ax : tuple
+        Matplotlib figure and axis objects
+    """
+    # Create figure and axis
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Extract sample names and counts
+    samples = list(data_dict.keys())
+    counts = list(data_dict.values())
+
+    # Create x positions (0, 1, 2, ...)
+    x_pos = np.arange(len(samples))
+
+    # Create scatter plot
+    ax.scatter(x_pos, counts, s=markersize, c=color, marker=marker, alpha=0.7)
+
+    # Only show x-axis labels if sample count is 20 or less
+    if len(samples) <= 20:
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels(samples, rotation=45, ha='right')
+    else:
+        ax.set_xticks([])
+        ax.set_xticklabels([])
+
+    # Add gridlines for better readability
+    ax.grid(True, linestyle='--', alpha=0.7)
+
+    # Add labels and title
+    ax.set_xlabel(xlabel, fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
+    ax.set_title(title, fontsize=14)
+
+    # Adjust y-axis to start from 0
+    ymin, ymax = ax.get_ylim()
+    ax.set_ylim([0, ymax * 1.1])  # Add 10% padding at the top
+
+    # Add value labels for samples with counts greater than 1000
+    ct=0
+    for i, count in enumerate(counts):
+        if count > 1000 and len(samples)>20:
+            ax.annotate(samples[i],
+                        (x_pos[i], counts[i]),
+                        textcoords="offset points",
+                        xytext=(0, -50),
+                        ha='center', fontsize=10, color='red',rotation=90)
+            ct+=1
+            if ct>20:break
+
+
+    # Adjust layout
+    plt.tight_layout()
+
+    # Save the figure if output directory is provided
+    if odir is not None:
+        # Create the directory if it doesn't exist
+        os.makedirs(odir, exist_ok=True)
+
+        # Define the output file path
+        output_path = os.path.join(odir, "snvs_per_sample.png")
+
+        # Save the figure
+        fig.savefig(output_path, dpi=dpi, bbox_inches='tight')
+        print(f"Figure saved to: {output_path}")
+
+    return fig, ax
+
+# To check SNVs of each input sample
+def check_snv(data_file_cmt,odir):
+    [quals,p,counts,in_outgroup,sample_names,indel_counter] = \
+    snv.read_candidate_mutation_table_npz(data_file_cmt)
+    
+    #print(in_outgroup)
+    #exit()
+    if not len(in_outgroup)==len(sample_names):
+        in_outgroup=np.array([False] * len(sample_names))
+    my_cmt = snv.cmt_data_object( sample_names,
+                             in_outgroup,
+                             p,
+                             counts,
+                             quals,
+                             indel_counter
+                             )
+    #print(my_cmt.counts[:,:,:8])
+    my_calls = snv.calls_object( my_cmt )
+    keep_col = remove_same(my_calls)
+    #print(keep_col)
+    #exit()
+    my_cmt.filter_positions(keep_col)
+    my_calls.filter_positions(keep_col)
+    #print(my_calls.calls)
+    def find_min_freq_elements(column):
+        #print(column)
+        values, counts = np.unique(column, return_counts=True)
+        nonzero_mask = values != 0
+        values = values[nonzero_mask]
+        counts = counts[nonzero_mask]
+        sorted_indices = np.argsort(-counts)
+        #print(values,counts,sorted_indices)
+        #exit()
+        min_count = counts[sorted_indices[1]]
+        #print(min_count)
+        #print(values[counts == min_count])
+        #exit()
+        #print(min_count)
+        #print(values[counts == min_count])
+        #exit()
+        res=values[counts == min_count]
+        if len(res)>1:
+            res=[res[0]]
+        return res
+    #print(my_calls.calls,my_calls.calls.shape)
+    min_freq_elements = np.apply_along_axis(find_min_freq_elements, 0, my_calls.calls)[0]
+    array=my_calls.calls
+    row_match_counts = np.zeros(array.shape[0], dtype=int)
+    for col_idx in range(array.shape[1]):
+        col_values = array[:, col_idx]
+        min_freq_vals = min_freq_elements[col_idx]
+
+        matches = np.isin(col_values, min_freq_vals)
+        row_match_counts += matches
+    #print(min_freq_elements,row_match_counts)
+    #exit()
+    dcs=dict(zip(sample_names,row_match_counts))
+    plot_snv_counts_gpt(dcs, odir)
+    return dcs
+
+
 # Import Lieberman Lab SNV-calling python package
 script_dir = os.path.dirname(os.path.abspath(__file__))
 dir_py_scripts = script_dir+"/modules"
@@ -95,6 +269,7 @@ timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S') # 
 parser=argparse.ArgumentParser(prog='Local analysis module of WideVariant',description='Apply filters and CNN to call SNPs for closely related bacterial isolates.')
 parser.add_argument('-i','--input_mat',dest='input_mat',type=str,required=True,help="The input mutation table in npz file")
 parser.add_argument('-c','--input_cov',dest='input_cov',type=str,help="The input coverage table in npz file")
+parser.add_argument('-e','--excluse_samples',dest='exclude_samp',type=str,help="The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as \"-e 1,000\", any sample with more than 1,000 SNVs will be automatically excluded.")
 
 parser.add_argument('-g','--generate_report',dest='generate_rep',type=str,help="If not generate html report and other related files, set to 0. (default: 1)")
 parser.add_argument('-r','--rer',dest='ref_genome',type=str,help="The reference genome")
@@ -107,6 +282,13 @@ input_cov=args.input_cov
 refg=args.ref_genome
 odir=args.output_dir
 greport=args.generate_rep
+exclude_samp=args.exclude_samp
+if not exclude_samp:
+    exclude_samp=''
+
+if is_digit(exclude_samp):
+    exclude_samp=int(exclude_samp)
+    
 if not greport:
     greport=1
 else:
@@ -131,7 +313,24 @@ ref_genome_name = search_ref_name(refg)
 #dir_ref_genome = refg+'/'+fname
 #samples_to_exclude = ["P-15_O-Ec_S-STOOL_C-C1_D-4","P-15_O-Ec_S-STOOL_C-D3_D-4"] # option to exclude specific samples manually
 #samples_to_exclude=["P-13_O-Kp_S-BLOOD_C-H1_D-0"]
-samples_to_exclude=[]
+
+dcs=check_snv(data_file_cmt,odir)
+if is_digit(str(exclude_samp)):
+    samples_to_exclude=[]
+    for s in dcs:
+        if dcs[s]>=exclude_samp:
+            samples_to_exclude.append(s)
+
+else:
+    if not exclude_samp=='':
+        tem=re.split(',',exclude_samp)
+        samples_to_exclude=tem
+    else:
+        samples_to_exclude=[""]
+print('Exclude samples are:',samples_to_exclude)
+#exit()
+
+#samples_to_exclude=["AHM_v0002_D02","AHM_v0002_D03","AHM_v0012_F12"]
 
 
 # Make subdirectory for this dataset
@@ -157,10 +356,10 @@ dprob=dict(zip(cnn_pos,cnn_prob)) # pos -> probability
 # Use this version for updated candidate mutation table matrices
 [quals,p,counts,in_outgroup,sample_names,indel_counter] = \
     snv.read_candidate_mutation_table_npz(data_file_cmt) 
-
 #dx=np.where(p==832924)
 #print(counts[:,dx,:])
-in_outgroup=np.array([False] * len(sample_names))
+if not len(in_outgroup)==len(sample_names):
+    in_outgroup=np.array([False] * len(sample_names))
 #print(in_outgroup)
 # # Use this version for old candidate mutation table matrices
 # [quals,p,counts,in_outgroup,sample_names,indel_counter] = \
