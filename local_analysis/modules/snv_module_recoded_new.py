@@ -2782,7 +2782,7 @@ def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual):
         if wd=='0':
             return '0'
         else:
-            if recomb=='1' or gap=='1' or freq>0.9:
+            if recomb=='1' or gap=='1' or freq>0.25:
                 return '0'
             else:
                 warr[0]='1'
