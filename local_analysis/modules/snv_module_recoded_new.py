@@ -2786,10 +2786,7 @@ def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual):
                 return '0'
             else:
                 warr[0]='1'
-                if not re.search('s',warr[1]):
-                    warr[1]=str(1-float(warr[1]))
-                else:
-                    warr[1]='1.0'
+                warr[1]='0.5'
                 return '1'
 
 def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dgap,my_cmt):
