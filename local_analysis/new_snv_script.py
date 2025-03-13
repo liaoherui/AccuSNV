@@ -723,11 +723,11 @@ print('Number of candidate SNVs missing outgroup alleles: ' + str(sum(calls_ance
 # was derived from one of your ingroup samples.
 
 # # Pull alleles from reference genome across p
-# calls_reference = my_rg.get_ref_NTs_as_ints( my_rg.p2contigpos(p) )
+calls_reference = my_rg.get_ref_NTs_as_ints( p )
 
 # # Update ancestral alleles
-# pos_to_update = ( calls_ancestral==0 )
-# calls_ancestral[ pos_to_update ] = calls_reference[ pos_to_update ]
+pos_to_update = ( calls_ancestral==0 )
+calls_ancestral[ pos_to_update ] = calls_reference[ pos_to_update ]
 
 
 
