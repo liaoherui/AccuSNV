@@ -2456,7 +2456,7 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
         print("Build parsimony tree...")
         #print( dnapars_path[0] + " < " + timestamp+"_options.txt > " + timestamp+"_dnapars.log")
         subprocess.run([ "touch outtree"  ],shell=True)
-        subprocess.run([ dnapars_path[0] + " < " + timestamp+"_options.txt > " + timestamp+"_dnapars.log"  ],shell=True)
+        subprocess.run([ "dnapars < " + timestamp+"_options.txt > " + timestamp+"_dnapars.log"  ],shell=True)
         #print('done')
         # re-write tree with new long tip labels
         tree = Phylo.read(timestamp+".tree", "newick")
