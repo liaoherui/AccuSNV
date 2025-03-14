@@ -28,6 +28,8 @@ Activate the pre-built environment<BR/>
 Change the permission of the file:<BR/>
 `chmod 777 slurm_status_script.py`<BR/>
 
+More install options will be provided in the future.
+<!--- 
 ### Option-2 (via .yaml file)
 
 `cd AccuSNV/snake_pipeline`<BR/>
@@ -47,7 +49,7 @@ Build other conda environments required by snakemake:<BR/>
 
 Change the permission of the file:<BR/>
 `chmod 777 slurm_status_script.py`<BR/>
-
+--> 
 
 
 
