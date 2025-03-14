@@ -142,12 +142,12 @@ def process_input_sfile(infile,out_dir,uid,tem_dir):
 		abspath=os.path.abspath(ele[0])
 		abspath_link=os.path.abspath(out_dir+'/link/')
 		if pre_check:
-			newpath1=out_dir+'/link/'+ele[2]+'_1.fastq.gz'
-			newpath2 = out_dir +'/link/'+ ele[2] + '_2.fastq.gz'
-			newpath1s= out_dir +'/link/'+ele[2]+'_1.fastq.gz'
+			newpath1=out_dir+'/link/'+ele[1]+'_1.fastq.gz'
+			newpath2 = out_dir +'/link/'+ ele[1] + '_2.fastq.gz'
+			newpath1s= out_dir +'/link/'+ele[1]+'_1.fastq.gz'
 		else:
-			newpath1=out_dir+'/link/'+ele[2]+'_1.fastq.gz'
-			newpath2 = out_dir +'/link/'+ ele[2] + '_2.fastq.gz'
+			newpath1=out_dir+'/link/'+ele[1]+'_1.fastq.gz'
+			newpath2 = out_dir +'/link/'+ ele[1] + '_2.fastq.gz'
 		if ele[-1]=='SE':
 			if pre_check:
 				newpath=newpath1s
