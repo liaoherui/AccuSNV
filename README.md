@@ -29,17 +29,18 @@ Change the permission of the file:<BR/>
 `chmod 777 slurm_status_script.py`<BR/>
 
 More install options will be provided in the future.
-<!--- 
-### Option-2 (via .yaml file)
+
+
+<!---  ### Option-2 (via .yaml file)
 
 `cd AccuSNV/snake_pipeline`<BR/>
 
 Build the conda environment:<BR/>
 `conda env create -n accusnv --file accusnv.yaml` or <BR/>`mamba env create -n accusnv --file accusnv.yaml` <BR/> <BR/>
 If `accusnv.yaml` doesn't work, you may try `accusnv_clean.yaml` or `widevariant.yaml`
-<!--- If the command above doesn't work, you may consider:<BR/>
+If the command above doesn't work, you may consider:<BR/>
 `conda create -n widevariant snakemake biopython -y` or <BR/>
-`mamba create -n widevariant snakemake biopython -y` <BR/> --> 
+`mamba create -n widevariant snakemake biopython -y` <BR/> 
 
 Activate the conda environment:<BR/>
 `conda activate accusnv`<BR/>
@@ -48,8 +49,8 @@ Build other conda environments required by snakemake:<BR/>
 `sh script/install_subenv.sh`<BR/>
 
 Change the permission of the file:<BR/>
-`chmod 777 slurm_status_script.py`<BR/>
---> 
+`chmod 777 slurm_status_script.py`<BR/> --> 
+
 
 
 
