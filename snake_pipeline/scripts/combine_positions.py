@@ -23,9 +23,9 @@ def chrpos2index(chrpos,chr_starts):
         p (arr): Vector of position indexes.
 
     '''
-    if np.size(chrpos,0) < np.size(chrpos,1):
-        chrpos=chrpos.T
-        print('Reversed orientation of chrpos')
+    #if np.size(chrpos,0) < np.size(chrpos,1):
+    #   chrpos=chrpos.T
+    #    print('Reversed orientation of chrpos')
         
     if len(chr_starts) == 1:
         p=chrpos[:,1]
@@ -55,7 +55,7 @@ def generate_positions_snakemake(positions_files_list, REFGENOMEDIRECTORY):
         #load in positions array for sample
         with gzip.open(positions_files_list[i].rstrip('\n'),"rb") as f:
             positions=pickle.load(f)
-        
+        if positions.shape[0]==0:continue
         #if len(positions)>2:
 
         x=chrpos2index(positions,chr_starts)
