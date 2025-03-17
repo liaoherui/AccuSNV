@@ -1162,7 +1162,8 @@ def data_transform(infile,incov,fig_odir,samples_to_exclude):
         snv.read_candidate_mutation_table_npz(infile)
 
     #print(in_outgroup,in_outgroup.shape)
-    in_outgroup=np.array([False] * len(sample_names))
+    if not len(in_outgroup)==len(sample_names):
+        in_outgroup=np.array([False] * len(sample_names))
     # Only for P15
     #in_outgroup[2]=True
     #in_outgroup[13]=True
