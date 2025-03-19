@@ -257,14 +257,14 @@ if flag == "assembly":
 def mdl_input_fwd(wildcards):  # returns all paths for forward reads for a given sample
     [paths, filename, stype, sfname] = get_mdl_paths(wildcards.sampleID)
     fwd = expand("{path_to_raw_data}{fn}/R1_filt.fq.gz",
-                 path_to_raw_data=paths, fn=filename)
+                 path_to_raw_data=paths, fn=wildcards.sampleID)
     return fwd
 
 
 def mdl_input_rev(wildcards):  # returns all paths for reverse reads for a given sample
     [paths, filename, stype, sfname] = get_mdl_paths(wildcards.sampleID)
     rev = expand("{path_to_raw_data}{fn}/R2_filt.fq.gz",
-                 path_to_raw_data=paths, fn=filename)
+                 path_to_raw_data=paths, fn=wildcards.sampleID)
     return rev
 
 
