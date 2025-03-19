@@ -238,7 +238,7 @@ def read_sample_info_CSV(path_to_sample_info_csv):
     filename = this_sample_info[2]
     reference = this_sample_info[3]
     stype = this_sample_info[-1]
-    suff=findfastqfile(path,sample,filename)
+    suff=findfastqfile(path,sample,sample)
     #print(suff)
     suff[0]=os.path.basename(suff[0])
     suff[1]=os.path.basename(suff[1])
