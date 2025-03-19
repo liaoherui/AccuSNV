@@ -306,10 +306,9 @@ rule cutadapt:
     output:
         fq1o = "{path_to_raw_data}{fn}/R1_trim.fq.gz",
         fq2o = "{path_to_raw_data}{fn}/R2_trim.fq.gz",
-    conda:
-        "envs/cutadapt.yaml",
     shell:
         # NEEDS TO BE OF FORMAT FILENAMER1, FILENAMER2, NOITHING ELSE
+        "source accusnv_sub/4511fce69b0cf0db94db95e6af3aa9cb_/bin/activate ;"
         "if [ -f {wildcards.path_to_raw_data}{wildcards.fn}_1.fastq.gz ] && [ -f {wildcards.path_to_raw_data}{wildcards.fn}_2.fastq.gz ]; then "
         "cutadapt -a CTGTCTCTTAT --cores=4 "
         "-o {output.fq1o} "
@@ -336,14 +335,12 @@ rule sickle:
         manifest = "{path_to_raw_data}{fn}/manifest.log",
         qual = 20,  # Threshold for trimming based on average quality in a window
         readlen = 50,  # Threshold to keep a read based on length after trimming
-    conda:
-        "envs/sickle-trim.yaml",
     output:
         fq1o = "{path_to_raw_data}{fn}/R1_filt.fq.gz",
         fq2o = "{path_to_raw_data}{fn}/R2_filt.fq.gz",
         fqSo = "{path_to_raw_data}{fn}/filt_sgls.fq.gz",
     shell:
-        # "if [ -f {input.fq1i} ] && [ -f {input.fq2i} ]; then "
+        "source accusnv_sub/be0548e2c0b42a3f8836c274e77352e0_/bin/activate ;"
         "if [ ! -f {input.fq2i}_zero ]; then "
         "sickle pe -f {input.fq1i} -r {input.fq2i} "
         "-t sanger "
@@ -404,7 +401,8 @@ if flag == "case":
                 outgroup=OUTGROUP_ls),
         run:
             subprocess.run(
-                "mkdir -p {outdir}/1-Mapping/vcf/ {outdir}/1-Mapping/quals/ {outdir}/1-Mapping/diversity/ ", shell=True)
+                "mkdir -p {outdir}/1-Mapping/vcf/ {outdir}/1-Mapping/quals/ {outdir}/1-Mapping/diversity/ ",
+                shell=True)
             for idx, ele in enumerate(SAMPLE_ls):
                 subprocess.run(
                     f"ln -fs -T {
@@ -412,21 +410,26 @@ if flag == "case":
                         SAMPLE_ls[idx]}_ref_{
                         REF_Genome_ls[idx]}_*diversity* 1-Mapping/diversity/{
                         SAMPLE_ls[idx]}_ref_{
-                        REF_Genome_ls[idx]}_outgroup{OUTGROUP_ls[idx]}.diversity.pickle.gz",shell=True)
+                        REF_Genome_ls[idx]}_outgroup{
+                            OUTGROUP_ls[idx]}.diversity.pickle.gz",
+                    shell=True)
                 subprocess.run(
                     f"ln -fs -T {
                         PATH_ls[idx]}/1-Mapping/quals/{
                         SAMPLE_ls[idx]}_ref_{
                         REF_Genome_ls[idx]}_*quals* 1-Mapping/quals/{
                         SAMPLE_ls[idx]}_ref_{
-                        REF_Genome_ls[idx]}_outgroup{OUTGROUP_ls[idx]}.quals.pickle.gz", shell=True)
+                        REF_Genome_ls[idx]}_outgroup{
+                            OUTGROUP_ls[idx]}.quals.pickle.gz",
+                    shell=True)
                 subprocess.run(
                     f"ln -fs -T {
                         PATH_ls[idx]}/1-Mapping/vcf/{
                         SAMPLE_ls[idx]}_ref_{
                         REF_Genome_ls[idx]}_*variant.vcf.gz 1-Mapping/vcf/{
                         SAMPLE_ls[idx]}_ref_{
-                        REF_Genome_ls[idx]}_aligned.sorted.strain.variant.vcf.gz", shell=True)
+                        REF_Genome_ls[idx]}_aligned.sorted.strain.variant.vcf.gz",
+                    shell=True)
 else:
 
     rule make_data_links:
@@ -504,9 +507,8 @@ if flag == "mapping" or flag == "all":
         output:
             bowtie2idx = REF_GENOME_DIRECTORY + \
                 "/{reference}/genome.fasta.bwt",
-        conda:
-            "envs/bwa.yaml",
         shell:
+            "source accusnv_sub/7c5e064882ef9018898b506462c14c76_/bin/activate ;"
             "bwa index {input.fasta} ;"
 
     # Aligns reads to the reference genome with bowtie2
@@ -526,10 +528,8 @@ if flag == "mapping" or flag == "all":
             # necessary for bowtie2qc
             log = outdir + \
                 "/1-Mapping/bowtie2/bowtie2_{sampleID}_ref_{reference}.txt",
-        conda:
-            "envs/bwa.yaml"
         shell:
-            # 8 threads coded into json
+            "source accusnv_sub/7c5e064882ef9018898b506462c14c76_/bin/activate ;"
             # "if [ -f {input.fq1} ] && [ -f {input.fq2}  ]; then "
             " if [ ! -f {input.fq2}_zero ]; then "
             "bwa mem -t 48 {params.refGenome}  {input.fq1} {input.fq2}  > {output.samA}  ; "
@@ -570,12 +570,8 @@ if flag == "mapping" or flag == "all":
                 "/1-Mapping/bowtie2/{sampleID}_ref_{reference}_aligned.sorted.bam",
             bamAidx = outdir + \
                 "/1-Mapping/bowtie2/{sampleID}_ref_{reference}_aligned.sorted.bam.bai",
-        conda:
-            "envs/samtools116.yaml",
-        shadow:  # avoids leaving leftover temp files esp if job aborted
-            "minimal",
         shell:
-            # 8 threads coded into json
+            "source accusnv_sub/3cbbde50211f350111549704ca420ad4_/bin/activate ;"
             " samtools view -bS {input.samA} | samtools sort -n - -o {params.bamDup} ;"
             " samtools fixmate -m {params.bamDup} {params.bamDupMate} ;"
             " samtools sort -o {params.bamDupMateSort} {params.bamDupMate} ;"
@@ -619,9 +615,8 @@ if flag == "mapping" or flag == "all":
             fasta = REF_GENOME_DIRECTORY + "/{reference}/genome.fasta",
         output:
             fasta_idx = REF_GENOME_DIRECTORY + "/{reference}/genome.fasta.fai",
-        conda:
-            "envs/samtools15_bcftools12.yaml"
         shell:
+            "source  accusnv_sub/3cbbde50211f350111549704ca420ad4_/bin/activate ;"
             " samtools faidx {input.fasta} ; "
 
     # Processes BAM file into VCF files
@@ -641,11 +636,8 @@ if flag == "mapping" or flag == "all":
                 "/1-Mapping/vcf/{sampleID}_ref_{reference}_aligned.sorted.strain.variant.vcf.gz",
             vcf_strain = outdir + \
                 "/1-Mapping/vcf/{sampleID}_ref_{reference}_aligned.sorted.strain.vcf.gz",
-        conda:
-            "envs/samtools15_bcftools12.yaml"
-        shadow:
-            "minimal",  # avoids leaving leftover temp files esp if job aborted
         shell:
+            "source accusnv_sub/0e5069538501e8be6e15c224ce22a67f_/bin/activate ;"
             " samtools mpileup -q30 -x -s -O -d3000 -f {params.ref} {input.bamA} > {output.pileup} ;"
             " samtools mpileup -q30 -t SP -d3000 -vf {params.ref} {input.bamA} > {params.vcf_raw} ;"
             " bcftools call -c -Oz -o {output.vcf_strain} {params.vcf_raw} ;"
@@ -662,9 +654,8 @@ if flag == "mapping" or flag == "all":
         output:
             file_quals = outdir + \
                 "/1-Mapping/quals/{sampleID}_ref_{reference}_outgroup{outgroup}.quals.pickle.gz",
-        conda:
-            "envs/py_for_snakemake.yaml",
         shell:
+            "source accusnv_sub/4f2663890c7e6ec0db02c26a00226c7b_/bin/activate ;"
             "mkdir -p {outdir}/1-Mapping/quals/ ;"
             "python {SCRIPTS_DIRECTORY}/vcf2quals_snakemake.py -i {input.vcf_strain} -r {params.refGenomeDir} -o {output.file_quals} ;"
             # "if [ -s {output.file_quals} ]; then "
@@ -684,9 +675,8 @@ if flag == "mapping" or flag == "all":
                 "/1-Mapping/diversity/{sampleID}_ref_{reference}_outgroup{outgroup}.diversity.pickle.gz",
             file_coverage = outdir + \
                 "/1-Mapping/diversity/{sampleID}_ref_{reference}_outgroup{outgroup}.aligned.sorted.strain.variant.coverage.pickle.gz",
-        conda:
-            "envs/py_for_snakemake.yaml",
         shell:
+            "source accusnv_sub/4f2663890c7e6ec0db02c26a00226c7b_/bin/activate ;"
             "mkdir -p {outdir}/1-Mapping/diversity/ ;"
             "python {SCRIPTS_DIRECTORY}/pileup2diversity.py -i {input.pileup} -r {params.refGenomeDir} -o {output.file_diversity} -c {output.file_coverage} ;"
             "if [ -s {output.file_diversity} ]; then "
@@ -717,9 +707,8 @@ if flag == "case" or flag == "all":
         output:
             positions = outdir + \
                 "/2-Case/temp/{sampleID}_ref_{reference}_outgroup{outgroup}_positions.pickle",
-        conda:
-            "envs/py_for_snakemake.yaml",
         shell:
+            "source accusnv_sub/4f2663890c7e6ec0db02c26a00226c7b_/bin/activate ;"
             "mkdir -p {outdir}/2-Case/temp/ ;"
             "python {SCRIPTS_DIRECTORY}/variants2positions.py -i {input.variants} -o {output.positions} -r {params.refGenomeDir} -q {params.maxFQ} -b {params.outgroup_tag} ;"
 
@@ -773,9 +762,8 @@ if flag == "case" or flag == "all":
         output:
             allpositions = outdir + \
                 "/2-Case/temp/group_{cladeID}_allpositions.pickle",
-        conda:
-            "envs/py_for_snakemake.yaml",
         shell:
+            "source accusnv_sub/4f2663890c7e6ec0db02c26a00226c7b_/bin/activate ;"
             "python {SCRIPTS_DIRECTORY}/combine_positions.py -i {input.string_input_pos} -r {params.refGenomeDir} -b {input.string_outgroup_bool} -o {output.allpositions} ;"
 
     # Builds candidate mutation table (stats across candidate SNV positions)
@@ -801,13 +789,11 @@ if flag == "case" or flag == "all":
                 "/2-Case/candidate_mutation_table/group_{cladeID}_coverage_matrix_raw.npz",
             cov_norm = outdir + \
                 "/2-Case/candidate_mutation_table/group_{cladeID}_coverage_matrix_norm.npz",
-        conda:
-            "envs/py_for_snakemake.yaml",
         shell:
             # Use this version if you do not want coverage matrices
             # "python3 {SCRIPTS_DIRECTORY}/build_candidate_mutation_table.py -p {input.positions} -s {input.string_sampleID_names} -g {input.string_outgroup_bool} -q {input.string_quals} -d {input.string_diversity} -o {output.cmt} ;"
             # Use this version if you do want coverage matrices (-c for raw
-            # coverage matrix; -n for normalized coverage matrix)
+            "source accusnv_sub/4f2663890c7e6ec0db02c26a00226c7b_/bin/activate ;"
             "python3 {SCRIPTS_DIRECTORY}/build_candidate_mutation_table.py -p {input.positions} -s {input.string_sampleID_names} -g {input.string_outgroup_bool} -q {input.string_quals} -d {input.string_diversity} -o {output.cmt} -c {output.cov_raw} -n {output.cov_norm} ;"
 
 
