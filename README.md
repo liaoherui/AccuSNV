@@ -94,6 +94,11 @@ Step-1: run the python script: <BR/>
 
 One example with test data can be found in `snake_pipeline/test_run.sh`
 
+If you cloned the repository but have already downloaded the pre-built Conda environment (e.g., /path/snake_pipeline/accusnv_sub), there's no need to download it again. Just try:
+
+`python accusnv_snakemake.py -i <input_sample_info_csv> -c /path/snake_pipeline/accusnv_sub -r <ref_dir> -o <output_dir>`
+
+
 Step-2: check the pipeline using "dry-run"<BR/>
 
 `sh script/dry-run.sh`<BR/>
