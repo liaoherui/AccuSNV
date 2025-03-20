@@ -310,6 +310,22 @@ def is_partition_time_limit_exceed(partition):
     except Exception:
         return False
 
+def snakefile_modify(infile,cp_env):
+	o=open('sk_tem','w+')
+	f=open(infile,'r')
+	lines=f.read().split('\n')
+	for line in lines:
+		if not re.search('source',line):
+			o.write(line+'\n')
+		else:
+			#ele=re.split('accusnv_sub',line)
+			out=re.sub('accusnv_sub',cp_env,line)
+			#out=ele[0]+res
+			o.write(out+'\n')
+			#print(out)
+			#exit()
+	o.close()
+	os.system('mv sk_tem Snakefile')
 
 
 
@@ -321,6 +337,7 @@ def main():
 	parser=argparse.ArgumentParser(prog='AccuSNV',description=usage)
 	parser.add_argument('-i','--input_sample_info',dest='input_sp',type=str,required=True,help="The dir of input sample info file --- Required")
 	parser.add_argument('-s','--turn_off_slurm',dest='tf_slurm',type=int,help="If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node. (Default: 0)")
+	parser.add_argument('-c','--conda_prebuilt_env',dest='cp_env',type=str,help="The absolute dir of your pre-built conda env. e.g. /path/snake_pipeline/accusnv_sub")
 	parser.add_argument('-r','--ref_dir',dest='ref_dir',type=str,help="The dir of your reference genomes")
 	parser.add_argument('-o','--output_dir',dest='out_dir',type=str,help='Output dir (default: current dir/wd_out_(uid), uid is generated randomly)') # uid=uuid.uuid1().hex
 	args = parser.parse_args()
@@ -328,14 +345,20 @@ def main():
 	out_dir=args.out_dir
 	ref_dir=args.ref_dir
 	tf_slurm = args.tf_slurm
+	cp_env=args.cp_env
 
 	uid=uuid.uuid1().hex
 	if not out_dir:
 		out_dir = pwd+'/wd_out_'+uid
 	if not ref_dir:
 		ref_dir=''
+	if not cp_env:
+		cp_env=''
 	if not tf_slurm:
 		tf_slurm=0
+
+	if not cp_env=='':
+		snakefile_modify('Snakefile', cp_env)
 	tem_dir=out_dir+'/temp'
 	data_dir = out_dir + '/link'
 	build_dir(tem_dir)
