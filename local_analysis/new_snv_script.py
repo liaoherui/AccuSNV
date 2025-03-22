@@ -95,6 +95,22 @@ def remove_same(my_calls_in):
 def is_digit(input_string):
     return input_string.isdigit()
 
+class Tee(object):
+    def __init__(self, filename):
+        self.file = open(filename, 'w')
+        self.stdout = sys.stdout
+
+    def __del__(self):
+        self.file.close()
+
+    def write(self, data):
+        self.file.write(data)
+        self.stdout.write(data)
+
+    def flush(self):
+        self.file.flush()
+        self.stdout.flush()
+
 def plot_snv_counts_gpt(data_dict, odir=None, title="SNV Counts by Sample", figsize=(10, 6),
                     color='#1f77b4', marker='o', markersize=100,
                     xlabel="Sample Name", ylabel="SNV Count", dpi=400):
@@ -257,7 +273,7 @@ def check_snv(data_file_cmt,odir):
 script_dir = os.path.dirname(os.path.abspath(__file__))
 dir_py_scripts = script_dir+"/modules"
 sys.path.insert(0, dir_py_scripts)
-import snv_module_recoded_new as snv # SNV calling module
+import snv_module_recoded_with_dNdS as snv # SNV calling module
 import build_SNP_Tree as bst
 import CNN_pred as cnn
 
@@ -441,10 +457,11 @@ my_cov = snv.cov_data_object( snv.read_cov_mat_npz( data_file_cov ), \
 #%% Exclude any samples listed above as bad
 
 samples_to_exclude_bool = np.array( [x in samples_to_exclude for x in my_cmt.sample_names] )
-
+my_cmt_zero_rebuild=copy.deepcopy(my_cmt)
 my_cmt.filter_samples( ~samples_to_exclude_bool )
 my_cov.filter_samples( ~samples_to_exclude_bool )
 my_cmt_zero=copy.deepcopy(my_cmt)
+#my_cmt_for_rebuild=copy.deepcopy(my_cmt)
 #print(my_cov)
 #exit()
 ######################
@@ -508,7 +525,8 @@ filter_parameter_site_across_samples = {
                                         'max_max_copynum' : 7 # max maximum copynumber that a site can have across all samples
                                         }
 
-
+original_stdout = sys.stdout
+sys.stdout = Tee(odir+'/pipe_log.txt')
 #%% Filter samples based on coverage
 
 # Identify samples with low coverage and make a histogram
@@ -952,9 +970,9 @@ my_calls_tree = snv.calls_object( my_cmt_goodpos_all ) # re-initialize calls
 
 # Apply looser filters than before (want as many alleles as possible)
 filter_parameter_calls_for_tree = {
-                                    'min_cov_for_call' : 5, # on individual samples, calls must have at least this many fwd+rev reads
+                                    'min_cov_for_call' : 1, # on individual samples, calls must have at least this many fwd+rev reads
                                     'min_qual_for_call' : 30, # on individual samples, calls must have this minimum quality score
-                                    'min_major_nt_freq_for_call' : 0.8,  # on individual samples, a call's major allele must have at least this freq
+                                    'min_major_nt_freq_for_call' : 0.75,  # on individual samples, a call's major allele must have at least this freq
                                     }
 
 my_calls_tree.filter_calls_by_element( 
@@ -1037,13 +1055,13 @@ if num_goodpos>0:
         output_tsv_filename \
         
         )
-    out_merge_tsv=dir_output+'/snv_table_merge_all_mut_annotations.tsv'
+    out_merge_tsv=dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv'
     snv.merge_two_tables(dir_output+'/snv_table_cnn_plus_filter.txt',output_tsv_filename,out_merge_tsv)
     #exit()
-    snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
+    snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv', dir_output+'/snv_table_with_charts_draft.html', dir_output+'/bar_charts')
     # Generate the tree for each identified SNPs
     try:
-        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations.tsv',dir_output)
+        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',dir_output)
     except:
         print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
     # # Contain all positions identified by CNN or WideVariant - even those false positions
@@ -1056,6 +1074,105 @@ if num_goodpos>0:
     #     treesampleNamesLong, \
     #     output_tsv_filename \
     #     )
+
+# Rebuild output for new requirement - 2025-03-21 - Herui
+'''
+update - 1 - save candidate mutation table with only label '1' pos
+update - 2 - regenerate output text and html report
+update - 3 - add dN/dS output
+'''
+f=open(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv','r')
+o=open(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv','w+')
+line=f.readline()
+o.write(line)
+dk={}
+while True:
+    line=f.readline().strip()
+    if not line:break
+    ele=line.split('\t')
+    if int(ele[1])==0:continue
+    o.write(line+'\n')
+    dk[int(ele[0])]=float(ele[4])
+o.close()
+snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
+keep_p=[]
+prob=[]
+for s in my_cmt_zero_rebuild.p:
+    if s in dk:
+        keep_p.append(True)
+        prob.append(dk[s])
+    else:
+        keep_p.append(False)
+
+
+keep_p=np.array(keep_p)
+my_cmt_zero_rebuild.filter_positions(keep_p)
+new_cmt={'sample_names': my_cmt_zero_rebuild.sample_names,'p':my_cmt_zero_rebuild.p,'counts':my_cmt_zero_rebuild.counts,'quals':my_cmt_zero_rebuild.quals,'in_outgroup':my_cmt_zero_rebuild.in_outgroup,'indel_counter':my_cmt_zero_rebuild.indel_stats,'prob':prob,'samples_exclude_bool':samples_to_exclude_bool}
+np.savez_compressed(dir_output+'/candidate_mutation_table_final.npz', **new_cmt)
+
+# dN/dS part
+sys.path.insert(0, './miniscripts_for_dNdS')
+dir_ref_genome = refg
+annotation_full = pd.read_csv(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv',sep='\t')
+output_directory = dir_output+'/dNdS_out'
+if not os.path.exists(output_directory):
+    os.makedirs(output_directory)
+# Mutation spectrum
+NTs = np.array(['A', 'T', 'C', 'G', 'N'])
+mutationmatrix, mut_observed, typecounts, prob_nonsyn = snv.mutation_spectrum_module(annotation_full, NTs)
+# Notes:
+# * Mutation spectrum tallied for each mutant alelle
+# * Mutation type only tallied when there is only one mutant allele
+# * Assumes all mutants are true de novo mutants
+num_muts_for_empirical_spect = 100
+if np.sum(mut_observed) >= num_muts_for_empirical_spect:
+    # attempt to get mutation spectrum empirically if there were enough mutations
+    mut_spec_prob = mut_observed / np.sum(mut_observed)
+else:
+    # otherwise assume a uniform mutation spectrum
+    mut_spec_prob = np.ones(mut_observed.size) / mut_observed.size
+    print('Warning! Assuming uniform mutation spectrum.')
+
+# Expected N/S
+probnonsyn_expected = snv.compute_expected_dnds(dir_ref_genome, mut_spec_prob)
+
+# this is going to be a bit off from matlab bc of how it deals with alternate start codons
+dnds_expected = probnonsyn_expected / (1 - probnonsyn_expected)  # N/S expected from neutral model
+
+# compute observed N/S for fixed and diverse mutations
+    # define gene_nums_of_interest if binning mutations for dN/dS analysis, rather than whole-genome dN/dS
+p_nonsyn, CI_nonsyn, num_muts_N, num_muts_S = snv.compute_observed_dnds(annotation_full, gene_nums_of_interest=None)
+dnds_observed = p_nonsyn / (1 - p_nonsyn)  # N/S observed
+# note that in matlab version, binom(0,0) gives CI of [0,1] even when p=NaN. In python, both are NaN
+
+# dN/dS
+# relative to neutral model for this KEGG category
+dNdS = dnds_observed / dnds_expected
+
+CI_lower = (CI_nonsyn[0] / (1 - CI_nonsyn[0])) / dnds_expected
+try:
+    CI_upper = (CI_nonsyn[1] / (1 - CI_nonsyn[1])) / dnds_expected
+except ZeroDivisionError:
+    CI_upper = np.inf
+
+
+print('dN/dS =', dNdS)
+
+# save output as binary file using pickle
+output_dict = {
+    'dNdS': dNdS,
+    'CI_lower': CI_lower,
+    'CI_upper': CI_upper,
+    'num_muts_N': num_muts_N,
+    'num_muts_S': num_muts_S,
+    'p_nonsyn': p_nonsyn,
+    'probnonsyn_expected': probnonsyn_expected
+}
+'''
+with open(output_directory+'/data_dNdS.pickle', 'wb') as f:
+    pickle.dump(output_dict, f)
+'''
+np.savez_compressed(output_directory+'/data_dNdS.npz', **output_dict)
 
 exit()
 

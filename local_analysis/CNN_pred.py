@@ -878,7 +878,7 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
             if np.max(tem[i][1])<0.1 and len(tem[i][1])<=3 and max(tem[i][0])>0.2:
                 tem_p.append(my_cmt.p[i])
             tem[i][0]=np.array(tem[i][0])
-            print('pos:',my_cmt.p[i],'\n','p-value:',p_arr_ratio[i],'\np-value-z-score:',p_arr_ratio_cdf[i],'\nnorm_major_mean:',np.mean(tem[i][0]),'\nnorm_major_median:',np.median(tem[i][0]),'\n# of major <0.2',np.sum(tem[i][0]<0.2),'\nthese elements are:',tem[i][0][tem[i][0]<0.2],'\nnorm_minor_arr:',tem[i][1])
+            #print('pos:',my_cmt.p[i],'\n','p-value:',p_arr_ratio[i],'\np-value-z-score:',p_arr_ratio_cdf[i],'\nnorm_major_mean:',np.mean(tem[i][0]),'\nnorm_major_median:',np.median(tem[i][0]),'\n# of major <0.2',np.sum(tem[i][0]<0.2),'\nthese elements are:',tem[i][0][tem[i][0]<0.2],'\nnorm_minor_arr:',tem[i][1])
         #print(my_cmt.p[i],tem[i][1])
         '''
         if p_arr_ratio[i]<0.05 and np.max(tem[i][1])<0.1 :
