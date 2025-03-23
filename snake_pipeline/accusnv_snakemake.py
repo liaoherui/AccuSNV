@@ -357,8 +357,9 @@ def main():
 	if not tf_slurm:
 		tf_slurm=0
 
-	os.system('cp Snakefiles_diff_options/Snakefile ./')
+	
 	if not cp_env=='':
+		os.system('cp Snakefiles_diff_options/Snakefile ./')
 		snakefile_modify('Snakefile', cp_env)
 	
 	tem_dir=out_dir+'/temp'
