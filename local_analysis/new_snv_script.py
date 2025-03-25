@@ -285,7 +285,8 @@ timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S') # 
 parser=argparse.ArgumentParser(prog='Local analysis module of AccuSNV',description='Apply filters and CNN to call SNVs for closely related bacterial isolates.')
 parser.add_argument('-i','--input_mat',dest='input_mat',type=str,required=True,help="The input mutation table in npz file")
 parser.add_argument('-c','--input_cov',dest='input_cov',type=str,help="The input coverage table in npz file")
-parser.add_argument('-v','--min_cov_for_filter',dest='min_cov',type=str,help="For the filter module: on individual samples, calls must have at least this many reads on the fwd/rev strands individually. If many samples have low coverage (e.g. <5), then you can set this parameter to smaller value. (e.g. -v 2). Default is 5.")
+parser.add_argument('-s','--min_cov_for_filter_sample',dest='min_cov_samp',type=str,help="Before running the CNN model, low-quality samples with more than 45% of positions having zero aligned reads will be filtered out. (default \"-s 45\") You can adjust this threshold with this parameter; to include all samples, set \"-s 100\".")
+parser.add_argument('-v','--min_cov_for_filter_pos',dest='min_cov',type=str,help="For the filter module: on individual samples, calls must have at least this many reads on the fwd/rev strands individually. If many samples have low coverage (e.g. <5), then you can set this parameter to smaller value. (e.g. -v 2). Default is 5.")
 parser.add_argument('-e','--excluse_samples',dest='exclude_samp',type=str,help="The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as \"-e 1000\", any sample with more than 1,000 SNVs will be automatically excluded.")
 
 parser.add_argument('-g','--generate_report',dest='generate_rep',type=str,help="If not generate html report and other related files, set to 0. (default: 1)")
@@ -295,6 +296,7 @@ parser.add_argument('-o','--output_dir',dest='output_dir',type=str,help="The out
 args=parser.parse_args()
 input_mat=args.input_mat
 input_cov=args.input_cov
+min_cov_samp=args.min_cov_samp
 min_cov_filt=args.min_cov
 refg=args.ref_genome
 odir=args.output_dir
@@ -304,6 +306,11 @@ if not min_cov_filt:
     min_cov_filt=5
 else:
     min_cov_filt=int(min_cov_filt)
+
+if not min_cov_samp:
+    min_cov_samp=45
+else:
+    min_cov_samp=int(min_cov_samp)
 
 if not exclude_samp:
     exclude_samp=''
@@ -364,7 +371,7 @@ os.system( "mkdir " + dir_output );
 ################ Run CNN first and then combine the result of CNN and default filters ######
 
 ####### Run CNN ########
-cnn_pos,cnn_pred,cnn_prob,dgap=cnn.CNN_predict(data_file_cmt,data_file_cov,odir,samples_to_exclude) # The label is predicted by CNN
+cnn_pos,cnn_pred,cnn_prob,dgap=cnn.CNN_predict(data_file_cmt,data_file_cov,odir,samples_to_exclude,min_cov_samp) # The label is predicted by CNN
 dlab=dict(zip(cnn_pos,cnn_pred)) # pos -> label
 dprob=dict(zip(cnn_pos,cnn_prob)) # pos -> probability
 #######  Done  #########
