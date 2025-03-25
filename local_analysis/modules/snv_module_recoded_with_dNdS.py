@@ -3110,7 +3110,7 @@ def cal_freq_amb_samples(all_p,my_cmt):
         c+=1
     return freq_d
 
-def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual):
+def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual,min_cov_filt):
     if str(qual)=='1':
         warr[0]='0'
         warr[1]='0'
@@ -3126,6 +3126,8 @@ def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual):
             if recomb=='1' or gap=='1' or freq>0.25:
                 return '0'
             else:
+                if min_cov_filt<5:
+                    return '1'
                 warr[0]='1'
                 if not re.search('s',warr[1]):
                     warr[1]=str(1-float(warr[1]))
@@ -3133,7 +3135,7 @@ def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual):
                     warr[1]='1.0'
                 return '1'
 
-def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dgap,my_cmt):
+def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dgap,my_cmt,min_cov_filt):
     o=open(dir_output+'/snv_table_cnn_plus_filter.txt','w+')
     o.write('genome_pos\tPred_label\tCNN_pred\tWideVariant_pred\tCNN_prob\tQual_filter (<30)\tCov_filter (<5)\tMAF_filter (>0.85)\tIndel_filter (<0.33)\tMFAS_filter (1)\tMMCP_filter (5)\tCPN_filter (4,7)\tFix_filter\tWhether_recomb\tFraction_ambigious_samples\tGap_filter\n')
     return_bool=[]
@@ -3176,7 +3178,7 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
             gf=dgap[p]
         freq=freq_d[p]
         #print(dgap)
-        fl=dec_final_lab(cnn_l,warr,filt_l,recomb,gf,freq,dpt['qual'][p])
+        fl=dec_final_lab(cnn_l,warr,filt_l,recomb,gf,freq,dpt['qual'][p],min_cov_filt)
         freq="%.6f" % freq
         if re.search('skip',str(warr[0])):
             tem_warr=0
