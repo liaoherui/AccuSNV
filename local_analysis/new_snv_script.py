@@ -285,6 +285,7 @@ timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S') # 
 parser=argparse.ArgumentParser(prog='Local analysis module of AccuSNV',description='Apply filters and CNN to call SNVs for closely related bacterial isolates.')
 parser.add_argument('-i','--input_mat',dest='input_mat',type=str,required=True,help="The input mutation table in npz file")
 parser.add_argument('-c','--input_cov',dest='input_cov',type=str,help="The input coverage table in npz file")
+parser.add_argument('-v','--min_cov_for_filter',dest='min_cov',type=str,help="For the filter module: on individual samples, calls must have at least this many reads on the fwd/rev strands individually. If many samples have low coverage (e.g. <5), then you can set this parameter to smaller value. (e.g. -v 2). Default is 5.")
 parser.add_argument('-e','--excluse_samples',dest='exclude_samp',type=str,help="The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as \"-e 1000\", any sample with more than 1,000 SNVs will be automatically excluded.")
 
 parser.add_argument('-g','--generate_report',dest='generate_rep',type=str,help="If not generate html report and other related files, set to 0. (default: 1)")
@@ -294,11 +295,16 @@ parser.add_argument('-o','--output_dir',dest='output_dir',type=str,help="The out
 args=parser.parse_args()
 input_mat=args.input_mat
 input_cov=args.input_cov
-#input_pos=args.input_pos
+min_cov_filt=args.min_cov
 refg=args.ref_genome
 odir=args.output_dir
 greport=args.generate_rep
 exclude_samp=args.exclude_samp
+if not min_cov_filt:
+    min_cov_filt=5
+else:
+    min_cov_filt=int(min_cov_filt)
+
 if not exclude_samp:
     exclude_samp=''
 
@@ -512,7 +518,7 @@ filter_parameter_sample_across_sites = {
 # Remove sites within samples that are not high quality
 filter_parameter_site_per_sample = {
                                     'min_major_nt_freq_for_call' : 0.85, # on individual samples, a calls' major allele must have at least this freq
-                                    'min_cov_per_strand_for_call' : 5,  # on individual samples, calls must have at least this many reads on the fwd/rev strands individually
+                                    'min_cov_per_strand_for_call' : min_cov_filt,  # on individual samples, calls must have at least this many reads on the fwd/rev strands individually
                                     'min_qual_for_call' : 30, # on individual samples, calls must have this minimum quality score
                                     'max_frac_reads_supporting_indel' : 0.33 # on individual samples, no more than this fraction of reads can support an indel at any given position
                                     }
@@ -839,7 +845,7 @@ all_p=np.sort(np.union1d(goodpos_idx_cnn,goodpos_idx_wd))
 #print(all_p)
 #print(np.where(my_cmt.p==1095218))
 #exit()
-goodpos_bool,goodpos_bool_all=snv.generate_cnn_filter_table(all_p,goodpos_idx_wd,dpt,dlab,dprob,dir_output,my_cmt.p,dgap,my_cmt_zero)
+goodpos_bool,goodpos_bool_all=snv.generate_cnn_filter_table(all_p,goodpos_idx_wd,dpt,dlab,dprob,dir_output,my_cmt.p,dgap,my_cmt_zero,min_cov_filt)
 goodpos_idx = np.where( goodpos_bool )[0]
 #print(goodpos_bool.shape)
 #exit()
@@ -1092,7 +1098,10 @@ while True:
     ele=line.split('\t')
     if int(ele[1])==0:continue
     o.write(line+'\n')
-    dk[int(ele[0])]=float(ele[4])
+    if ele[4]=='skip':
+        dk[int(ele[0])]=0
+    else:
+        dk[int(ele[0])]=float(ele[4])
 o.close()
 snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
 keep_p=[]
