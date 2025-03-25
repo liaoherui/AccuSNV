@@ -3081,14 +3081,16 @@ def generate_tokens_last(tokens,goodpos_idx,pre):
 
 def process_arrays(arr1, arr2, sample_num):
     col_data_nonzero = [arr1[:, col][arr1[:, col] != 0] for col in range(arr1.shape[1])]
+    #print('col:',col_data_nonzero)
     column_modes = [np.unique(col)[0] if len(np.unique(col)) == 1 else ( 1 if len(col)==0 else np.argmax(np.bincount(col))) for col in col_data_nonzero]
-    #print(arr2)
+    #print('arr2:',arr2)
+    #print('cm:',column_modes)
     scount = np.sum(arr1 == column_modes, axis=0)
     #print(scount)
     mask = arr1 != np.array(column_modes)
     arr2[mask] = 0
     result = np.sum((arr2 > 0) & (arr2 < 0.95), axis=0)
-    #print(result/scount)
+    #print(result)
     #exit()
 
     return result/scount
