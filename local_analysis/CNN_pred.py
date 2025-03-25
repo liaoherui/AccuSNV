@@ -1155,7 +1155,7 @@ def remove_exclude_samples(samples_to_exclude_bool,quals,counts,sample_names,ind
     return quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup
 
 
-def data_transform(infile,incov,fig_odir,samples_to_exclude):
+def data_transform(infile,incov,fig_odir,samples_to_exclude,min_cov_samp):
 
     # infile='../../../Scan_FP_TP_for_CNN/Cae_files/npz_files/Lineage_10c/candidate_mutation_table_cae_Lineage_10c.npz'
     [quals, p, counts, in_outgroup, sample_names, indel_counter] = \
@@ -1285,7 +1285,8 @@ def data_transform(infile,incov,fig_odir,samples_to_exclude):
     #print(combined_array.shape,len(p))
     #print(p,len(p))
     #exit()
-    combined_array,p=remove_low_quality_samples(combined_array, 45,p)
+    if not min_cov_samp==100:
+        combined_array,p=remove_low_quality_samples(combined_array, min_cov_samp,p)
     #print(np.where(p==864972))
     #exit()
     #### Remove bad positions
@@ -1312,7 +1313,7 @@ def load_test_name(infile):
         dt[line]=''
     return dt
 
-def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude):
+def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp):
     if not os.path.exists(out):
         os.makedirs(out)
     setup_seed(1234)
@@ -1366,7 +1367,7 @@ def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude):
 
     info=[]
     #print('Test data :'+pre)
-    odata,pos,dgap=data_transform(mut,cov,fig_odir,samples_to_exclude)
+    odata,pos,dgap=data_transform(mut,cov,fig_odir,samples_to_exclude,min_cov_samp)
     #odata=odata[np.where(pos==864972)]
     #odata=odata[:,20:23,:,:]
     #print(odata,odata.shape)
