@@ -3087,7 +3087,7 @@ def process_arrays(arr1, arr2, sample_num):
     #print(scount)
     mask = arr1 != np.array(column_modes)
     arr2[mask] = 0
-    result = np.sum((arr2 > 0) & (arr2 < 1), axis=0)
+    result = np.sum((arr2 > 0) & (arr2 < 0.95), axis=0)
     #print(result/scount)
     #exit()
 
