@@ -539,6 +539,12 @@ class cmt_data_object:
         counts_sort_rev = np.sort(self.counts[:, :, 4:8], axis=2)  # sort number of reads for each nucleotide
         counts_major_fwd = np.squeeze(counts_sort_fwd[:, :, 3:4], axis=2)  # number of reads for most common nucleotide
         counts_major_rev = np.squeeze(counts_sort_rev[:, :, 3:4], axis=2)  # number of reads for most common nucleotide
+        counts_minor_fwd = np.squeeze(counts_sort_fwd[:, :, 2:3], axis=2)  # number of reads for next most common nucleotide
+        counts_minor_rev = np.squeeze(counts_sort_rev[:, :, 2:3], axis=2)  # number of reads for next most common nucleotide
+        self.counts_major_max=np.maximum(counts_major_fwd,counts_major_rev)
+        # Compare fwd and rev major counts, take the bigger one
+        self.counts_minor_max=np.maximum(counts_minor_fwd,counts_minor_rev)
+        
         #print(counts_sort_fwd[:,4409,:])
         cov_fwd=np.sum(counts_sort_fwd,axis=2)
         cov_rev = np.sum(counts_sort_rev, axis=2)
@@ -604,6 +610,8 @@ class cmt_data_object:
                 self.minor_nt_freq = self.minor_nt_freq[samples_to_keep_bool,:]
                 self.counts_major = self.counts_major[samples_to_keep_bool, :]
                 self.counts_minor = self.counts_minor[samples_to_keep_bool, :]
+                self.counts_major_max=self.counts_major_max[samples_to_keep_bool, :]
+                self.counts_minor_max=self.counts_minor_max[samples_to_keep_bool, :]
                 # print results
                 print( "Number of samples in candidate mutation table reduced from " + str(num_samples_old) + " to " + str(self.num_samples) + "." )
             else:
@@ -638,6 +646,8 @@ class cmt_data_object:
                 self.major_nt_freq_rev = self.major_nt_freq_rev[:, positions_to_keep_bool]
                 self.counts_major = self.counts_major[:,positions_to_keep_bool]
                 self.counts_minor = self.counts_minor[ :,positions_to_keep_bool]
+                self.counts_major_max=self.counts_major_max[:,positions_to_keep_bool]
+                self.counts_minor_max=self.counts_minor_max[:,positions_to_keep_bool]
                 # print results
                 print( "Number of positions in candidate mutation table reduced from " + str(num_pos_old) + " to " + str(self.num_pos) + "." )
             else:
@@ -3079,21 +3089,48 @@ def generate_tokens_last(tokens,goodpos_idx,pre):
           len(res) - np.sum(res > 0) - np.sum(res == -1))
     return res
 
-def process_arrays(arr1, arr2, sample_num):
+def process_arrays(arr1, arr2,arr3,arr4, sample_num,arr5):
     col_data_nonzero = [arr1[:, col][arr1[:, col] != 0] for col in range(arr1.shape[1])]
-    #print('col:',col_data_nonzero)
+    #print('col:',col_data_nonzero[:8])
     column_modes = [np.unique(col)[0] if len(np.unique(col)) == 1 else ( 1 if len(col)==0 else np.argmax(np.bincount(col))) for col in col_data_nonzero]
+    column_second_nonzero_modes = [sorted(set(col[col != 0]), key=lambda x: np.count_nonzero(col[col != 0] == x))[-2] if len(set(col[col != 0])) > 1 else 0 for col in col_data_nonzero]
     #print('arr2:',arr2)
-    #print('cm:',column_modes)
+    #print('cm:',column_modes[:8])
+    #print(column_second_nonzero_modes[:8])
     scount = np.sum(arr1 == column_modes, axis=0)
     #print(scount)
-    mask = arr1 != np.array(column_modes)
+    #print(arr5)
+    #print(arr5.shape)
+    #exit()
+    mask = arr1 != np.array(column_modes) # minor sample
+    mask2= arr1 == np.array(column_modes) # major sample
+    mask3= arr5==np.array(column_second_nonzero_modes)
+    #print(mask3[:,7])
+    #print(arr5[:,7])
+    #print(mask.shape)
+    #print(mask2.shape)
+    #print(arr3.shape)
+    #print(arr4.shape)
+
+    #print(arr3)
+    arr3[~mask]=0 # minor sample - major count
+    arr4[~mask2]=0 # major sample - minor count
+    arr4[~mask3]=0
+    minors_major= np.max(arr3, axis=0)
+    majors_minor=np.max(arr4, axis=0)
+    majors_minor[majors_minor > 2] += 2
+    #print(minors_major)
+    #print(majors_minor)
+    #exit()
+    check_minors_majorm=minors_major<majors_minor
+    #print(check_minors_majorm)
+    #exit()
     arr2[mask] = 0
     result = np.sum((arr2 > 0) & (arr2 < 0.95), axis=0)
     #print(result)
     #exit()
 
-    return result/scount
+    return result/scount,check_minors_majorm
 
 def cal_freq_amb_samples(all_p,my_cmt):
     keep_col=[]
@@ -3104,15 +3141,21 @@ def cal_freq_amb_samples(all_p,my_cmt):
             keep_col.append(False)
     keep_col=np.array(keep_col)
     my_cmt.filter_positions(keep_col)
-    freq_arr=process_arrays(my_cmt.major_nt,my_cmt.major_nt_freq,my_cmt.major_nt.shape[0])
+    #print(np.where(my_cmt.p==73495))
+    #for e in my_cmt.counts[:,7,:8]:
+    #print(e)
+    #exit()
+    freq_arr,check_arr=process_arrays(my_cmt.major_nt,my_cmt.major_nt_freq,my_cmt.counts_major_max,my_cmt.counts_minor_max,my_cmt.major_nt.shape[0],my_cmt.minor_nt)
     freq_d={}
+    check_d={}
     c=0
     for p in my_cmt.p:
         freq_d[p]=freq_arr[c]
+        check_d[p]=check_arr[c]
         c+=1
-    return freq_d
+    return freq_d,check_d
 
-def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual,min_cov_filt):
+def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual,min_cov_filt,check,cutoff):
     if str(qual)=='1':
         warr[0]='0'
         warr[1]='0'
@@ -3125,12 +3168,17 @@ def dec_final_lab(cnn,warr,wd,recomb,gap,freq,qual,min_cov_filt):
         if wd=='0':
             return '0'
         else:
-            if recomb=='1' or gap=='1' or freq>0.25:
+
+            if recomb=='1' or gap=='1' or freq>cutoff or check:
                 return '0'
             else:
+                '''
                 if min_cov_filt<5:
                     return '1'
+                else:
+                '''
                 warr[0]='1'
+                
                 if not re.search('s',warr[1]):
                     warr[1]=str(1-float(warr[1]))
                 else:
@@ -3146,7 +3194,11 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
     drba={}
     filt={}
     warr=[]
-    freq_d=cal_freq_amb_samples(all_p,my_cmt)
+    freq_d,check_d=cal_freq_amb_samples(all_p,my_cmt)
+    if len(my_cmt.sample_names)>20:
+        cutoff=0.1
+    else:
+        cutoff=0.25
     for p in all_p:
         #check_bool=False
         #check_bool_all=False
@@ -3179,8 +3231,9 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
         else:
             gf=dgap[p]
         freq=freq_d[p]
+        check=check_d[p]
         #print(dgap)
-        fl=dec_final_lab(cnn_l,warr,filt_l,recomb,gf,freq,dpt['qual'][p],min_cov_filt)
+        fl=dec_final_lab(cnn_l,warr,filt_l,recomb,gf,freq,dpt['qual'][p],min_cov_filt,check,cutoff)
         freq="%.6f" % freq
         if re.search('skip',str(warr[0])):
             tem_warr=0
