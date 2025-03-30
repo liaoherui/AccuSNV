@@ -285,7 +285,7 @@ timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S') # 
 parser=argparse.ArgumentParser(prog='Local analysis module of AccuSNV',description='Apply filters and CNN to call SNVs for closely related bacterial isolates.')
 parser.add_argument('-i','--input_mat',dest='input_mat',type=str,required=True,help="The input mutation table in npz file")
 parser.add_argument('-c','--input_cov',dest='input_cov',type=str,help="The input coverage table in npz file")
-parser.add_argument('-s','--min_cov_for_filter_sample',dest='min_cov_samp',type=str,help="Before running the CNN model, low-quality samples with more than 45% of positions having zero aligned reads will be filtered out. (default \"-s 45\") You can adjust this threshold with this parameter; to include all samples, set \"-s 100\".")
+parser.add_argument('-s','--min_cov_for_filter_sample',dest='min_cov_samp',type=str,help="Before running the CNN model, low-quality samples with more than 45%% of positions having zero aligned reads will be filtered out. (default \"-s 45\") You can adjust this threshold with this parameter; to include all samples, set \"-s 100\".")
 parser.add_argument('-v','--min_cov_for_filter_pos',dest='min_cov',type=str,help="For the filter module: on individual samples, calls must have at least this many reads on the fwd/rev strands individually. If many samples have low coverage (e.g. <5), then you can set this parameter to smaller value. (e.g. -v 2). Default is 5.")
 parser.add_argument('-e','--excluse_samples',dest='exclude_samp',type=str,help="The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as \"-e 1000\", any sample with more than 1,000 SNVs will be automatically excluded.")
 
