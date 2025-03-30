@@ -9,6 +9,10 @@ import re
 CURRENT_DIRECTORY = os.getcwd()
 print(config)
 REF_GENOME_DIRECTORY = config["ref_genome_directory"]
+min_cov_filt=config["min_cov_filt"]
+min_cov_samp=config["min_cov_samp"]
+exclude_samp=config["exclude_samp"]
+greport=config["greport"]
 SCRIPTS_DIRECTORY = config["myscripts_directory"]
 sys.path.insert(0, SCRIPTS_DIRECTORY)
 spls = config["sample_table"]
@@ -188,6 +192,7 @@ if flag == "case" or flag == "all":
             outdir +
             "/2-Case/candidate_mutation_table/group_{cladeID}_candidate_mutation_table.npz",
             cladeID=UNIQ_GROUP_ls))
+    input_all.append(expand(outdir + "/3-AccuSNV/group_{cladeID}/candidate_mutation_table_final.npz",cladeID=UNIQ_GROUP_ls))
     # Include the following two lines ONLY if you also want coverage matrices.
     # Be sure include -c and -n options when py script is called candidate_mutation_table rule and to uncomment the two extra outputs in the candidate_mutation_table rule.
     # input_all.append(expand("2-Case/candidate_mutation_table/group_{cladeID}_coverage_matrix_raw.pickle.gz",cladeID=UNIQ_GROUP_ls))
@@ -795,6 +800,20 @@ if flag == "case" or flag == "all":
             # Use this version if you do want coverage matrices (-c for raw
             "source accusnv_sub/4f2663890c7e6ec0db02c26a00226c7b_/bin/activate ;"
             "python3 {SCRIPTS_DIRECTORY}/build_candidate_mutation_table.py -p {input.positions} -s {input.string_sampleID_names} -g {input.string_outgroup_bool} -q {input.string_quals} -d {input.string_diversity} -o {output.cmt} -c {output.cov_raw} -n {output.cov_norm} ;"
+
+    rule run_accusnv:
+        input:
+            cmt=rules.candidate_mutation_table.output.cmt,
+            cov_raw=rules.candidate_mutation_table.output.cov_raw,
+        params:
+            # file_other_p_to_consider = "2-Case/temp/other_positions.pickle",
+            refGenomeDir = get_ref_genome,
+            output_folder =  outdir+"/3-AccuSNV/group_{cladeID}",
+        output:
+            accusnv_cmt = outdir+"/3-AccuSNV/group_{cladeID}/candidate_mutation_table_final.npz",
+        shell:
+            "python new_snv_script.py -i {input.cmt} -c {input.cov_raw} -s {min_cov_samp} -v {min_cov_filt} -g {greport} -e {exclude_samp}  -r {params.refGenomeDir} -o {params.output_folder} ;"
+
 
 
 # ASSEMBLY STEP ##########################################################

@@ -241,7 +241,7 @@ def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm,tem_dir):
 	
 	
 
-def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm,tem_dir):
+def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm,tem_dir,min_cov_filt,min_cov_samp,exclude_samp,greport):
 	f=open(infile,'r')
 	tfile=tem_dir+'/exp_'+uid+'_tem.yaml'
 	o=open(tfile,'w+')
@@ -255,6 +255,14 @@ def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm,tem_dir
 		elif re.search('ref_genome_directory',line) and not ref_dir=='':
 			ref_dir=os.path.abspath(ref_dir)
 			o.write('ref_genome_directory: '+ref_dir+'\n')
+		elif re.search('min_cov_samp',line):
+			o.write('min_cov_samp: \"'+str(min_cov_samp)+'\"\n')
+		elif re.search('min_cov_filt',line):
+			o.write('min_cov_filt: \"'+str(min_cov_filt)+'\"\n')
+		elif re.search('exclude_samp',line):
+			o.write('exclude_samp: \"'+str(exclude_samp)+'\"\n')
+		elif re.search('greport',line):
+			o.write('greport: \"'+str(greport)+'\"\n')
 		else:
 			o.write(line+'\n')
 	o.close()
@@ -319,16 +327,32 @@ def snakefile_modify(infile,cp_env):
 			o.write(line+'\n')
 		else:
 			#ele=re.split('accusnv_sub',line)
-			out=re.sub('accusnv_sub',cp_env,line)
-			#out=ele[0]+res
-			o.write(out+'\n')
-			#print(out)
-			#exit()
+			if not re.search('source accusnv_sub',line):
+				o.write(line+'\n')
+			else:
+				out=re.sub('accusnv_sub',cp_env,line)
+				#out=ele[0]+res
+				o.write(out+'\n')
 	o.close()
 	os.system('mv sk_tem Snakefile')
 
-
-
+'''
+def snakefile_modify_accusnv(infile,min_cov_filt,min_cov_samp,exclude_samp,greport):
+	o = open('sk_tem', 'w+')
+	f=open(infile,'r')
+	lines = f.read().split('\n')
+	for line in lines:
+		if not re.search('new_snv_script',line):
+			o.write(line + '\n')
+		else:
+			if exclude_samp=='':
+				out=re.sub('-s 45 -v 5','-s '+str(min_cov_samp)+' -v '+str(min_cov_filt)+' -g '+str(greport),line)
+			else:
+				out = re.sub('-s 45 -v 5', '-s ' + str(min_cov_samp) + ' -v ' + str(min_cov_filt) + ' -g ' + str(greport)+' -e '+str(exclude_samp), line)
+			o.write(out + '\n')
+	o.close()
+	os.system('mv sk_tem Snakefile')
+'''
 
 def main():
 
@@ -336,9 +360,15 @@ def main():
 	# Get para
 	parser=argparse.ArgumentParser(prog='AccuSNV',description=usage)
 	parser.add_argument('-i','--input_sample_info',dest='input_sp',type=str,required=True,help="The dir of input sample info file --- Required")
-	parser.add_argument('-s','--turn_off_slurm',dest='tf_slurm',type=int,help="If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node. (Default: 0)")
+	parser.add_argument('-t','--turn_off_slurm',dest='tf_slurm',type=int,help="If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node. (Default: 0)")
 	parser.add_argument('-c','--conda_prebuilt_env',dest='cp_env',type=str,help="The absolute dir of your pre-built conda env. e.g. /path/snake_pipeline/accusnv_sub")
 	parser.add_argument('-r','--ref_dir',dest='ref_dir',type=str,help="The dir of your reference genomes")
+	#### AccuSNV - CNN-filter part params
+	parser.add_argument('-s','--min_cov_for_filter_sample',dest='min_cov_samp',type=str,help="Before running the CNN model, low-quality samples with more than 45%% of positions having zero aligned reads will be filtered out. (default \"-s 45\") You can adjust this threshold with this parameter; to include all samples, set \"-s 100\".")
+	parser.add_argument('-v','--min_cov_for_filter_pos',dest='min_cov',type=str,help="For the filter module: on individual samples, calls must have at least this many reads on the fwd/rev strands individually. If many samples have low coverage (e.g. <5), then you can set this parameter to smaller value. (e.g. -v 2). Default is 5.")
+	parser.add_argument('-e','--excluse_samples',dest='exclude_samp',type=str,help="The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as \"-e 1000\", any sample with more than 1,000 SNVs will be automatically excluded.")
+	parser.add_argument('-g','--generate_report',dest='generate_rep',type=str,help="If not generate html report and other related files, set to 0. (default: 1)")
+	####
 	parser.add_argument('-o','--output_dir',dest='out_dir',type=str,help='Output dir (default: current dir/wd_out_(uid), uid is generated randomly)') # uid=uuid.uuid1().hex
 	args = parser.parse_args()
 	input_file=args.input_sp
@@ -346,6 +376,12 @@ def main():
 	ref_dir=args.ref_dir
 	tf_slurm = args.tf_slurm
 	cp_env=args.cp_env
+	# CNN-filter params
+	min_cov_samp = args.min_cov_samp
+	min_cov_filt = args.min_cov
+	greport = args.generate_rep
+	exclude_samp = args.exclude_samp
+
 
 	uid=uuid.uuid1().hex
 	if not out_dir:
@@ -356,12 +392,33 @@ def main():
 		cp_env=''
 	if not tf_slurm:
 		tf_slurm=0
+	if not min_cov_filt:
+		min_cov_filt = 5
+	else:
+		min_cov_filt = int(min_cov_filt)
 
-	
+	if not min_cov_samp:
+		min_cov_samp = 45
+	else:
+		min_cov_samp = int(min_cov_samp)
+
+	if not exclude_samp:
+		exclude_samp = 'null'
+
+
+	if not greport:
+		greport = 1
+	else:
+		greport = int(greport)
+
+	#snakefile_modify_accusnv('Snakefile',min_cov_filt,min_cov_samp,exclude_samp,greport)
+
 	if not cp_env=='':
 		os.system('cp Snakefiles_diff_options/Snakefile ./')
 		snakefile_modify('Snakefile', cp_env)
-	
+
+
+
 	tem_dir=out_dir+'/temp'
 	data_dir = out_dir + '/link'
 	build_dir(tem_dir)
@@ -383,7 +440,7 @@ def main():
 	#print(all_p,idle_p)
 	#exit()
 	sfile=process_input_sfile(input_file,out_dir,uid,tem_dir)
-	reset_exp_file(script_dir+'/experiment_info.yaml',out_dir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm,tem_dir)
+	reset_exp_file(script_dir+'/experiment_info.yaml',out_dir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm,tem_dir,min_cov_filt,min_cov_samp,exclude_samp,greport)
 
 	
 
