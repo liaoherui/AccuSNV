@@ -1096,24 +1096,41 @@ update - 3 - add dN/dS output
 '''
 f=open(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv','r')
 o=open(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv','w+')
+o2=open(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv','w+')
 line=f.readline()
 o.write(line)
 dk={}
+dl={}
 while True:
     line=f.readline().strip()
     if not line:break
     ele=line.split('\t')
-    if int(ele[1])==0:continue
-    o.write(line+'\n')
-    if ele[4]=='skip':
-        dk[int(ele[0])]=0
+    if int(ele[1])==0:
+        #continue
+        o2.write(line+'\n')
+        dl[int(ele[0])]=''
+        if ele[4]=='skip':
+            dk[int(ele[0])]=0
+        else:
+            dk[int(ele[0])]=float(ele[4])
     else:
-        dk[int(ele[0])]=float(ele[4])
+        o.write(line+'\n')
+        if ele[4]=='skip':
+            dk[int(ele[0])]=0
+        else:
+            dk[int(ele[0])]=float(ele[4])
 o.close()
 snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
+if len(dl)>0:
+    snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv', dir_output+'/snv_table_with_charts_label0.html', dir_output+'/bar_charts')
 keep_p=[]
 prob=[]
+label=[]
 for s in my_cmt_zero_rebuild.p:
+    if s in dl:
+        label.append(False)
+    else:
+        label.append(True)
     if s in dk:
         keep_p.append(True)
         prob.append(dk[s])
@@ -1123,7 +1140,8 @@ for s in my_cmt_zero_rebuild.p:
 
 keep_p=np.array(keep_p)
 my_cmt_zero_rebuild.filter_positions(keep_p)
-new_cmt={'sample_names': my_cmt_zero_rebuild.sample_names,'p':my_cmt_zero_rebuild.p,'counts':my_cmt_zero_rebuild.counts,'quals':my_cmt_zero_rebuild.quals,'in_outgroup':my_cmt_zero_rebuild.in_outgroup,'indel_counter':my_cmt_zero_rebuild.indel_stats,'prob':prob,'samples_exclude_bool':samples_to_exclude_bool}
+label=np.array(label)
+new_cmt={'sample_names': my_cmt_zero_rebuild.sample_names,'p':my_cmt_zero_rebuild.p,'counts':my_cmt_zero_rebuild.counts,'quals':my_cmt_zero_rebuild.quals,'in_outgroup':my_cmt_zero_rebuild.in_outgroup,'indel_counter':my_cmt_zero_rebuild.indel_stats,'prob':prob,'label':label,'samples_exclude_bool':samples_to_exclude_bool}
 np.savez_compressed(dir_output+'/candidate_mutation_table_final.npz', **new_cmt)
 
 # dN/dS part
