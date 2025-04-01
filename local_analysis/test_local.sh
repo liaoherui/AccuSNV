@@ -1,6 +1,6 @@
 python new_snv_script.py -i test_data/cae_pe_test/group_pe_test_candidate_mutation_table.npz -c  test_data/cae_pe_test/group_pe_test_coverage_matrix_raw.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_pe
 
-python accusnv_downstream.py -i  test_data/cae_pe_test/group_pe_test_candidate_mutation_table.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_ds_pe
+python accusnv_downstream.py -i  test_data/candidate_mutation_table_final.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_ds_pe
 
 #python new_snv_script.py -i test_data/cae_se_test/group_se_test_candidate_mutation_table.npz -c  test_data/cae_se_test/group_se_test_coverage_matrix_raw.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_se_new
 
