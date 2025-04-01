@@ -1101,6 +1101,7 @@ line=f.readline()
 o.write(line)
 dk={}
 dl={}
+dr={}
 while True:
     line=f.readline().strip()
     if not line:break
@@ -1119,6 +1120,8 @@ while True:
             dk[int(ele[0])]=0
         else:
             dk[int(ele[0])]=float(ele[4])
+    if int(ele[13])==1:
+        dr[int(ele[0])]=int(ele[13])
 o.close()
 snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
 if len(dl)>0:
@@ -1126,6 +1129,7 @@ if len(dl)>0:
 keep_p=[]
 prob=[]
 label=[]
+recomb=[]
 for s in my_cmt_zero_rebuild.p:
     if s in dl:
         label.append(False)
@@ -1136,12 +1140,18 @@ for s in my_cmt_zero_rebuild.p:
         prob.append(dk[s])
     else:
         keep_p.append(False)
+    if s in dr:
+        recomb.append(True)
+    else:
+        recomb.append(False)
 
 
 keep_p=np.array(keep_p)
 my_cmt_zero_rebuild.filter_positions(keep_p)
 label=np.array(label)
-new_cmt={'sample_names': my_cmt_zero_rebuild.sample_names,'p':my_cmt_zero_rebuild.p,'counts':my_cmt_zero_rebuild.counts,'quals':my_cmt_zero_rebuild.quals,'in_outgroup':my_cmt_zero_rebuild.in_outgroup,'indel_counter':my_cmt_zero_rebuild.indel_stats,'prob':prob,'label':label,'samples_exclude_bool':samples_to_exclude_bool}
+recomb=np.array(recomb)
+quals_new=my_cmt_zero_rebuild.quals* -1
+new_cmt={'sample_names': my_cmt_zero_rebuild.sample_names,'p':my_cmt_zero_rebuild.p,'counts':my_cmt_zero_rebuild.counts,'quals':quals_new,'in_outgroup':my_cmt_zero_rebuild.in_outgroup,'indel_counter':my_cmt_zero_rebuild.indel_stats,'prob':prob,'label':label,'recomb':recomb,'samples_exclude_bool':samples_to_exclude_bool}
 np.savez_compressed(dir_output+'/candidate_mutation_table_final.npz', **new_cmt)
 
 # dN/dS part
