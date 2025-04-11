@@ -368,7 +368,7 @@ else:
         samples_to_exclude=tem
     else:
         samples_to_exclude=[""]
-#print('Exclude samples are:',samples_to_exclude)
+print('Exclude samples are:',samples_to_exclude)
 #exit()
 
 #samples_to_exclude=["AHM_v0002_D02","AHM_v0002_D03","AHM_v0012_F12"]
