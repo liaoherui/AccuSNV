@@ -194,6 +194,16 @@ def plot_snv_counts_gpt(data_dict, odir=None, title="SNV Counts by Sample", figs
     # Adjust layout
     plt.tight_layout()
 
+    fig2,ax2 = plt.subplots(figsize=(figsize[0], figsize[1] * 0.7))
+    ax2.hist(counts, bins=20, color=color, alpha=0.7)
+    ax2.set_xlabel(ylabel + " Distribution", fontsize=12)
+    ax2.set_ylabel("Frequency", fontsize=12)
+    ax2.set_title("Histogram of SNV Counts")
+    ax2.grid(True, linestyle='--', alpha=0.5)
+
+    plt.tight_layout()
+
+
     # Save the figure if output directory is provided
     if odir is not None:
         # Create the directory if it doesn't exist
@@ -202,9 +212,11 @@ def plot_snv_counts_gpt(data_dict, odir=None, title="SNV Counts by Sample", figs
         # Define the output file path
         output_path = os.path.join(odir, "snvs_per_sample.png")
 
+
         # Save the figure
         fig.savefig(output_path, dpi=dpi, bbox_inches='tight')
-        print(f"Figure saved to: {output_path}")
+        fig2.savefig(os.path.join(odir, "snvs_histogram_per_sample.png"), dpi=dpi, bbox_inches='tight')
+        print(f"Figure saved to: {odir}")
 
     return fig, ax
 
@@ -356,7 +368,7 @@ else:
         samples_to_exclude=tem
     else:
         samples_to_exclude=[""]
-print('Exclude samples are:',samples_to_exclude)
+#print('Exclude samples are:',samples_to_exclude)
 #exit()
 
 #samples_to_exclude=["AHM_v0002_D02","AHM_v0002_D03","AHM_v0012_F12"]
