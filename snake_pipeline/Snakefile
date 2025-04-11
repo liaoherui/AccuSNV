@@ -621,7 +621,7 @@ if flag == "mapping" or flag == "all":
         output:
             fasta_idx = REF_GENOME_DIRECTORY + "/{reference}/genome.fasta.fai",
         shell:
-            "source  accusnv_sub/3cbbde50211f350111549704ca420ad4_/bin/activate ;"
+            "source accusnv_sub/3cbbde50211f350111549704ca420ad4_/bin/activate ;"
             " samtools faidx {input.fasta} ; "
 
     # Processes BAM file into VCF files
