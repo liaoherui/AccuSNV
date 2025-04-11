@@ -414,6 +414,7 @@ def main():
 	#snakefile_modify_accusnv('Snakefile',min_cov_filt,min_cov_samp,exclude_samp,greport)
 
 	if not cp_env=='':
+		cp_env=os.path.abspath(cp_env)
 		os.system('cp Snakefiles_diff_options/Snakefile ./')
 		snakefile_modify('Snakefile', cp_env)
 
