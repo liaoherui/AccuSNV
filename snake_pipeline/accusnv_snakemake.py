@@ -13,6 +13,15 @@ script_dir=os.path.split(os.path.abspath(__file__))[0]
 def build_dir(indir):
     if not os.path.exists(indir):
         os.makedirs(indir)
+def del_same(arr1,arr2):
+    if len(arr1)>1:
+        for a in arr1:
+            if a in arr2:
+                arr1.remove(a)
+    if len(arr2)>1:
+        for a in arr2:
+            if a in arr1:
+                arr2.remove(a)
 
 def findfastqfile(dr, smple, filename):
     ##### Add by Herui - 20240919 - Modified function based on the codes from Evan
@@ -44,8 +53,9 @@ def findfastqfile(dr, smple, filename):
                              if re.search(f"{filename}/.*_?.*?R?1({'|'.join(file_suffixs)})", f)]
         files_R = files_R + [f"{filename}/{f}" for f in target_f
                              if re.search(f"{filename}/.*_?.*?R?2({'|'.join(file_suffixs)})", f)]
+
     #print(files_F,files_R)
-    #exit()
+    del_same(files_F,files_R)
     if len(files_F) == 0 and len(files_R) == 0:
         # Can be single-end reads and no "1" or "2" ID in the filename
         print(f'No file found in {dr} for sample {smple} with prefix {filename}! Go single-end checking!')
