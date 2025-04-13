@@ -121,7 +121,7 @@ One example with test data can be found in `local_analysis/test_local.sh`
 
 The second portion of AccuSNV filters candidate SNVs based on data arrays generated in the first portion and generates a high-quality SNV table and a parsimony tree. This step utilizes deep learning and is implemented with a custom Python script. More information can be found [here](readme_files/readme_local_main.md).
 
-### 2.1. Local downstream analysis
+### 2.2. Local downstream analysis
 
 
 
