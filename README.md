@@ -111,13 +111,19 @@ Note: If you need to modify any slurm job configuration, you can edit the config
 
 
 
-### 2. Local python analysis
+### 2.1. Local python analysis
+
+Note: This step has been incorporated into the Snakemake pipeline and will be executed automatically by default. However, you can still use this local Python script to rerun the analysis with different parameters if needed.
 
 `python new_snv_script.py -i <input_mutation_table> -c <input_raw_coverage_matrix> -r <ref_dir> -o <output_dir>`
 
 One example with test data can be found in `local_analysis/test_local.sh`
 
 The second portion of AccuSNV filters candidate SNVs based on data arrays generated in the first portion and generates a high-quality SNV table and a parsimony tree. This step utilizes deep learning and is implemented with a custom Python script. More information can be found [here](readme_files/readme_local_main.md).
+
+### 2.1. Local downstream analysis
+
+
 
 
 ## Output
