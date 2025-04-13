@@ -1,4 +1,4 @@
-# High-accuracy SNV calling for bacterial isolates using AccuSNV (Local test version by Herui)
+# <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/logo.png" width = "100" height = "100" >  High-accuracy SNV calling for bacterial isolates using AccuSNV (Local test version by Herui)
 -------------------------------------------------
 
 ### Version: Vxxxx (update on 2025-02-21)
@@ -121,6 +121,8 @@ The second portion of AccuSNV filters candidate SNVs based on data arrays genera
 
 
 ## Output
+
+<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/output_downstream_new_single.png" width = "650" height = "550" >  
 
 <!--- ## Tutorial Table of Contents
 
