@@ -1,4 +1,4 @@
-# <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/logo.png" width = "100" height = "100" >  High-accuracy SNV calling for bacterial isolates using AccuSNV (Local test version by Herui)
+# <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/logo.png" width = "100" height = "100" >  High-accuracy SNV calling for bacterial isolates using AccuSNV 
 -------------------------------------------------
 
 ### Version: Vxxxx (update on 2025-02-21)
