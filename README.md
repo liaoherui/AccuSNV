@@ -128,7 +128,7 @@ The second portion of AccuSNV filters candidate SNVs based on data arrays genera
 
 ## Output
 
-<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/output_downstream_new_single.png" width = "650" height = "550" >  
+<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/output_downstream_new_single.png" width = "700" height = "650" >  
 
 <!--- ## Tutorial Table of Contents
 
