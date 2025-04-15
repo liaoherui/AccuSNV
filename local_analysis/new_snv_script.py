@@ -1145,19 +1145,31 @@ prob=[]
 label=[]
 recomb=[]
 for s in my_cmt_zero_rebuild.p:
+    '''
     if s in dl:
         label.append(False)
     else:
         label.append(True)
+    '''
     if s in dk:
         keep_p.append(True)
         prob.append(dk[s])
+        if s in dl:
+            label.append(False)
+        else:
+            label.append(True)
+        if s in dr:
+            recomb.append(True)
+        else:
+            recomb.append(False)
     else:
         keep_p.append(False)
+    '''
     if s in dr:
         recomb.append(True)
     else:
         recomb.append(False)
+    '''
 
 
 keep_p=np.array(keep_p)
