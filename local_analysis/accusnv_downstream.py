@@ -24,6 +24,7 @@ parser.add_argument('-i','--input_mat',dest='input_mat',type=str,required=True,h
 parser.add_argument('-r','--ref_dir',dest='ref_dir',type=str,help="The dir of your reference genomes")
 parser.add_argument('-c','--min_cov_for_call',dest='min_cov',type=str,help="For the fill-N module: on individual samples, calls must have at least this many fwd+rev reads. Default is 1.")
 parser.add_argument('-q','--min_qual_for_call',dest='min_qual',type=str,help="For the fill-N module: on individual samples, calls must have at least this minimum quality score. Default is 30.")
+parser.add_argument('-b','--exclude_recomb',type=str,help="Whether included SNVs from potential recombinations. Default included. Set \"-b 1\" to exclude these positions in downstream analysis modules.")
 parser.add_argument('-f','--min_freq_for_call',dest='min_freq',type=str,help="For the fill-N module: on individual samples, a call's major allele must have at least this freq. Default is 0.75.")
 parser.add_argument('-o','--output_dir',dest='output_dir',type=str,help="The output dir")
 args = parser.parse_args()
@@ -48,6 +49,7 @@ ref_dir=args.ref_dir
 fn_min_cov=args.min_cov
 fn_min_qual=args.min_qual
 fn_min_freq=args.min_freq
+eb=args.exclude_recomb
 output_dir=args.output_dir
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -55,6 +57,7 @@ if not os.path.exists(output_dir):
 fn_min_cov=set_para_int(fn_min_cov,1)
 fn_min_qual=set_para_int(fn_min_qual,30)
 fn_min_freq=set_para_float(fn_min_freq,0.75)
+eb=set_para_int(eb,0)
 
 
 [quals,p,counts,in_outgroup,sample_names,indel_counter] = \
@@ -72,13 +75,25 @@ with open(input_mat, 'rb') as f:
     cmt = np.load(f)
     prob = np.array(cmt['prob'])
     label = np.array(cmt['label'])
+    #print(len(cmt['prob']))
+    #print(len(cmt['label']))
+    #print(len(cmt['recomb']))
     recomb = np.array(cmt['recomb'])
 
 # by default - will use label=1 positions
 filt_pos= label
 filt_pos2 = ~recomb
+#print(len(filt_pos))
+#print(len(filt_pos2))
+#filt_pos=np.array(filt_pos)
+#print(my_cmt.p.shape)
+#print(filt_pos2)
+if eb==1:
+    filt_pos=filt_pos & filt_pos2
+#print(filt_pos)
+#exit()
 my_cmt.filter_positions(filt_pos)
-my_cmt.filter_positions(filt_pos2)
+#my_cmt.filter_positions(filt_pos2)
 my_calls = snv.calls_object( my_cmt )
 my_rg = snv.reference_genome_object( ref_dir )
 my_rg_annot = my_rg.annotations
@@ -140,7 +155,7 @@ num_samples_ingroup = sum( np.logical_not( my_calls.in_outgroup ) )
 
 # Make a table (pandas dataframe) of SNV positions and relevant annotations
 # # Pull alleles from reference genome across p
-calls_reference = my_rg.get_ref_NTs_as_ints( p )
+calls_reference = my_rg.get_ref_NTs_as_ints( my_cmt.p )
 
 # # Update ancestral alleles
 pos_to_update = ( calls_ancestral==0 )
