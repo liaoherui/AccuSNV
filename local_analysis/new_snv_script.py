@@ -1136,6 +1136,7 @@ while True:
     if int(ele[13])==1:
         dr[int(ele[0])]=int(ele[13])
 o.close()
+o2.close()
 snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
 if len(dl)>0:
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv', dir_output+'/snv_table_with_charts_label0.html', dir_output+'/bar_charts')
