@@ -1111,6 +1111,7 @@ o=open(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv','w+')
 o2=open(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv','w+')
 line=f.readline()
 o.write(line)
+o2.write(line)
 dk={}
 dl={}
 dr={}
