@@ -134,6 +134,10 @@ Based on the identified SNVs and the output final mutation table (in .npz format
 
 <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/output_downstream_new_single.png" width = "700" height = "650" >  
 
+Important and major output files:
+
+
+
 <!--- ## Tutorial Table of Contents
 
 [Main WideVariant pipeline README](README.md)
