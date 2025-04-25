@@ -128,6 +128,75 @@ Based on the identified SNVs and the output final mutation table (in .npz format
 `python accusnv_downstream.py -i  test_data/candidate_mutation_table_final.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_ds_pe`
 
 
+### Full command-line options
+
+Snakemake pipeline - accusnv_snakemake.py 
+```
+AccuSNV - SNV calling tool for bacterial isolates using deep learning.
+
+options:
+  -h, --help            show this help message and exit
+  -i INPUT_SP, --input_sample_info INPUT_SP
+                        The dir of input sample info file --- Required
+  -t TF_SLURM, --turn_off_slurm TF_SLURM
+                        If set to 1, the SLURM system will not be used for automatic job
+                        submission. Instead, all jobs will run locally or on a single
+                        node. (Default: 0)
+  -c CP_ENV, --conda_prebuilt_env CP_ENV
+                        The absolute dir of your pre-built conda env. e.g.
+                        /path/snake_pipeline/accusnv_sub
+  -r REF_DIR, --ref_dir REF_DIR
+                        The dir of your reference genomes
+  -s MIN_COV_SAMP, --min_cov_for_filter_sample MIN_COV_SAMP
+                        Before running the CNN model, low-quality samples with more than
+                        45% of positions having zero aligned reads will be filtered out.
+                        (default "-s 45") You can adjust this threshold with this
+                        parameter; to include all samples, set "-s 100".
+  -v MIN_COV, --min_cov_for_filter_pos MIN_COV
+                        For the filter module: on individual samples, calls must have at
+                        least this many reads on the fwd/rev strands individually. If
+                        many samples have low coverage (e.g. <5), then you can set this
+                        parameter to smaller value. (e.g. -v 2). Default is 5.
+  -e EXCLUDE_SAMP, --excluse_samples EXCLUDE_SAMP
+                        The names of the samples you want to exclude (e.g. -e S1,S2,S3).
+                        If you specify a number, such as "-e 1000", any sample with more
+                        than 1,000 SNVs will be automatically excluded.
+  -g GENERATE_REP, --generate_report GENERATE_REP
+                        If not generate html report and other related files, set to 0.
+                        (default: 1)
+  -o OUT_DIR, --output_dir OUT_DIR
+                        Output dir (default: current dir/wd_out_(uid), uid is generated
+                        randomly)
+
+```
+
+Local downstream analysis - accusnv_downstream.py
+
+```
+SNV calling tool for bacterial isolates using deep learning.
+
+options:
+  -h, --help            show this help message and exit
+  -i INPUT_MAT, --input_mat INPUT_MAT
+                        The input mutation table in npz file
+  -r REF_DIR, --ref_dir REF_DIR
+                        The dir of your reference genomes
+  -c MIN_COV, --min_cov_for_call MIN_COV
+                        For the fill-N module: on individual samples, calls must have at
+                        least this many fwd+rev reads. Default is 1.
+  -q MIN_QUAL, --min_qual_for_call MIN_QUAL
+                        For the fill-N module: on individual samples, calls must have at
+                        least this minimum quality score. Default is 30.
+  -b EXCLUDE_RECOMB, --exclude_recomb EXCLUDE_RECOMB
+                        Whether included SNVs from potential recombinations. Default
+                        included. Set "-b 1" to exclude these positions in downstream
+                        analysis modules.
+  -f MIN_FREQ, --min_freq_for_call MIN_FREQ
+                        For the fill-N module: on individual samples, a call's major
+                        allele must have at least this freq. Default is 0.75.
+  -o OUTPUT_DIR, --output_dir OUTPUT_DIR
+                        The output dir
+```
 
 
 ## Output
