@@ -203,13 +203,12 @@ options:
 
 <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/output_downstream_new_single.png" width = "700" height = "650" >  
 
-The main output folder structure from Snakemake pipeline is shown below:
+The main output folder structure of Snakemake pipeline is shown below:
 
 ```
 1-Mapping - Alignment temporary files
 2-Case - candidate mutation tables for 3-AccuSNV
 3-AccuSNV - Main output of Snakemake pipeline
-	
 ```
 
 
