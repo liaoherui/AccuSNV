@@ -213,6 +213,14 @@ The main output folder structure of Snakemake pipeline is shown below:
 
 
 Important and major output files:
+Header    |Description	
+------------ | ------------- 
+candidate_mutation_table_final.npz | NPZ table used for downstream analysis modules.
+snv_table_merge_all_mut_annotations_final.tsv | Text report - contain identified SNVs and related information.
+snv_qc_heatmap_*.png | QC figures
+snv_table_with_charts_final.html | Html report - display the comprehensive information about identified SNVs. Note, if you want to see the bar charts in the html file, make sure you have the folder "bar_charts" under the same folder with the html file.
+
+
 
 
 
