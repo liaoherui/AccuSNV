@@ -25,6 +25,7 @@ rc('font', **{'sans-serif':'Arial'})
 
 def mutation_count(inputtree, lca):
 	#print(inputtree,lca)
+	#exit()
 	emptycount=0
 	ambiguous=['R','Y','M','K','S','W']
 	ACGT=['A','C','T','G']
@@ -86,24 +87,34 @@ def load_chr(chart):
 	return chromosomes
 
 
-def convert_csv(chart_raw,out):
+def convert_csv(chart_raw,mode,out):
+	# if mode == 1 -> used in the Snakemake pipeline, mode==2 -> used in the downstream analysis module
 	chart = out + '/snpChart.csv'
 	df = pd.read_csv(chart_raw, sep='\t')
 	c=0
 	raw_pos=[]
 	keep_col=['contig_idx','contig_pos']
+	#print(df.columns)
+	#exit()
 	for col in df.columns:
-		if c==0:
-			c+=1
-			raw_pos=np.array(df[col])
+		if c == 0:
+			c += 1
+			raw_pos = np.array(df[col])
 			continue
-		if c < 34:
-			# if col=='contig_idx' or col=='contig_pos':
-			# 	keep_col.append(col)
-			c+=1
-			continue
+		if mode==1:
+			if c < 34:
+				# if col=='contig_idx' or col=='contig_pos':
+				# 	keep_col.append(col)
+				c+=1
+				continue
+		else:
+			if c < 19:
+				c+=1
+				continue
+
 		if re.search('sequence', col): continue
 		if re.search('transl', col): continue
+		if re.search('Unnamed', col): continue
 		keep_col.append(col)
 	#print(keep_col)
 	#exit()
@@ -116,9 +127,9 @@ def convert_csv(chart_raw,out):
 		
 
 
-def mutationtypes(tree, chart_raw,out):
+def mutationtypes(tree, chart_raw,mode,out):
 
-	chart,raw_pos=convert_csv(chart_raw, out)
+	chart,raw_pos=convert_csv(chart_raw,mode,out)
 	#print(chart,raw_pos)
 	#exit()
 
