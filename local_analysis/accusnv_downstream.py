@@ -12,20 +12,34 @@ import re
 import copy
 import argparse
 from scipy import stats
+
+import traceback
 # Import Lieberman Lab SNV-calling python package
 script_dir = os.path.dirname(os.path.abspath(__file__))
 dir_py_scripts = script_dir+"/modules"
 sys.path.insert(0, dir_py_scripts)
 import snv_module_recoded_with_dNdS as snv
+import build_SNP_Tree as bst
 
 parser=argparse.ArgumentParser(prog='Downstream analysis module of AccuSNV',description='SNV calling tool for bacterial isolates using deep learning.')
 parser.add_argument('-i','--input_mat',dest='input_mat',type=str,required=True,help="The input mutation table in npz file")
 #parser.add_argument('-t','--input_report',dest='input_report',type=str,required=True,help="The input of the full annotation dataframe (snv_table_merge_all_mut_annotations.tsv) output by accusnv_snakemake")
 parser.add_argument('-r','--ref_dir',dest='ref_dir',type=str,help="The dir of your reference genomes")
+
+# Manual filtering parameters - used for fill-N modules for individual samples. (Decide whether the base of the specific sample shown as 'N' or the 'ATGC')
 parser.add_argument('-c','--min_cov_for_call',dest='min_cov',type=str,help="For the fill-N module: on individual samples, calls must have at least this many fwd+rev reads. Default is 1.")
 parser.add_argument('-q','--min_qual_for_call',dest='min_qual',type=str,help="For the fill-N module: on individual samples, calls must have at least this minimum quality score. Default is 30.")
-parser.add_argument('-b','--exclude_recomb',type=str,help="Whether included SNVs from potential recombinations. Default included. Set \"-b 1\" to exclude these positions in downstream analysis modules.")
 parser.add_argument('-f','--min_freq_for_call',dest='min_freq',type=str,help="For the fill-N module: on individual samples, a call's major allele must have at least this freq. Default is 0.75.")
+
+# Three new manual filtering parameters for further filtering identified SNVs, updated on 2025-05-23 - There parameters are turned off by default.
+parser.add_argument('-d','--max_frac_reads_supporting_indel',dest='max_indel',type=float,help="For the manual filtering module: on individual samples, no more than this fraction of reads can support an indel at any given position. (Default: turn off, referece value: -d 0.33)")
+parser.add_argument('-g','--max_fraction_ambigious_samples',dest='min_freq',type=float,help="For the manual filtering module: across samples per position, the fraction of samples that can have undefined bases. (Default: turn off, referece value: -g 0.25)")
+parser.add_argument('-m','--min_median_coverage_position',dest='min_med_cov',type=int,help="For the manual filtering module:across samples per position, the median coverage. (Default: turn off, referece value: -m 5)")
+#parser.add_argument('-p','--max_mean_copynum',dest='max_mean_cp',type=int,help="Mean copy number at a positions across all samples. (Default: turn off, referece value: -p 4)")
+#parser.add_argument('-x','--max_max_copynum',dest='max_max_cp',type=int,help="Max maximum copynumber that a site can have across all samples. (Default: turn off, referece value: -x 7)")
+
+parser.add_argument('-b','--exclude_recomb',type=str,help="Whether included SNVs from potential recombinations. Default included. Set \"-b 1\" to exclude these positions in downstream analysis modules.")
+
 parser.add_argument('-o','--output_dir',dest='output_dir',type=str,help="The output dir")
 args = parser.parse_args()
 
@@ -43,12 +57,28 @@ def set_para_float(invalue,expect):
         invalue=float(invalue)
     return invalue
 
+def search_ref_name(refg):
+    pre=''
+    #fname=''
+    for filename in os.listdir(refg):
+        if re.search('fa',filename) or re.search('fna',filename):
+            pre=re.split('\.',filename)[0]
+
+            break
+    return pre
+
 input_mat=args.input_mat
 #input_report=args.input_report
 ref_dir=args.ref_dir
+ref_genome_name = search_ref_name(ref_dir)
 fn_min_cov=args.min_cov
 fn_min_qual=args.min_qual
 fn_min_freq=args.min_freq
+max_indel=args.max_indel
+min_freq=args.min_freq
+min_med_cov=args.min_med_cov
+
+
 eb=args.exclude_recomb
 output_dir=args.output_dir
 if not os.path.exists(output_dir):
@@ -59,6 +89,8 @@ fn_min_qual=set_para_int(fn_min_qual,30)
 fn_min_freq=set_para_float(fn_min_freq,0.75)
 eb=set_para_int(eb,0)
 
+#print(max_indel,min_avg_cov,type(max_frac),min_freq,type(min_med_cov),max_mean_cp,max_max_cp)
+#exit()
 
 [quals,p,counts,in_outgroup,sample_names,indel_counter] = \
     snv.read_candidate_mutation_table_npz(input_mat)
@@ -71,13 +103,12 @@ my_cmt = snv.cmt_data_object( sample_names,
                              indel_counter
                              )
 
+#print(my_cmt.counts)
+#exit()
 with open(input_mat, 'rb') as f:
     cmt = np.load(f)
     prob = np.array(cmt['prob'])
     label = np.array(cmt['label'])
-    #print(len(cmt['prob']))
-    #print(len(cmt['label']))
-    #print(len(cmt['recomb']))
     recomb = np.array(cmt['recomb'])
 
 # by default - will use label=1 positions
@@ -99,18 +130,33 @@ my_rg = snv.reference_genome_object( ref_dir )
 my_rg_annot = my_rg.annotations
 #exit()
 
+
+# Apply looser filters than before (want as many alleles as possible)
+
+
+
 '''
 Fill-N module: fill N for samples with a loose filter cutoff
 '''
-# Apply looser filters than before (want as many alleles as possible)
+# Remove sites within samples that are not high quality
 filter_parameter_calls_for_tree = {
                                     'min_cov_for_call' : fn_min_cov, # on individual samples, calls must have at least this many fwd+rev reads
                                     'min_qual_for_call' : fn_min_qual, # on individual samples, calls must have this minimum quality score
                                     'min_major_nt_freq_for_call' : fn_min_freq,  # on individual samples, a call's major allele must have at least this freq
+                                    'max_frac_reads_supporting_indel' : max_indel   # on individual samples, no more than this fraction of reads can support an indel at any given position
                                     }
 
-
-
+'''
+Manual filtering module: filter SNVs using filtering cutoff (same as those in WideVariant)
+'''
+# Remove sites across samples that are not high quality
+filter_parameter_site_across_samples = {
+                                        'max_fraction_ambigious_samples' : min_freq, # across samples per position, the fraction of samples that can have undefined bases # default: 1
+                                        'min_median_coverage_position' : min_med_cov, # across samples per position, the median coverage # default: 5
+                                        }
+'''
+Fill-N module
+'''
 my_calls.filter_calls_by_element(
     my_cmt.coverage < filter_parameter_calls_for_tree['min_cov_for_call']
     ) # forward strand coverage too low
@@ -122,6 +168,47 @@ my_calls.filter_calls_by_element(
 my_calls.filter_calls_by_element(
     my_cmt.major_nt_freq < filter_parameter_calls_for_tree['min_major_nt_freq_for_call']
     ) # major allele frequency too low
+
+'''
+Manual filtering module
+'''
+
+#print(my_cmt.fwd_cov)
+#print(filter_parameter_calls_for_tree['min_cov_for_call'])
+#exit()
+
+my_calls.filter_calls_by_element(
+    my_cmt.fwd_cov < filter_parameter_calls_for_tree['min_cov_for_call']
+    ) # forward strand coverage too low
+
+my_calls.filter_calls_by_element(
+    my_cmt.rev_cov < filter_parameter_calls_for_tree['min_cov_for_call']
+    ) # reverse strand coverage too low
+
+if max_indel:
+    with np.errstate(divide='ignore', invalid='ignore'):
+        # compute number of reads supporting an indel
+        frac_reads_supporting_indel = np.sum(my_cmt.indel_stats,axis=2) / my_cmt.coverage  # sum reads supporting insertion plus reads supporting deletion
+        frac_reads_supporting_indel[~np.isfinite(frac_reads_supporting_indel)] = 0
+        # note: this fraction can be above zero beacuse the number of reads supporting an indel includes a +/-3 bp window around a given position on the genome
+    my_calls.filter_calls_by_element(
+        frac_reads_supporting_indel > filter_parameter_calls_for_tree['max_frac_reads_supporting_indel']
+    )  # too many reads supporting indels
+    print('Indel-based filter finished.')
+
+if min_freq:
+    my_calls.filter_calls_by_position(
+        my_calls.get_frac_Ns_by_position() > filter_parameter_site_across_samples['max_fraction_ambigious_samples']
+    )  # too many samples with ambiuguous calls at this position
+
+if min_med_cov:
+    my_calls.filter_calls_by_position(
+        np.median(my_cmt.coverage, axis=0) < filter_parameter_site_across_samples['min_median_coverage_position']
+    )  # insufficient median coverage across samples at this position
+
+
+#exit()
+
 #print(my_calls.calls)
 #exit()
 ###############################################
@@ -160,8 +247,9 @@ calls_reference = my_rg.get_ref_NTs_as_ints( my_cmt.p )
 # # Update ancestral alleles
 pos_to_update = ( calls_ancestral==0 )
 calls_ancestral[ pos_to_update ] = calls_reference[ pos_to_update ]
-goodpos_bool=arr = np.ones(len(my_cmt.p), dtype=bool)
-goodpos_idx = np.where( goodpos_bool )[0]
+#goodpos_bool=arr = np.ones(len(my_cmt.p), dtype=bool)
+#goodpos_bool = np.ones(len(my_cmt.p), dtype=bool)
+#goodpos_idx = np.where( goodpos_bool )[0]
 calls_goodpos_all = my_calls.calls
 calls_goodpos_ingroup_all = calls_goodpos_all[ np.logical_not( my_calls.in_outgroup ),: ]
 
@@ -174,6 +262,13 @@ fixedmutation = \
     filter_SNVs_not_N \
     & filter_SNVs_not_ancestral_allele 
 
+goodpos_bool = np.any( fixedmutation, axis=0 )
+my_cmt.filter_positions( goodpos_bool )
+my_calls.filter_positions( goodpos_bool )
+
+goodpos_idx = np.where( goodpos_bool )[0]
+#print(goodpos_bool)
+#exit()
 p_goodpos_all = my_calls.p
 goodpos_idx_all = np.where( goodpos_bool)[0]
 
@@ -189,7 +284,9 @@ mutations_annotated = snv.annotate_mutations( \
     mut_qual[:,goodpos_bool].flatten(), \
     promotersize \
     )
-
+'''
+Output new annotated text report and the SNV-based phylogenetic tree
+'''
 
 # Choose subset of samples or positions to use in the tree by idx
 samplestoplot = np.arange(my_cmt.num_samples) # default is to use all samples
@@ -198,9 +295,44 @@ goodpos4tree = np.arange(num_goodpos_all) # default is to use all positions
 treesampleNamesLong = my_cmt.sample_names
 calls_for_treei = my_calls.calls[np.ix_(samplestoplot, goodpos4tree)]  # numpy broadcasting of row_array and col_array requires np.ix_()
 calls_for_tree = snv.ints2nts(calls_for_treei)  # NATCG translation
+
+# Sample names for tree
+for i, samplename in enumerate(treesampleNamesLong):
+    if not samplename[0].isalpha():
+        treesampleNamesLong[i] = 'S' + treesampleNamesLong[
+            i]  # sample names are modified to make parsing easier downstream
+sampleNamesDnapars = ["{:010d}".format(i) for i in range(my_cmt.num_samples)]
+
+#print(calls_ancestral.shape,calls_ancestral)
+#print(calls_ancestral[goodpos_idx].shape,calls_ancestral[goodpos_idx])
+# Add inferred ancestor and reference
+calls_ancestral_for_tree = np.expand_dims(snv.ints2nts(calls_ancestral[goodpos_idx]), axis=0)
+calls_reference_for_tree = np.expand_dims(my_rg.get_ref_NTs(my_calls.p), axis=0)
+calls_for_tree_all = np.concatenate((calls_ancestral_for_tree, calls_reference_for_tree, calls_for_tree),axis=0)  # first column now outgroup_nts; outgroup_nts[:, None] to make ndims (2) same for both
+sampleNamesDnapars_all = np.append(['Sanc', 'Sref'], sampleNamesDnapars)
+treesampleNamesLong_all = np.append(['inferred_ancestor', 'reference_genome'], treesampleNamesLong)
+
+try:
+    # Build tree
+    snv.generate_tree( \
+        calls_for_tree_all.transpose(), \
+        treesampleNamesLong_all, \
+        sampleNamesDnapars_all, \
+        ref_genome_name, \
+        output_dir, \
+        "snv_tree_" + ref_genome_name, \
+        buildTree='PS' \
+        )
+except Exception as e:
+    print('#### error skip #####: something wrong in snv.generate_tree... skip...')
+    print(f"Error message: {str(e)}")
+    traceback.print_exc()
+
+
+
 ###############################################
-
-
+### Output the new SNV table in text format ###
+###############################################
 
 output_tsv_filename = output_dir + '/snv_table_mutations_annotations.tsv'
 snv.write_mutation_table_as_tsv( \
@@ -214,7 +346,18 @@ snv.write_mutation_table_as_tsv( \
  \
     )
 
+################################################################################
+### Identify the number of homoplasic SNVs and rebuild the tree for each SNV ###
+################################################################################
+try:
+    bst.mutationtypes(output_dir + "/snv_tree_genome_latest.nwk.tree",output_dir + '/snv_table_mutations_annotations.tsv',2, output_dir)
+except Exception as e:
+    print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
+    print(f"Error message: {str(e)}")
+    traceback.print_exc()
+
 #exit()
+
 
 """
 @author: Alyssa Mitchell, 2025.03.20
