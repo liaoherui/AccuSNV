@@ -60,9 +60,8 @@ Change the permission of the file:<BR/>
 This pipeline and toolkit is used to detect and analyze single nucleotide differences between closely related bacterial isolates. 
 
 * Noteable features
-	* Avoids false-negative mutations due to low coverage; if a mutation is found in at least one isolate in a set, the evidence at that position will be investigated to make a best-guess call.
-	* Avoids false-positives mutations by facilitating visualization of raw data, across samples (whereas pileup formats must be investigated on a sample-by-sample basis) and changing of threshold to best fit your use case.
-	* Enables easy evolutionary analysis, including phylogenetic construction, nonsynonmous vs synonymous mutation counting, and parallel evolution
+	* Avoids false negatives from low coverage and false positives through a deep learning method, while also enabling visualization of raw data.
+	* Enables easy evolutionary analysis, including phylogenetic construction, nonsynonmous vs synonymous mutation counting, and parallel evolution, etc.
 
 
 * Inputs (to Snakemake cluster step): 
