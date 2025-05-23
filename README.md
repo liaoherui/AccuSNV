@@ -70,13 +70,13 @@ This pipeline and toolkit is used to detect and analyze single nucleotide differ
 * Outputs (of downstream analysis step): 
 	* table of high-quality SNVs that differentiate isolates from each other
 	* parsimony tree of how the isolates are related to each other
-   	* More details can be found in [here](#real-cool-heading)
+   	* More details can be found in [here](#output)
 
 The pipeline is split into two main components, as described below. 
 
 ### 1. Snakemake pipeline
 
-The first portion of AccuSNV aligns raw sequencing data from bacterial isolates to a reference genome, identifies candidate SNV positions, and creates useful data structure for supervised local data filtering. This step is implemented in a workflow management system called [Snakemake](http://snakemake.readthedocs.io) and is executed on a [SLURM cluster](https://slurm.schedmd.com/documentation.html). More information is available [here](#output).
+The first portion of AccuSNV aligns raw sequencing data from bacterial isolates to a reference genome, identifies candidate SNV positions, and creates useful data structure for supervised local data filtering. This step is implemented in a workflow management system called [Snakemake](http://snakemake.readthedocs.io) and is executed on a [SLURM cluster](https://slurm.schedmd.com/documentation.html). More information is available [here](readme_files/readme_snake_main.md).
 
 <!--- #### 1.1 Update - 2025-02-21: A user-friendly Python script is now available to help users run the pipeline more easily. Instructions are provided below:
 
