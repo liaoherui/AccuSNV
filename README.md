@@ -47,7 +47,16 @@ Change the permission of the file:<BR/>
 
 ### Option-3 (via Bioconda, under processing)
 
+------------------------------------------------------------------------------------
+Once you finish the install, you can test the tool with the command lines below :<BR/>
 
+Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
+`sh test_run.sh`<BR/>
+`sh script/dry-run.sh`<BR/>
+`sbatch script/run_snakemake.slurm`<BR/>
+
+Test downstream analysis - Under `local_analysis` folder:<BR/>
+`sh test_local.sh`<BR/>
 
 ## Overview
 
