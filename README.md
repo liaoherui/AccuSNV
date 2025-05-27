@@ -34,7 +34,7 @@ Change the permission of the file:<BR/>
 `cd AccuSNV/snake_pipeline`<BR/>
 
 Build the conda environment:<BR/>
-`conda env create -n accusnv_env --file accusnv.yaml` or <BR/>`mamba env create -n accusnv_env --file accusnv.yaml` <BR/> <BR/>
+`conda env create -n accusnv_env --file accusnv.yaml` or <BR/>`mamba env create -n accusnv_env --file accusnv.yaml` <BR/>
 
 Activate the conda environment:<BR/>
 `conda activate accusnv_env`<BR/>
@@ -46,7 +46,6 @@ Change the permission of the file:<BR/>
 `chmod 777 slurm_status_script.py`<BR/>
 
 ### Option-3 (via Bioconda, under processing)
-
 
 
 
