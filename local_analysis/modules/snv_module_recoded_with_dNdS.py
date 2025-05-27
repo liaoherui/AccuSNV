@@ -2783,6 +2783,7 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
         dnapars_path = glob.glob('dnapars')
         path_extension = "../"
         backstop = 0
+        '''
         while len(dnapars_path) == 0 and backstop <= 5:
             dnapars_path = glob.glob(path_extension+'dnapars')
             path_extension = path_extension + "../"
@@ -2791,6 +2792,7 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
             raise ValueError('dnapars executable could not be located.')
         elif dnapars_path[0]=='dnapars':
             dnapars_path[0] = 'dnapars'
+        '''
         # write parameter file
         with open(timestamp+"_options.txt",'w') as file:
             file.write(timestamp+".phylip"+"\n")
