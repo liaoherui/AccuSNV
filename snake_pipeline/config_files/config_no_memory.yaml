@@ -25,7 +25,6 @@ cluster:
     --partition={resources.partition}
     --ntasks={resources.ntasks}
     --cpus-per-task={resources.cpus_per_task}
-    --mem={resources.mem}
     --time={resources.time}
     --job-name="SM.{rule}"
     --output="./logs/%j_{rule}.err.txt"
