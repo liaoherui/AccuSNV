@@ -68,6 +68,7 @@ import pandas as pd
 from scipy import stats
 import datetime, time
 import matplotlib.pyplot as plt
+import traceback
 
 
 # Some functions needed for subsequent steps
@@ -1051,8 +1052,10 @@ if num_goodpos_all > 0:
             "snv_tree_" + ref_genome_name, \
             buildTree='PS' \
             )
-    except:
+    except Exception as e:
         print('#### error skip #####: something wrong in snv.generate_tree... skip...')
+        print(f"Error message: {str(e)}")
+        traceback.print_exc()
 
 
 
@@ -1086,8 +1089,10 @@ if num_goodpos>0:
     # Generate the tree for each identified SNPs
     try:
         bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output)
-    except:
+    except Exception as e:
         print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
+        print(f"Error message: {str(e)}")
+        traceback.print_exc()
     # # Contain all positions identified by CNN or WideVariant - even those false positions
     # snv.write_mutation_table_as_tsv( \
     #     p_goodpos_all, \
