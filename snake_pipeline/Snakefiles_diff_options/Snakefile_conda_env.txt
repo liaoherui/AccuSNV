@@ -408,30 +408,22 @@ if flag == "case":
                 shell=True)
             for idx, ele in enumerate(SAMPLE_ls):
                 subprocess.run(
-                    f"ln -fs -T {
-                        PATH_ls[idx]}/1-Mapping/diversity/{
-                        SAMPLE_ls[idx]}_ref_{
-                        REF_Genome_ls[idx]}_*diversity* 1-Mapping/diversity/{
-                        SAMPLE_ls[idx]}_ref_{
-                        REF_Genome_ls[idx]}_outgroup{
-                            OUTGROUP_ls[idx]}.diversity.pickle.gz",
+                    f"ln -fs -T {PATH_ls[idx]}/1-Mapping/diversity/" +
+                    f"{SAMPLE_ls[idx]}_ref_{REF_Genome_ls[idx]}_*diversity* " +
+                    f"1-Mapping/diversity/{SAMPLE_ls[idx]}_ref_{REF_Genome_ls[idx]}" +
+                    f"_outgroup{OUTGROUP_ls[idx]}.diversity.pickle.gz",
                     shell=True)
                 subprocess.run(
-                    f"ln -fs -T {
-                        PATH_ls[idx]}/1-Mapping/quals/{
-                        SAMPLE_ls[idx]}_ref_{
-                        REF_Genome_ls[idx]}_*quals* 1-Mapping/quals/{
-                        SAMPLE_ls[idx]}_ref_{
-                        REF_Genome_ls[idx]}_outgroup{
-                            OUTGROUP_ls[idx]}.quals.pickle.gz",
+                    f"ln -fs -T {PATH_ls[idx]}/1-Mapping/quals/" +
+                    f"{SAMPLE_ls[idx]}_ref_{REF_Genome_ls[idx]}_*quals* " +
+                    f"1-Mapping/quals/{SAMPLE_ls[idx]}_ref_{REF_Genome_ls[idx]}" +
+                    f"_outgroup{OUTGROUP_ls[idx]}.quals.pickle.gz",
                     shell=True)
                 subprocess.run(
-                    f"ln -fs -T {
-                        PATH_ls[idx]}/1-Mapping/vcf/{
-                        SAMPLE_ls[idx]}_ref_{
-                        REF_Genome_ls[idx]}_*variant.vcf.gz 1-Mapping/vcf/{
-                        SAMPLE_ls[idx]}_ref_{
-                        REF_Genome_ls[idx]}_aligned.sorted.strain.variant.vcf.gz",
+                    f"ln -fs -T {PATH_ls[idx]}/1-Mapping/vcf/" +
+                    f"{SAMPLE_ls[idx]}_ref_{REF_Genome_ls[idx]}_*variant.vcf.gz " +
+                    f"1-Mapping/vcf/{SAMPLE_ls[idx]}_ref_{REF_Genome_ls[idx]}" +
+                    f"_aligned.sorted.strain.variant.vcf.gz",
                     shell=True)
 else:
 
