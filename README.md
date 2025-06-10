@@ -52,8 +52,8 @@ Once you finish the install, you can test the tool with the command lines below 
 
 Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
 `sh test_run.sh`<BR/>
-`sh script/dry-run.sh`<BR/>
-`sbatch script/run_snakemake.slurm`<BR/>
+`sh scripts/dry-run.sh`<BR/>
+`sbatch scripts/run_snakemake.slurm`<BR/>
 
 Test downstream analysis - Under `local_analysis` folder:<BR/>
 `sh test_local.sh`<BR/>
@@ -103,11 +103,11 @@ If you cloned the repository (e.g. a new download) and have already downloaded t
 
 Step-2: check the pipeline using "dry-run"<BR/>
 
-`sh script/dry-run.sh`<BR/>
+`sh scripts/dry-run.sh`<BR/>
 
 Step-3: submit your slurm job.<BR/>
 
-`sbatch script/run_snakemake.slurm`<BR/>
+`sbatch scripts/run_snakemake.slurm`<BR/>
 
 Note: If you need to modify any slurm job configuration, you can edit the config.yaml file generated in your output folder: `<output_dir>/conf/config.yaml`
 
