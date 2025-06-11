@@ -1,4 +1,4 @@
-name: accusnv_yaml_v2
+name: accusnv_env
 channels:
   - conda-forge  
   - bioconda
