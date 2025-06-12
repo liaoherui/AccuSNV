@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "accusnv"
+version = "0.0.0.1"
+description = "High-accuracy SNV calling for bacterial isolates using AccuSNV"
+readme = "README.md"
+license = {file = "LICENSE.md"}
+requires-python = ">=3.9"
+
+[project.scripts]
+accusnv-snakemake = "accusnv_cli.snakemake_entry:main"
+accusnv-downstream = "accusnv_cli.downstream_entry:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = [
+    "*Test_data*",
+    "*test_data*",
+    "readme_files*",
+    "doc_dump*",
+]
+
