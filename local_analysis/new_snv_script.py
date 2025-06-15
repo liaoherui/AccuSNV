@@ -387,8 +387,77 @@ cnn_pos,cnn_pred,cnn_prob,dgap=cnn.CNN_predict(data_file_cmt,data_file_cov,odir,
 dlab=dict(zip(cnn_pos,cnn_pred)) # pos -> label
 dprob=dict(zip(cnn_pos,cnn_prob)) # pos -> probability
 #######  Done  #########
-#print(dgap)
-#exit()
+# Fast mode for cases where SNV positions > 1000000
+if len(cnn_pos) > 100000:
+    [quals,p,counts,in_outgroup,sample_names,indel_counter] = \
+        snv.read_candidate_mutation_table_npz(data_file_cmt)
+    if not len(in_outgroup)==len(sample_names):
+        in_outgroup=np.array([False] * len(sample_names))
+    my_cmt = snv.cmt_data_object( sample_names,
+                             in_outgroup,
+                             p,
+                             counts,
+                             quals,
+                             indel_counter
+                             )
+    freq_d,check_d=snv.cal_freq_amb_samples(cnn_pos,my_cmt)
+    if len(my_cmt.sample_names)>20:
+        cutoff=0.1
+    else:
+        cutoff=0.25
+    o=open(odir+'/pred_res.txt','w+')
+    o.write('Pos\tPred\tProb')
+    for name in my_cmt.sample_names:
+        o.write('\t'+name)
+    o.write('\n')
+    pos_to_idx=dict(zip(my_cmt.p,range(len(my_cmt.p))))
+    xc=0
+    for c in cnn_pos:
+        freq=freq_d[c]
+        check=check_d[c]
+        pred=str(cnn_pred[xc])
+        prob=str(cnn_prob[xc])
+        if pred=='0':
+            if freq>cutoff or check:
+                out_pred='0'
+                out_prob=prob
+            else:
+                out_pred='1'
+                out_prob=str(1-float(prob))
+        else:
+            out_pred=pred
+            out_prob=prob
+        idx=pos_to_idx[c]
+        bases=snv.ints2nts(my_cmt.major_nt[:,idx])
+        o.write(str(c)+'\t'+out_pred+'\t'+out_prob)
+        for b in bases:
+            o.write('\t'+b)
+        o.write('\n')
+        xc+=1
+    print('Too many positions to predict (>100000), use a fast mode.......')
+
+    samples_to_exclude_bool = np.array([x in samples_to_exclude for x in sample_names])
+    keep_p = np.isin(my_cmt.p, cnn_pos)
+    my_cmt_zero_rebuild = copy.deepcopy(my_cmt)
+    my_cmt_zero_rebuild.filter_positions(keep_p)
+    label = np.array([dlab[pos]==1 for pos in my_cmt_zero_rebuild.p])
+    prob = np.array([dprob[pos] for pos in my_cmt_zero_rebuild.p])
+    recomb = np.array([False] * len(my_cmt_zero_rebuild.p))
+    quals_new = my_cmt_zero_rebuild.quals * -1
+    new_cmt = {
+        'sample_names': my_cmt_zero_rebuild.sample_names,
+        'p': my_cmt_zero_rebuild.p,
+        'counts': my_cmt_zero_rebuild.counts,
+        'quals': quals_new,
+        'in_outgroup': my_cmt_zero_rebuild.in_outgroup,
+        'indel_counter': my_cmt_zero_rebuild.indel_stats,
+        'prob': prob,
+        'label': label,
+        'recomb': recomb,
+        'samples_exclude_bool': samples_to_exclude_bool,
+    }
+    np.savez_compressed(odir+'/candidate_mutation_table_final.npz', **new_cmt)
+    exit()
 
 #%% Generate candidate mutation table object
 
@@ -961,14 +1030,32 @@ mutations_annotated = snv.annotate_mutations( \
 #exit()
 # Clickable bar charts for each SNV position
 
-snv.plot_interactive_scatter_barplots( \
-    p_goodpos_all, \
-    mut_qual[0,goodpos_idx_all], \
-    'pos', \
-    'qual', \
-    my_cmt_goodpos_all.sample_names, \
-    mutations_annotated, \
-    my_cmt_goodpos_all.counts,dir_output,False)
+# If pos>2000, then only first 2000 charts will be plotted
+chart_limit = 2000
+if num_goodpos_all > chart_limit:
+    idx_slice = slice(0, chart_limit)
+else:
+    idx_slice = slice(None)
+snv.plot_interactive_scatter_barplots(
+    p_goodpos_all[idx_slice],
+    mut_qual[0, goodpos_idx_all][idx_slice],
+    'pos',
+    'qual',
+    my_cmt_goodpos_all.sample_names,
+    mutations_annotated.iloc[idx_slice],
+    my_cmt_goodpos_all.counts[:, idx_slice, :],
+    dir_output,
+    False)
+
+# Old bar char plotting function
+#snv.plot_interactive_scatter_barplots( \
+#    p_goodpos_all, \
+#    mut_qual[0,goodpos_idx_all], \
+#    'pos', \
+#    'qual', \
+#    my_cmt_goodpos_all.sample_names, \
+#    mutations_annotated, \
+#    my_cmt_goodpos_all.counts,dir_output,False)
 
 #exit()
 # Heatmaps of basecalls, coverage, and quality over SNV positions
