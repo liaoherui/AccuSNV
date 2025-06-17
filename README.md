@@ -1,7 +1,7 @@
 # <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/logo.png" width = "100" height = "100" >  High-accuracy SNV calling for bacterial isolates using AccuSNV 
 -------------------------------------------------
 
-### Version: V0.0.0.1 (Last update on 2025-04-26)
+### Version: V1.0.0.2 (Last update on 2025-06-16)
 -------------------------------------------------
 
 Note: This tool is powered by Lieberman Lab SNV calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
