@@ -68,7 +68,7 @@ If you install the tool via bioconda, you can test the tool with the command lin
 `sbatch scripts/run_snakemake.slurm`<BR/>
 
 ------------------------------------------------------------------------------------
-Once you finish the install, you can test the tool with the command lines below :<BR/>
+Once you finish the install (via Option-1 or Option-2), you can test the tool with the command lines below :<BR/>
 
 Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
 `sh test_run.sh`<BR/>
