@@ -10,7 +10,7 @@ dependencies:
   - scipy
   - matplotlib
   - statsmodels
-  - pytorch
+  - pytorch=2.6.0
   - biopython=1.78
   - cutadapt
   - sickle-trim
