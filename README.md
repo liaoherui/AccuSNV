@@ -62,7 +62,7 @@ python accusnv_downstream.py -h | accusnv_downstream -h
 
 If you install the tool via bioconda, you can test the tool with the command lines below :<BR/>
 
-`cd conda_env_test`<BR/>
+`cd conda_test_dir`<BR/>
 `sh test_run.sh`<BR/>
 `sh scripts/dry-run.sh`<BR/>
 `sbatch scripts/run_snakemake.slurm`<BR/>
