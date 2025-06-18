@@ -45,7 +45,21 @@ Copy conda-env-based Snakefile:<BR/>
 Change the permission of the file:<BR/>
 `chmod 777 slurm_status_script.py`<BR/>
 
-### Option-3 (via Bioconda, under processing)
+### Option-3 (via Bioconda, under testing)
+
+`mamba  create -n  accusnv -c conda-forge -c bioconda accusnv` or <BR/>
+`conda  create -n  accusnv -c conda-forge -c bioconda accusnv`<BR/>
+
+then, `conda activate accusnv`
+
+It should be noted that some commands have been replaced if you install AccuSNV using bioconda. (See below)
+
+Command (Not bioconda)    |	Command (bioconda)
+------------ | ------------- 
+python new_snv_script.py -h | accusnv -h
+python accusnv_snakemake.py -h | accusnv_snakemake -h
+python accusnv_downstream.py -h | accusnv_downstream -h
+
 
 ------------------------------------------------------------------------------------
 Once you finish the install, you can test the tool with the command lines below :<BR/>
