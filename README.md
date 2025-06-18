@@ -63,7 +63,7 @@ python accusnv_downstream.py -h | accusnv_downstream -h
 Note: please ensure that your working directory does not contain any files or folders with the same names as those listed below (or if they are present, ensure they are identical files to those in this GitHub repository): <BR/> 
 
 Files: `config.yaml`,`experiment_info.yaml`,`Snakefile` <BR/>
-Folders: `scripts` (and all files under `scripts` on Github repo)<BR/>
+Folders: `scripts` (and all files under `snake_pipeline/scripts` on Github repo)<BR/>
 
 
 If you install the tool via bioconda, you can test the tool with the command lines below :<BR/>
