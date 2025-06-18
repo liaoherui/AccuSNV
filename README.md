@@ -45,7 +45,7 @@ Copy conda-env-based Snakefile:<BR/>
 Change the permission of the file:<BR/>
 `chmod 777 slurm_status_script.py`<BR/>
 
-### Option-3 (via Bioconda, under testing)
+### Option-3 (via Bioconda)
 
 `mamba create -n accusnv -c conda-forge -c bioconda accusnv` or <BR/>
 `conda create -n accusnv -c conda-forge -c bioconda accusnv`<BR/>
