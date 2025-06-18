@@ -47,8 +47,8 @@ Change the permission of the file:<BR/>
 
 ### Option-3 (via Bioconda, under testing)
 
-`mamba  create -n accusnv -c conda-forge -c bioconda accusnv` or <BR/>
-`conda  create -n accusnv -c conda-forge -c bioconda accusnv`<BR/>
+`mamba create -n accusnv -c conda-forge -c bioconda accusnv` or <BR/>
+`conda create -n accusnv -c conda-forge -c bioconda accusnv`<BR/>
 
 then, `conda activate accusnv`
 
