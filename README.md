@@ -86,6 +86,15 @@ Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
 Test downstream analysis - Under `local_analysis` folder:<BR/>
 `sh test_local.sh`<BR/>
 
+### Quick tests for different systems
+
+- [Windows commands](readme_files/test_run_windows.md)
+- [macOS commands](readme_files/test_run_mac.md)
+- [Linux without Slurm](readme_files/test_run_linux_local.md)
+- [Linux with Slurm](readme_files/test_run_linux_slurm.md)
+
+These step-by-step guidelines demonstrate running the snakemake pipeline along with the downstream analysis commands (`accusnv_snakemake` and `accusnv_downstream`).
+
 ## Overview
 
 This pipeline and toolkit is used to detect and analyze single nucleotide differences between closely related bacterial isolates. 
@@ -112,7 +121,7 @@ The first portion of AccuSNV aligns raw sequencing data from bacterial isolates 
 <!--- #### 1.1 Update - 2025-02-21: A user-friendly Python script is now available to help users run the pipeline more easily. Instructions are provided below:
 
 
-Make sure to configure your `config.yaml` file and `script/run_snakemake.slurm` before starting the steps below.. -->
+Make sure to configure your `config.yaml` file and `scripts/run_snakemake.slurm` before starting the steps below.. -->
 
 Please ensure the right permission of the file `slurm_status_script.py`:
 
