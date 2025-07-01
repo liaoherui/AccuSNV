@@ -93,7 +93,7 @@ Test downstream analysis - Under `local_analysis` folder:<BR/>
 - [Linux without Slurm](readme_files/test_run_linux_local.md)
 - [Linux with Slurm](readme_files/test_run_linux_slurm.md)
 
-These step-by-step guidelines demonstrate running the snakemake pipeline along with the downstream analysis commands (`accusnv_snakemake` and `accusnv_downstream`).
+These step-by-step guidelines demonstrate running the snakemake pipeline (only for Linux system) along with the downstream analysis commands (`accusnv_snakemake` and `accusnv_downstream`).
 
 ## Overview
 
