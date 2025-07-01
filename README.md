@@ -88,10 +88,11 @@ Test downstream analysis - Under `local_analysis` folder:<BR/>
 
 ### Quick tests for different systems
 
-- [Windows commands](readme_files/test_run_windows.md)
 - [macOS commands](readme_files/test_run_mac.md)
+
+<!--- - [Windows commands](readme_files/test_run_windows.md)
 - [Linux without Slurm](readme_files/test_run_linux_local.md)
-- [Linux with Slurm](readme_files/test_run_linux_slurm.md)
+- [Linux with Slurm](readme_files/test_run_linux_slurm.md) -->
 
 These step-by-step guidelines demonstrate running the snakemake pipeline (for Linux system only) along with the downstream analysis commands (`accusnv_snakemake` and `accusnv_downstream`).
 
