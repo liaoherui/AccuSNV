@@ -62,6 +62,10 @@ python new_snv_script.py -h | accusnv -h
 python accusnv_snakemake.py -h | accusnv_snakemake -h
 python accusnv_downstream.py -h | accusnv_downstream -h
 
+The user must only change the initial python line. (See below) The other commands called within the Snakefile will be automatically dealt with.
+`accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
+
+
 Note: please ensure that your working directory does not contain any files or folders with the same names as those listed below (or if they are present, ensure they are identical files to those in this GitHub repository): <BR/> 
 
 Files: `config.yaml`,`experiment_info.yaml`,`Snakefile` <BR/>
@@ -220,7 +224,8 @@ options:
   -i INPUT_MAT, --input_mat INPUT_MAT
                         The input mutation table in npz file
   -r REF_DIR, --ref_dir REF_DIR
-                        The dir of your reference genomes
+                        The dir of your reference genomes (must contain 
+        		file called "genome.fasta" as well as a GFF file "*.gff" or "*.gff3")
   -c MIN_COV, --min_cov_for_call MIN_COV
                         For the fill-N module: on individual samples, calls must have at
                         least this many fwd+rev reads. Default is 1.
