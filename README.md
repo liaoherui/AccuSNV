@@ -197,7 +197,7 @@ options:
                         least this many reads on the fwd/rev strands individually. If
                         many samples have low coverage (e.g. <5), then you can set this
                         parameter to smaller value. (e.g. -v 2). Default is 5.
-  -e EXCLUDE_SAMP, --excluse_samples EXCLUDE_SAMP
+  -e EXCLUDE_SAMP, --exclude_samples EXCLUDE_SAMP
                         The names of the samples you want to exclude (e.g. -e S1,S2,S3).
                         If you specify a number, such as "-e 1000", any sample with more
                         than 1,000 SNVs will be automatically excluded.
