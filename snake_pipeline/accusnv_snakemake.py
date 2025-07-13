@@ -376,7 +376,7 @@ def main():
 	#### AccuSNV - CNN-filter part params
 	parser.add_argument('-s','--min_cov_for_filter_sample',dest='min_cov_samp',type=str,help="Before running the CNN model, low-quality samples with more than 45%% of positions having zero aligned reads will be filtered out. (default \"-s 45\") You can adjust this threshold with this parameter; to include all samples, set \"-s 100\".")
 	parser.add_argument('-v','--min_cov_for_filter_pos',dest='min_cov',type=str,help="For the filter module: on individual samples, calls must have at least this many reads on the fwd/rev strands individually. If many samples have low coverage (e.g. <5), then you can set this parameter to smaller value. (e.g. -v 2). Default is 5.")
-	parser.add_argument('-e','--excluse_samples',dest='exclude_samp',type=str,help="The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as \"-e 1000\", any sample with more than 1,000 SNVs will be automatically excluded.")
+	parser.add_argument('-e','--exclude_samples',dest='exclude_samp',type=str,help="The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as \"-e 1000\", any sample with more than 1,000 SNVs will be automatically excluded.")
 	parser.add_argument('-g','--generate_report',dest='generate_rep',type=str,help="If not generate html report and other related files, set to 0. (default: 1)")
 	####
 	parser.add_argument('-o','--output_dir',dest='out_dir',type=str,help='Output dir (default: current dir/wd_out_(uid), uid is generated randomly)') # uid=uuid.uuid1().hex
