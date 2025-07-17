@@ -3043,7 +3043,12 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
             f.write('\t')
             f.write( annotation_mutations._get_value(i,'anc') )
             f.write('\t')
-            f.write( annotation_mutations._get_value(i,'nts') )
+            #f.write( annotation_mutations._get_value(i,'nts') )
+            unique_nts = ''.join(
+                nt for nt in sorted(set(calls_for_tree[:, i]))
+                if nt != 'N'
+            ) or 'N'
+            f.write(unique_nts)
             f.write('\t')
             next_muts = annotation_mutations._get_value(i,'muts')
             if type(next_muts)==list:
