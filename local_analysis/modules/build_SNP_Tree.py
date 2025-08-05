@@ -67,7 +67,8 @@ def mutation_count(inputtree, lca):
 		muts+=mutlist[pair]
 	
 	if muts==0:
-		print(tree)
+		#print(tree)
+		pass
 	
 	return muts, mutlist
 
@@ -170,9 +171,10 @@ def mutationtypes(tree, chart_raw,mode,out):
 		a, mutlist= mutation_count(newtree, lca)
 		#print(a,mutlist)
 		#exit()
-
+		
 		if a==0:
-			print('NO MUTS:')
+			#print('NO MUTS:')
+			pass
 			#print(len(line), i, chromosome, pos)
 		#save trees
 		else:
