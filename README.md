@@ -90,6 +90,11 @@ Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
 Test downstream analysis - Under `local_analysis` folder:<BR/>
 `sh test_local.sh`<BR/>
 
+### Interactive exploration:<BR/>
+Open `local_analysis/accusnv_downstream.ipynb` in Jupyter.<BR/>
+
+modify the `ref_dir`, `input_mat`, and any optional filtering parameters (e.g. `fn_min_cov`, `fn_min_qual`, `fn_min_freq`, `max_indel`, `min_freq`, `min_med_cov`, `exclude_recomb`), and run the script to inspect results in Jupyter.<BR/>
+
 ### Quick tests for different systems
 
 - [macOS commands](readme_files/test_run_mac.md)
