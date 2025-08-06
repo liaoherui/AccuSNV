@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[6]:
-
-
 """
 This script takes candidate mutation table from snakemake pipeline as input and does a lot of downstream analysis
 """
