@@ -72,7 +72,6 @@ def search_ref_name(refg):
 #     recombination events (default includes them).
 #   - ``exclude_sample_ids``: comma-separated sample IDs to remove from analysis.
 #   - ``exclude_position_ids``: comma-separated genomic positions to exclude.
-# Leave these as ``None`` to use the script defaults, or assign values to experiment interactively.
 
 
 
