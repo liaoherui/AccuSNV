@@ -203,6 +203,15 @@ def plot_snv_counts_gpt(data_dict, odir=None, title="SNV Counts by Sample", figs
     ax2.grid(True, linestyle='--', alpha=0.5)
 
     plt.tight_layout()
+    
+    fig3,ax3 = plt.subplots(figsize=(figsize[0], figsize[1] * 0.7))
+    ax3.hist(np.array(counts)[np.array(counts) <= 1000], bins=500, color=color, alpha=0.7)
+    ax3.vlines(x=100, ymin=0, ymax=len(np.array(counts)[np.array(counts) <= 1000]), color='red')
+    ax3.set_xlabel(ylabel + " Distribution", fontsize=12)
+    ax3.set_ylabel("Frequency", fontsize=12)
+    ax3.set_title("Histogram of SNV Counts (Zoomed)")
+    ax3.grid(True, linestyle='--', alpha=0.5)
+    plt.tight_layout()
 
 
     # Save the figure if output directory is provided
@@ -217,7 +226,17 @@ def plot_snv_counts_gpt(data_dict, odir=None, title="SNV Counts by Sample", figs
         # Save the figure
         fig.savefig(output_path, dpi=dpi, bbox_inches='tight')
         fig2.savefig(os.path.join(odir, "snvs_histogram_per_sample.png"), dpi=dpi, bbox_inches='tight')
+        fig3.savefig(os.path.join(odir, "ZOOMED_snvs_histogram_per_sample.png"), dpi=dpi, bbox_inches='tight')
         print(f"Figure saved to: {odir}")
+        
+        # save dictionary to CSV for local reference
+        counts = pd.DataFrame(counts)
+        # counts.to_csv(os.path.join(odir, "snvs_per_sample.csv"))
+        import csv
+        with open(os.path.join(odir, "snvs_per_sample.csv"), 'w') as csv_file:  
+            writer = csv.writer(csv_file)
+            for key, value in data_dict.items():
+               writer.writerow([key, value])
 
     return fig, ax
 
