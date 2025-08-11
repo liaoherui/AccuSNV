@@ -90,20 +90,22 @@ Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
 Test downstream analysis - Under `local_analysis` folder:<BR/>
 `sh test_local.sh`<BR/>
 
-### Interactive exploration:<BR/>
+<!--- ### Interactive exploration via Spyder:<BR/>
+
 Open `local_analysis/accusnv_downstream.ipynb` in Jupyter.<BR/>
 
-modify the `ref_dir`, `input_mat`, and any optional filtering parameters (e.g. `fn_min_cov`, `fn_min_qual`, `fn_min_freq`, `max_indel`, `min_freq`, `min_med_cov`, `exclude_recomb`), and run the script to inspect results in Jupyter.<BR/>
+modify the `ref_dir`, `input_mat`, and any optional filtering parameters (e.g. `fn_min_cov`, `fn_min_qual`, `fn_min_freq`, `max_indel`, `min_freq`, `min_med_cov`, `exclude_recomb`), and run the script to inspect results in Spyder.<BR/> -->
 
 ### Quick tests for different systems
 
-- [macOS commands](readme_files/test_run_mac.md)
+- [macOS commands (run using command lines)](readme_files/test_run_mac.md)
+- [Run accusnv_downstram.py in Spyder](readme_files/test_run_spyderc.md)
 
 <!--- - [Windows commands](readme_files/test_run_windows.md)
 - [Linux without Slurm](readme_files/test_run_linux_local.md)
-- [Linux with Slurm](readme_files/test_run_linux_slurm.md) -->
+- [Linux with Slurm](readme_files/test_run_linux_slurm.md)
 
-These step-by-step guidelines demonstrate running the snakemake pipeline (for Linux system only) along with the downstream analysis commands (`accusnv_snakemake` and `accusnv_downstream`).
+These step-by-step guidelines demonstrate running the snakemake pipeline (for Linux system only) along with the downstream analysis commands (`accusnv_snakemake` and `accusnv_downstream`). -->
 
 ## Overview
 
