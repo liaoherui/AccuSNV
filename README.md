@@ -246,6 +246,10 @@ options:
   -f MIN_FREQ, --min_freq_for_call MIN_FREQ
                         For the fill-N module: on individual samples, a call's major
                         allele must have at least this freq. Default is 0.75.
+  -S EXCLUDE_SAMPLE_IDS, --exclude_sample_ids EXCLUDE_SAMPLE_IDS
+                        Comma-separated sample IDs to exclude from analysis
+  -P EXCLUDE_POSITION_IDS, --exclude_position_ids EXCLUDE_POSITION_IDS
+                        Comma-separated genomic positions to exclude from analysis
   -o OUTPUT_DIR, --output_dir OUTPUT_DIR
                         The output dir
 ```
