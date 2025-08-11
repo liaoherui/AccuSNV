@@ -39,6 +39,8 @@ parser.add_argument('-m','--min_median_coverage_position',dest='min_med_cov',typ
 #parser.add_argument('-x','--max_max_copynum',dest='max_max_cp',type=int,help="Max maximum copynumber that a site can have across all samples. (Default: turn off, referece value: -x 7)")
 
 parser.add_argument('-b','--exclude_recomb',type=str,help="Whether included SNVs from potential recombinations. Default included. Set \"-b 1\" to exclude these positions in downstream analysis modules.")
+parser.add_argument('-S','--exclude_sample_ids',dest='exclude_sample_ids',type=str,help="Comma-separated sample IDs to exclude from analysis")
+parser.add_argument('-P','--exclude_position_ids',dest='exclude_position_ids',type=str,help="Comma-separated genomic positions to exclude from analysis")
 
 parser.add_argument('-o','--output_dir',dest='output_dir',type=str,help="The output dir")
 args = parser.parse_args()
@@ -80,6 +82,8 @@ min_med_cov=args.min_med_cov
 
 
 eb=args.exclude_recomb
+exclude_sample_ids = args.exclude_sample_ids
+exclude_position_ids = args.exclude_position_ids
 output_dir=args.output_dir
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -103,6 +107,16 @@ my_cmt = snv.cmt_data_object( sample_names,
                              indel_counter
                              )
 
+# Exclude specified samples if provided
+if exclude_sample_ids:
+    samples_to_exclude = [s.strip() for s in exclude_sample_ids.split(',') if s.strip()]
+    samples_to_exclude_bool = np.isin(my_cmt.sample_names, samples_to_exclude)
+    my_cmt.filter_samples(~samples_to_exclude_bool)
+    sample_names = my_cmt.sample_names
+else:
+    sample_names = my_cmt.sample_names
+
+
 #print(my_cmt.counts)
 #exit()
 with open(input_mat, 'rb') as f:
@@ -121,8 +135,13 @@ filt_pos2 = ~recomb
 #print(filt_pos2)
 if eb==1:
     filt_pos=filt_pos & filt_pos2
-#print(filt_pos)
-#exit()
+
+# Exclude specified positions if provided
+if exclude_position_ids:
+    positions_to_exclude = [int(x.strip()) for x in exclude_position_ids.split(',') if x.strip()]
+    filt_pos = filt_pos & ~np.isin(my_cmt.p, positions_to_exclude)
+    
+
 my_cmt.filter_positions(filt_pos)
 #my_cmt.filter_positions(filt_pos2)
 my_calls = snv.calls_object( my_cmt )
