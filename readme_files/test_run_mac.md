@@ -30,6 +30,14 @@ accusnv_downstream -i local_analysis/test_data/candidate_mutation_table_final.np
   -r snake_pipeline/reference_genomes/Cae_ref -o mac_downstream_test
 ```
 
+or 
+
+```bash
+cd local_analysis
+python accusnv_downstream.py -i test_data/candidate_mutation_table_final.npz \
+  -r ../snake_pipeline/reference_genomes/Cae_ref -o mac_downstream_test
+```
+
 ## 5. Expected output
 
 The directories `mac_downstream_test/` should contain output files .
