@@ -2416,7 +2416,8 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
         
             # Get annotations from row in dataframe 
             p_anno = annotation_genes[contig_idx-1].iloc[int(mut_cds_indices[i])-1] # first -1 bcs contigs indexed starting at 1; second -1 bcs cds_indices indexed at 1 but dataframe rows indexed at zero
-            
+            if re.search('gene',p_anno.loc['locustag']):
+                p_anno.loc['locustag']=re.sub('gene','pseudogene',p_anno.loc['locustag'])
             mut_annotations['locustag'] = p_anno.loc['locustag']
             mut_annotations['product'] = p_anno.loc['product']
             mut_annotations['protein_id'] = p_anno.loc['protein_id']
