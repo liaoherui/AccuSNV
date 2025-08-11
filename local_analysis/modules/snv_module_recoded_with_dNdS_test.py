@@ -1531,7 +1531,7 @@ def parse_gff( dir_ref_genome, contig_names, ortholog_info_series=pd.Series(dtyp
                             # else:
                             #     gene_dict['translation'] = "." # all non-CDS (RNA's or repeat regions) not translated (as those are sometimes also off-frame)
                             # Use this section if you want to ignore the 'phase' field of the GFF in order to translate proteins correctly
-                            if gene_dict['type'] == "CDS" or gene_dict['type']=='pseudogene':
+                            if gene_dict['type'] == "CDS":
                                 sequence2translate = gene_dict['sequence']
                                 gene_dict['translation'] = sequence2translate.translate(table="Bacterial")
                             else:
