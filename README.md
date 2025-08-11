@@ -6,7 +6,7 @@
 ### Version: V1.0.0.3 (Last update on 2025-06-18)
 -------------------------------------------------
 
-Note: This tool is powered by Lieberman Lab SNV calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
+Note: This tool is powered by Lieberman and Key Lab SNV calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
 
 ## Install
 
