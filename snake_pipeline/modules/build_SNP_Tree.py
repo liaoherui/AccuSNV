@@ -121,6 +121,7 @@ def convert_csv(chart_raw,mode,out):
 	subset=df[keep_col]
 	subset.rename(columns={'contig_pos': 'pos'}, inplace=True)
 	subset.rename(columns={'contig_idx': 'chr'}, inplace=True)
+	subset = subset.applymap(lambda x: x.replace(',', '') if isinstance(x, str) else x)
 	subset.to_csv(chart, index=False)
 
 	return chart,raw_pos
@@ -161,7 +162,7 @@ def mutationtypes(tree, chart_raw,mode,out):
 		pos=l[1]
 		
 		#use first strain as lca
-		lca=l[2]
+		lca=l[4]
 
 
 		#count mutations
