@@ -99,7 +99,7 @@ modify the `ref_dir`, `input_mat`, and any optional filtering parameters (e.g. `
 ### Quick Tests for downstream analysis modules:
 
 - [macOS commands (run using command lines)](readme_files/test_run_mac.md)
-- [Run accusnv_downstram.py in Spyder](readme_files/test_run_spyder.md)
+- [Run accusnv_downstream.py in Spyder](readme_files/test_run_spyder.md)
 
 <!--- - [Windows commands](readme_files/test_run_windows.md)
 - [Linux without Slurm](readme_files/test_run_linux_local.md)
