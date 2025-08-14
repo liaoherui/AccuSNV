@@ -113,7 +113,7 @@ These step-by-step guidelines demonstrate running the snakemake pipeline (for Li
 
 ## Overview
 
-This pipeline and toolkit is used to detect and analyze single nucleotide differences between closely related bacterial isolates. 
+This pipeline and toolkit is used to detect and analyze single nucleotide differences between bacterial isolates from WGS data. 
 
 * Noteable features
 	* Avoids false negatives from low coverage and false positives through a deep learning method, while also enabling visualization of raw data.
@@ -121,7 +121,7 @@ This pipeline and toolkit is used to detect and analyze single nucleotide differ
 
 
 * Inputs (to Snakemake cluster step): 
-	* short-read sequencing data of closely related bacterial isolates
+	* short-read sequencing data of bacterial isolates
 	* an annotated reference genome
 * Outputs (of downstream analysis step): 
 	* table of high-quality SNVs that differentiate isolates from each other
