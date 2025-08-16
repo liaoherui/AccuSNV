@@ -100,7 +100,9 @@ Open `local_analysis/accusnv_downstream.ipynb` in Jupyter.<BR/>
 
 modify the `ref_dir`, `input_mat`, and any optional filtering parameters (e.g. `fn_min_cov`, `fn_min_qual`, `fn_min_freq`, `max_indel`, `min_freq`, `min_med_cov`, `exclude_recomb`), and run the script to inspect results in Spyder.<BR/> -->
 
-### Quick Tests for downstream analysis modules:
+### Quick Tests for the downstream analysis module:
+
+Refers to [2.2. Local downstream analysis](#custom-anchor)
 
 - [macOS commands (run using command lines)](readme_files/test_run_mac.md)
 - [Run accusnv_downstream.py in Spyder](readme_files/test_run_spyder.md)
@@ -176,6 +178,7 @@ One example with test data can be found in `local_analysis/test_local.sh`
 
 The second portion of AccuSNV filters candidate SNVs based on data arrays generated in the first portion and generates a high-quality SNV table and a parsimony tree. This step utilizes deep learning and is implemented with a custom Python script. More information can be found [here](readme_files/readme_local_main.md).
 
+<a id="custom-anchor"></a>
 ### 2.2. Local downstream analysis
 
 Based on the identified SNVs and **the output final mutation table (in .npz format, e.g. candidate_mutation_table_final.npz) from Snakemake pipeline**, AccuSNV offers a set of downstream analysis modules (e.g. dN/dS calculation). You can run these modules using the command below.
