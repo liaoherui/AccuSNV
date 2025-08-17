@@ -6,7 +6,7 @@ AccuSNV is a computational tool designed to identify single nucleotide variants 
 
 -------------------------------------------------
 
-### Version: V1.0.0.4 (Last update on 2025-08-11)
+### Version: V1.0.0.5 (Last update on 2025-08-18)
 -------------------------------------------------
 
 
