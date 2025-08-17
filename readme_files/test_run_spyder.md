@@ -40,7 +40,7 @@ Then:
 
 2. Set the Python interpreter to your pre-built accusnv_env conda environment. (See screenshot below — in this example, the Conda environment is named widevariant.)
 
-<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/Spyder_env.jpg" width = "900" height = "850" >
+<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/spyder_step1.png" width = "900" height = "850" >
 
 ## 4. Run the test script
 
