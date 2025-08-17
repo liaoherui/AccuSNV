@@ -1,46 +1,52 @@
 # Test AccuSNV via Spyder
 
-This page shows how to verify the Bioconda installation on macOS using the bundled test data.
+This page shows how to test AccuSNV downstream analysis module (see 2.2 in main README) via Spyder on macOS 
 
-## 1. Install with Bioconda
 
-```bash
-conda create -n accusnv_env -c conda-forge -c bioconda accusnv
-conda activate accusnv_env
-conda install spyder-kernels=3.0
-```
-If the command line doesn't work, you may consider:
+## 1. Download the test folder for Spyder
 
-```bash
-CONDA_SUBDIR=osx-64 conda create -n accusnv_env -c conda-forge -c bioconda accusnv_env
-conda activate accusnv_env
-conda install spyder-kernels=3.0
-```
+Download link is here: [spyder_test.zip](https://github.com/liaoherui/AccuSNV/raw/refs/heads/main/spyder_test.zip)
 
-## 2. Clone the repository
+Unzip the files, and open the file `accusnv_downstream_IDE.py` with Spyder.
+
+
+## 2. Add the bioconda channel and install AccuSNV
+
+Check the configuration of the current environment:
 
 ```bash
-git clone https://github.com/liaoherui/AccuSNV.git
-cd AccuSNV
+conda config --show-sources
+```
+<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/spyder_step1.jpg" width = "900" height = "800" >
+
+Add bioconda to Spyder's configuration file (replace the directory with the path to your own .condarc file obtained by `conda config --show-sources`):
+
+```bash
+conda config --add channels bioconda --file /path/tp/Library/spyder-6/.condarc
 ```
 
+Verify whether the channel was successfully added
+
+```bash
+conda config --show channels
+```
+
+<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/spyder_test2.jpg" width = "900" height = "800" >
+
+Install AccuSNV via bioconda:
+
+```bash
+conda create -n accusnv_spyder python=3.9 spyder accusnv -c bioconda -c conda-forge -y
+```
+
+<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/spyder_test4.jpg" width = "900" height = "800" >
 
 ## 3. Configure the Spyder environment
 
-Ensure that the spyder-kernels package is installed in your Conda environment. If not, run:
 
-```bash
-conda activate accusnv_env
-conda install spyder-kernels=3.0
-```
+ Set the Python interpreter to your pre-built accusnv_spyder conda environment. (See screenshot below — in this example, the Conda environment is named widevariant.)
 
-Then:
-
-1. Open Spyder.
-
-2. Set the Python interpreter to your pre-built accusnv_env conda environment. (See screenshot below — in this example, the Conda environment is named widevariant.)
-
-<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/spyder_step1.jpg" width = "900" height = "800" >
+<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/spyder_test3.jpg" width = "900" height = "800" >
 
 ## 4. Run the test script
 
