@@ -44,7 +44,7 @@ conda create -n accusnv_spyder python=3.9 spyder accusnv -c bioconda -c conda-fo
 ## 3. Configure the Spyder environment
 
 
- Set the Python interpreter to your pre-built accusnv_spyder conda environment. (See screenshot below — in this example, the Conda environment is named widevariant.)
+ Set the Python interpreter to your pre-built accusnv_spyder conda environment. (See screenshot below — in this example)
 
 <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/spyder_test3.jpg" width = "900" height = "800" >
 
