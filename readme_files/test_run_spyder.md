@@ -10,7 +10,7 @@ Download link is here: [spyder_test.zip](https://github.com/liaoherui/AccuSNV/ra
 Unzip the files, and open the file `accusnv_downstream_IDE.py` with Spyder.
 
 
-## 2. Add the bioconda channel and install AccuSNV
+## 2. Add the bioconda channel and install AccuSNV in Spyder
 
 Check the configuration of the current environment:
 
