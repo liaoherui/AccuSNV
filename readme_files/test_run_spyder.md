@@ -64,6 +64,7 @@ Option-2:
 
 ```
 from accusnv import accusnv_downstream_func
+
 # ---------------------------------------------------------------------------
 # Variables for interactive use
 # ---------------------------------------------------------------------------
@@ -89,7 +90,6 @@ from accusnv import accusnv_downstream_func
 #     recombination events (default includes them).
 #   - ``exclude_sample_ids``: comma-separated sample IDs to remove from analysis.
 #   - ``exclude_position_ids``: comma-separated genomic positions to exclude.
-
 
 accusnv_downstream_func.analyze(ref_dir="reference_genomes/Cae_ref",
                                 input_mat="test_data/candidate_mutation_table_final.npz",
