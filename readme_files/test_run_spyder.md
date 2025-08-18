@@ -68,6 +68,19 @@ Option-2:
 ```
 from accusnv import accusnv_downstream_func
 
+accusnv_downstream_func.analyze(ref_dir="reference_genomes/Cae_ref",
+                                input_mat="test_data/candidate_mutation_table_final.npz",
+                                output_dir = "accusnv_downstream_out",
+                                fn_min_cov = 1,
+                                fn_min_qual = 30,
+                                fn_min_freq = 0.75,
+                                max_indel = None,
+                                min_freq = None,
+                                min_med_cov = None,
+                                eb = 0,
+                                exclude_sample_ids = "",
+                                exclude_position_ids = "")
+
 # ---------------------------------------------------------------------------
 # Variables for interactive use
 # ---------------------------------------------------------------------------
@@ -94,18 +107,6 @@ from accusnv import accusnv_downstream_func
 #   - ``exclude_sample_ids``: comma-separated sample IDs to remove from analysis.
 #   - ``exclude_position_ids``: comma-separated genomic positions to exclude.
 
-accusnv_downstream_func.analyze(ref_dir="reference_genomes/Cae_ref",
-                                input_mat="test_data/candidate_mutation_table_final.npz",
-                                output_dir = "accusnv_downstream_out",
-                                fn_min_cov = 1,
-                                fn_min_qual = 30,
-                                fn_min_freq = 0.75,
-                                max_indel = None,
-                                min_freq = None,
-                                min_med_cov = None,
-                                eb = 0,
-                                exclude_sample_ids = "",
-                                exclude_position_ids = "")
 ```
 
 
