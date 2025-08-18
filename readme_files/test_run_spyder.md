@@ -1,6 +1,6 @@
 # Test AccuSNV via Spyder
 
-This page shows how to test AccuSNV downstream analysis module (see 2.2 in main README) via Spyder on macOS 
+This page shows how to test AccuSNV downstream analysis module (see 2.2 in main README) via Spyder on macOS.
 
 
 ## 1. Download the test folder for Spyder
@@ -10,7 +10,10 @@ Download link is here: [spyder_test.zip](https://github.com/liaoherui/AccuSNV/ra
 Unzip the files, and open the file `accusnv_downstream_IDE.py` with Spyder.
 
 
+
 ## 2. Add the bioconda channel and install AccuSNV in Spyder
+
+--- **Note**: If you have already installed the accusnv conda environment with Spyder (if Spyder is not installed, please run `conda install spyder`), you can skip this step and go directly to “3. Configure the Spyder environment.” ---
 
 Check the configuration of the current environment:
 
