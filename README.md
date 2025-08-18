@@ -46,7 +46,7 @@ If you install the tool via bioconda, you can test the tool with the command lin
 
 `cd conda_test_dir`<BR/>
 `sh test_run.sh`<BR/>
-`sh scripts/dry-run.sh`<BR/>
+`sh scripts/dry_run.sh`<BR/>
 `sbatch scripts/run_snakemake.slurm`<BR/>
 
 
@@ -89,7 +89,7 @@ Once you finish the install (via Option-2 or Option-3), you can test the tool wi
 
 Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
 `sh test_run.sh`<BR/>
-`sh scripts/dry-run.sh`<BR/>
+`sh scripts/dry_run.sh`<BR/>
 `sbatch scripts/run_snakemake.slurm`<BR/>
 
 Test downstream analysis - Under `local_analysis` folder:<BR/>
