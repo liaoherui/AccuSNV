@@ -7,7 +7,7 @@ This page shows how to test AccuSNV downstream analysis module (see 2.2 in main 
 
 Download link is here: [spyder_test.zip](https://github.com/liaoherui/AccuSNV/raw/refs/heads/main/spyder_test.zip)
 
-Unzip the files, and open the file `accusnv_downstream_IDE.py` with Spyder.
+Unzip the files, and open the Spyder.
 
 
 
