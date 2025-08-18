@@ -85,7 +85,7 @@ accusnv_downstream_func.analyze(ref_dir="reference_genomes/Cae_ref",
 # Variables for interactive use
 # ---------------------------------------------------------------------------
 # When running this script in an interactive environment (e.g. Spyder or
-# Jupyter), set ``ref_dir`` to the directory containing ``genome.fasta``
+# Jupyter), set ``ref_dir`` to the directory containing ``genome.fasta + anno.gff``
 # and ``input_mat`` to the path of your candidate mutation table (NPZ file).
 # ``output_dir`` determines where results will be written.
 
