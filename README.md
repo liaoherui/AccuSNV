@@ -85,7 +85,7 @@ Change the permission of the file:<BR/>
 `chmod 777 slurm_status_script.py`<BR/>
 
 ------------------------------------------------------------------------------------
-Once you finish the install (via Option-1 or Option-2), you can test the tool with the command lines below :<BR/>
+Once you finish the install (via Option-2 or Option-3), you can test the tool with the command lines below :<BR/>
 
 Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
 `sh test_run.sh`<BR/>
