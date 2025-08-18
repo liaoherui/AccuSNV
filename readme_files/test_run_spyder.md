@@ -62,7 +62,7 @@ Option-1:
 Option-2:
 -> In Spyder, run: 
 
-'''
+```
 from accusnv import accusnv_downstream_func
 # ---------------------------------------------------------------------------
 # Variables for interactive use
@@ -103,7 +103,7 @@ accusnv_downstream_func.analyze(ref_dir="reference_genomes/Cae_ref",
                                 eb = 0,
                                 exclude_sample_ids = "",
                                 exclude_position_ids = "")
-'''
+```
 
 
    
