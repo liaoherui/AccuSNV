@@ -56,10 +56,13 @@ conda create -n accusnv_spyder python=3.9 spyder accusnv -c bioconda -c conda-fo
 2. Reopen Spyder.
    
 Option-1:
--> Open the file `accusnv_downstream_IDE.py` with Spyder.
+
+-> Open the file `accusnv_downstream_IDE.py` with Spyder. 
+
 -> Run the script
 
 Option-2:
+
 -> In Spyder, run: 
 
 ```
