@@ -17,41 +17,7 @@ Note: This tool is powered by Lieberman and Key Lab SNV calling pipeline - [Wide
 Git clone:<BR/>
 `git clone https://github.com/liaoherui/AccuSNV.git`<BR/>
 
-### Option-1 (via pre-built conda env - Linux only)
-
-`cd AccuSNV/snake_pipeline`<BR/>
-
-If you don't have `gdown`, pleae install it first:<BR/>
-`pip install gdown`
-
-Download pre-built environments:<BR/>
-`sh download_install_env.sh`<BR/><BR/>
-Note: Please ignore the error message: `tar: Exiting with failure status due to previous errors`. You can still use the environment despite receiving this error message.
-
-Activate the pre-built environment<BR/>
-`source accusnv_env/bin/activate`
-
-Change the permission of the file:<BR/>
-`chmod 777 slurm_status_script.py`<BR/>
-
-
-### Option-2 (via .yaml file)
-
-`cd AccuSNV/snake_pipeline`<BR/>
-
-Build the conda environment:<BR/>
-`conda env create -n accusnv_env --file accusnv.yaml` or <BR/>`mamba env create -n accusnv_env --file accusnv.yaml` <BR/>
-
-Activate the conda environment:<BR/>
-`conda activate accusnv_env`<BR/>
-
-Copy conda-env-based Snakefile:<BR/>
-`cp Snakefiles_diff_options/Snakefile_conda_env.txt  ./Snakefile`<BR/>
-
-Change the permission of the file:<BR/>
-`chmod 777 slurm_status_script.py`<BR/>
-
-### Option-3 (via Bioconda)
+### Option-1 (via Bioconda)
 
 `mamba create -n accusnv -c conda-forge -c bioconda accusnv` or <BR/>
 `conda create -n accusnv -c conda-forge -c bioconda accusnv`<BR/>
@@ -82,6 +48,41 @@ If you install the tool via bioconda, you can test the tool with the command lin
 `sh test_run.sh`<BR/>
 `sh scripts/dry-run.sh`<BR/>
 `sbatch scripts/run_snakemake.slurm`<BR/>
+
+
+### Option-2 (via .yaml file)
+
+`cd AccuSNV/snake_pipeline`<BR/>
+
+Build the conda environment:<BR/>
+`conda env create -n accusnv_env --file accusnv.yaml` or <BR/>`mamba env create -n accusnv_env --file accusnv.yaml` <BR/>
+
+Activate the conda environment:<BR/>
+`conda activate accusnv_env`<BR/>
+
+Copy conda-env-based Snakefile:<BR/>
+`cp Snakefiles_diff_options/Snakefile_conda_env.txt  ./Snakefile`<BR/>
+
+Change the permission of the file:<BR/>
+`chmod 777 slurm_status_script.py`<BR/>
+
+
+### Option-3 (via pre-built conda env - Linux only)
+
+`cd AccuSNV/snake_pipeline`<BR/>
+
+If you don't have `gdown`, pleae install it first:<BR/>
+`pip install gdown`
+
+Download pre-built environments:<BR/>
+`sh download_install_env.sh`<BR/><BR/>
+Note: Please ignore the error message: `tar: Exiting with failure status due to previous errors`. You can still use the environment despite receiving this error message.
+
+Activate the pre-built environment<BR/>
+`source accusnv_env/bin/activate`
+
+Change the permission of the file:<BR/>
+`chmod 777 slurm_status_script.py`<BR/>
 
 ------------------------------------------------------------------------------------
 Once you finish the install (via Option-1 or Option-2), you can test the tool with the command lines below :<BR/>
