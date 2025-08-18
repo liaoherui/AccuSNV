@@ -101,12 +101,14 @@ Open `local_analysis/accusnv_downstream.ipynb` in Jupyter.<BR/>
 
 modify the `ref_dir`, `input_mat`, and any optional filtering parameters (e.g. `fn_min_cov`, `fn_min_qual`, `fn_min_freq`, `max_indel`, `min_freq`, `min_med_cov`, `exclude_recomb`), and run the script to inspect results in Spyder.<BR/> -->
 
-### Quick Tests for the downstream analysis module:
+### Quick Tests for the downstream analysis module on your own PC:
+
+(Note: if you prefer Linux/HPC, ignore this!)
 
 Refers to [2.2. Local downstream analysis](#custom-anchor)
 
 - [macOS commands (run using command lines)](readme_files/test_run_mac.md)
-- [Run accusnv_downstream in Spyder](readme_files/test_run_spyder.md)
+- [Run accusnv_downstream in IDE (Spyder)](readme_files/test_run_spyder.md)
 
 <!--- - [Windows commands](readme_files/test_run_windows.md)
 - [Linux without Slurm](readme_files/test_run_linux_local.md)
