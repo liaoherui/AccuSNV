@@ -55,7 +55,7 @@ conda create -n accusnv_spyder python=3.9 spyder accusnv -c bioconda -c conda-fo
 1. Close Spyder (to ensure the interpreter setting is saved).
 2. Reopen Spyder.
 
-There are two different options to test script, choose the one you prefer!
+There are two different options to test the function, choose the one you prefer!
 
 Option-1:
 
