@@ -13,7 +13,7 @@ Unzip the files, and open the Spyder.
 
 ## 2. Add the bioconda channel and install AccuSNV in Spyder
 
---- **Note**: If you have already installed the accusnv conda environment with Spyder (if Spyder is not installed, please run `conda install spyder`), you can skip this step and go directly to “3. Configure the Spyder environment.” ---
+--- **Note**: If you have already installed the accusnv conda environment with Spyder (if Spyder is not installed, please run `conda install spyder` within your accusnv conda environment. Its important to install it within conda environment even if its already on your computer.), you can skip this step and go directly to “3. Configure the Spyder environment.” ---
 
 Check the configuration of the current environment:
 
