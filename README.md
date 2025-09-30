@@ -6,7 +6,7 @@ AccuSNV is a computational tool designed to identify single nucleotide variants 
 
 The workflow of AccuSNV:
 
-# <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/method.jpg" width = "600" height = "450" >  
+# <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/method.jpg" width = "800" height = "500" >  
 
 -------------------------------------------------
 
