@@ -297,7 +297,7 @@ snv_table_merge_all_mut_annotations_final.tsv | Text report - contain identified
 snv_qc_heatmap_*.png | QC figures
 snv_table_with_charts_final.html | Html report - display the comprehensive information about identified SNVs. Note, if you want to see the bar charts in the html file, make sure you have the folder "bar_charts" under the same folder with the html file.
 
-
+A demo output HTML report of AccuSNV can be found at https://heruiliao.github.io/
 
  ## References:
 
