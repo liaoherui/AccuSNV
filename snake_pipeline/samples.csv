@@ -1,5 +1,6 @@
 Path,Sample,FileName,Reference,Group,Outgroup,Type
-Test_data/demo/subj-1/,subj-1,d1,Cae_ref,demo-test,0,PE
-Test_data/demo/subj-2/,subj-2,d2,Cae_ref,demo-test,0,PE
-Test_data/demo/subj-3/,subj-3,d3,Cae_ref,demo-test,0,PE
-Test_data/demo/subj-4/,subj-4,d4,Cae_ref,demo-test,0,PE
+/user/Test_data/demo/subj-1/,subj-1,d1,Cae_ref,demo-test,0,PE
+/user/Test_data/demo/subj-2/,subj-2,d2,Cae_ref,demo-test,0,PE
+/user/Test_data/demo/subj-3/,subj-3,d3,Cae_ref,demo-test,0,PE
+/user/Test_data/demo/subj-4/,subj-4,d4,Cae_ref,demo-test,0,PE
+
