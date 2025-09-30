@@ -56,6 +56,9 @@ Mandatory changes:
 	* Outgroup: a boolean value indicating whether or not your sample is an outgroup sample
 		* The Snakemake workflow will only identify candidate SNVs that differentiate ingroup samples from each other. It will NOT identify candidate SNVs that differentiate only ingroup samples from outgroup samples.
 		* Constraints: Entry must be "0" or "1".
+    * Type: pair-end or single-end reads
+		* The program processes the sample using different commands depending on the specified read type.
+		* Constraints: Entry must be "PE" or "SE".
 
 #### `snakemake_pipeline/input/experiment_info.yaml`
 Mandatory changes:
