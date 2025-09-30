@@ -299,6 +299,10 @@ snv_table_with_charts_final.html | Html report - display the comprehensive infor
 
 A demo output HTML report of AccuSNV can be found at https://heruiliao.github.io/
 
+ ## -Contact-
+  
+ If you have any questions, please email us: herui728@mit.edu
+
  ## References:
 
 how to cite this tool:
