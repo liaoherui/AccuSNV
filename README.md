@@ -278,7 +278,7 @@ options:
 ## Output
 
 
-<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/output_downstream_new_single.png" width = "700" height = "650" >  
+<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/output_downstream_new_single.jpg" width = "700" height = "650" >  
 
 The main output folder structure of Snakemake pipeline is shown below:
 
