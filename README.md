@@ -49,7 +49,7 @@ If you install the tool via bioconda, you can test the tool with the command lin
 `sh scripts/dry_run.sh`<BR/>
 `sbatch scripts/run_snakemake.slurm`<BR/>
 
-Note: if you still want to run Snakemake directly from the snake_pipeline folder within the conda environment, please run:
+Note: if you still want to run Snakemake directly from the `snake_pipeline` folder within the conda environment, please run:
 
 `cd snake_pipeline`
 `cp Snakefiles_diff_options/Snakefile_conda_env.txt  ./Snakefile`
