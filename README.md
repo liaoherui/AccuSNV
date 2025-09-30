@@ -162,6 +162,8 @@ If you cloned the repository (e.g. a new download) and have already downloaded t
 
 `python accusnv_snakemake.py -i <input_sample_info_csv> -c /path/snake_pipeline/accusnv_sub -r <ref_dir> -o <output_dir>`
 
+One example file for `<input_sample_info_csv>` can be found at `snake_pipeline/samples.csv`.
+
 
 Step-2: check the pipeline using "dry-run"<BR/>
 
