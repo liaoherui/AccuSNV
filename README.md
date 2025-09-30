@@ -301,7 +301,7 @@ A demo output HTML report of AccuSNV can be found at https://heruiliao.github.io
 
  ## -Contact-
   
- If you have any questions, please email us: herui728@mit.edu
+ If you have any questions, please post an issue on GitHub or email us: herui728@mit.edu
 
  ## References:
 
