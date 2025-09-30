@@ -299,6 +299,12 @@ snv_table_with_charts_final.html | Html report - display the comprehensive infor
 
 
 
+ ## References:
+
+how to cite this tool:
+```
+Liao, H., Conwill, A., & Light-Maka, Ian., et al. High-accuracy SNV calling for bacterial isolates using deep learning with AccuSNV, BioRxiv, 2025; https://www.biorxiv.org/content/10.1101/2025.09.26.678787v2
+```
 
 
 <!--- ## Tutorial Table of Contents
