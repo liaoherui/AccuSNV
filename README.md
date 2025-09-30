@@ -4,6 +4,10 @@
 
 AccuSNV is a computational tool designed to identify single nucleotide variants (SNVs) in short-read whole genome sequencing (WGS) data from bacterial isolates. By leveraging deep learning, it classifies SNVs as either true or false, improving the accuracy of variant detection. The tool takes WGS data and a reference genome as input, and outputs a high-quality mutation table along with text and HTML reports. Additionally, it facilitates detailed downstream analysis, including phylogenetic tree construction and evolutionary analysis, among other features.
 
+The workflow of AccuSNV:
+
+# <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/method.jpg" width = "600" height = "450" >  
+
 -------------------------------------------------
 
 ### Version: V1.0.0.5 (Last update on 2025-08-18)
