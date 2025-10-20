@@ -195,7 +195,7 @@ Here is a summary of each output file created by this Snakemake workflow:
 * `1-Mapping/bowtie2_qc/alignment_stats_ref_{references}.csv`
 	* Summary of alignment stats 
 	* One file per reference genome
-	* Interpreatation: The vast majority of reads from your isolates (>95%) should align to your reference genome. Contamination will cause some isolates to have lower alignment rates. An inappropriate choice or reference genome will cause samples in general to have lower alignment rates. 
+	* Interpretation: The vast majority of reads from your isolates (>95%) should align to your reference genome. Contamination will cause some isolates to have lower alignment rates. An inappropriate choice or reference genome will cause samples in general to have lower alignment rates. 
 * `2-Case/candidate_mutation_table/group_{groupID}_candidate_mutation_table.pickle.gz` 
 	* Candidate SNV positions along with alignment stats at each position for each sample
 	* One file per Group in `samples.csv`
