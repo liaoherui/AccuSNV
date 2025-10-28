@@ -160,6 +160,10 @@ Step-1: run the python script: <BR/>
 
 `python accusnv_snakemake.py -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
 
+or use (if you install the tool via bioconda):
+
+`accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
+
 One example with test data can be found in `snake_pipeline/test_run.sh`
 
 If you cloned the repository (e.g. a new download) and have already downloaded the pre-built Conda environment (e.g., /path/snake_pipeline/accusnv_sub), there's no need to download it again. Just try:
@@ -187,6 +191,10 @@ Note: This step has been incorporated into the Snakemake pipeline and will be ex
 
 `python new_snv_script.py -i <input_mutation_table> -c <input_raw_coverage_matrix> -r <ref_dir> -o <output_dir>`
 
+or use (if you install the tool via bioconda):
+
+`accusnv -i <input_mutation_table> -c <input_raw_coverage_matrix> -r <ref_dir> -o <output_dir>`
+
 One example with test data can be found in `local_analysis/test_local.sh`
 
 The second portion of AccuSNV filters candidate SNVs based on data arrays generated in the first portion and generates a high-quality SNV table and a parsimony tree. This step utilizes deep learning and is implemented with a custom Python script. More information can be found [here](readme_files/readme_local_main.md).
@@ -197,6 +205,10 @@ The second portion of AccuSNV filters candidate SNVs based on data arrays genera
 Based on the identified SNVs and **the output final mutation table (in .npz format, e.g. candidate_mutation_table_final.npz) from Snakemake pipeline**, AccuSNV offers a set of downstream analysis modules (e.g. dN/dS calculation). You can run these modules using the command below.
 
 `python accusnv_downstream.py -i  test_data/candidate_mutation_table_final.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_ds_pe`
+
+or use (if you install the tool via bioconda):
+
+`accusnv_downstream -i  test_data/candidate_mutation_table_final.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_ds_pe`
 
 
 ### Full command-line options
