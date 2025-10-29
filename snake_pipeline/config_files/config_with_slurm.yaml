@@ -9,7 +9,7 @@ use-conda: True
 conda-frontend: mamba
 rerun-incomplete: True
 restart-times: 1
-jobs: 400
+jobs: 8
 latency-wait: 30
 keep-going: True
 configfile: ./experiment_info.yaml
