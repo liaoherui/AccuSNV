@@ -93,7 +93,7 @@ Change the permission of the file:<BR/>
 `chmod 777 slurm_status_script.py`<BR/>
 
 ------------------------------------------------------------------------------------
-Once you finish the install (via Option-2 or Option-3), you can test the tool with the command lines below :<BR/>
+Once you finish the install (via **Option-2** or **Option-3**), you can test the tool with the command lines below :<BR/>
 
 Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
 `sh test_run.sh`<BR/>
@@ -160,9 +160,11 @@ Step-1: run the python script: <BR/>
 
 `python accusnv_snakemake.py -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
 
-or use (if you install the tool via bioconda):
+or use (if you install the tool via **bioconda**):
 
 `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
+
+(For bioconda installation, we strongly recommend running the command in a clean, empty folder. For example: `mkdir work_dir`,`cd work_dir`, then run `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`)
 
 One example with test data can be found in `snake_pipeline/test_run.sh`
 
