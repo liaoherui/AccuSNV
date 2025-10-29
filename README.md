@@ -165,7 +165,7 @@ or use (if you install the tool via **bioconda**):
 
 `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
 
-(⚠️ For bioconda installation, we strongly recommend running the command in a clean, empty folder. For example: `mkdir work_dir`,`cd work_dir`, then run the command line above.)
+(⚠️ For bioconda installation, we strongly recommend running the command line above in a clean, empty folder. You can use `mkdir work_dir`,`cd work_dir` to build such folder.)
 
 One example (This example uses commands like `python accusnv_snakemake.py xxx`. If you installed the tool via Bioconda, please replace those with: `accusnv_snakemake xxx`)  with test data can be found in `snake_pipeline/test_run.sh`
 
