@@ -167,7 +167,7 @@ or use (if you install the tool via **bioconda**):
 
 (⚠️ For bioconda installation, we strongly recommend running the command in a clean, empty folder. For example: `mkdir work_dir`,`cd work_dir`, then run `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`)
 
-One example with test data can be found in `snake_pipeline/test_run.sh`
+One example (This example uses commands like `python accusnv_snakemake.py xxx`.If you installed the tool via Bioconda, please replace those with: `accusnv_snakemake xxx`)  with test data can be found in `snake_pipeline/test_run.sh`
 
 If you cloned the repository (e.g. a new download) and have already downloaded the pre-built Conda environment (e.g., /path/snake_pipeline/accusnv_sub), there's no need to download it again. Just try:
 
@@ -185,6 +185,10 @@ Step-3: submit your slurm job.<BR/>
 `sbatch scripts/run_snakemake.slurm`<BR/>
 
 ⚠️: If you need to modify any slurm job configuration, you can edit the config.yaml file generated in your output folder: `<output_dir>/conf/config.yaml`
+
+⚠️: Job Interruption Warning: If your job stops before completing, you can check whether any tasks are still pending by running: `sh scripts/dry-run.sh`. If there are unfinished jobs, you can re-submit them using: `sbatch scripts/run_snakemake.slurm`.
+
+Job interruptions may be caused by issues with specific compute nodes (e.g. Timelimit or QOSMaxSubmitJobPerUserLimit). To avoid such interruptions, consider modifying the partition settings in your `scripts/run_snakemake.slurm` file or modifying your config.yaml file (`<output_dir>/conf/config.yaml`).
 
 
 
