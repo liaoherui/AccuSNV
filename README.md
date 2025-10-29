@@ -167,7 +167,7 @@ or use (if you install the tool via **bioconda**):
 
 (⚠️ For bioconda installation, we strongly recommend running the command in a clean, empty folder. For example: `mkdir work_dir`,`cd work_dir`, then run `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`)
 
-One example (This example uses commands like `python accusnv_snakemake.py xxx`.If you installed the tool via Bioconda, please replace those with: `accusnv_snakemake xxx`)  with test data can be found in `snake_pipeline/test_run.sh`
+One example (This example uses commands like `python accusnv_snakemake.py xxx`. If you installed the tool via Bioconda, please replace those with: `accusnv_snakemake xxx`)  with test data can be found in `snake_pipeline/test_run.sh`
 
 If you cloned the repository (e.g. a new download) and have already downloaded the pre-built Conda environment (e.g., /path/snake_pipeline/accusnv_sub), there's no need to download it again. Just try:
 
