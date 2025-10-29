@@ -167,15 +167,6 @@ or use (if you install the tool via **bioconda**):
 
 (⚠️ For bioconda installation, we strongly recommend running the command line above in a clean, empty folder. You can use `mkdir work_dir` to build such folder.)
 
-One example (This example uses commands like `python accusnv_snakemake.py xxx`. If you installed the tool via Bioconda, please replace those with: `accusnv_snakemake xxx`)  with test data can be found in `snake_pipeline/test_run.sh`
-
-If you cloned the repository (e.g. a new download) and have already downloaded the pre-built Conda environment (e.g., /path/snake_pipeline/accusnv_sub), there's no need to download it again. Just try:
-
-`python accusnv_snakemake.py -i <input_sample_info_csv> -c /path/snake_pipeline/accusnv_sub -r <ref_dir> -o <output_dir>`
-
-One example file for `<input_sample_info_csv>` can be found at `snake_pipeline/samples.csv`. More information about the input csv and the reference genome file can be found at [here](https://github.com/liaoherui/AccuSNV/blob/main/readme_files/readme_snake_run.md#modify-files-for-your-project)
-
-
 ✅ Step-2: check the pipeline using "dry-run"<BR/>
 
 `sh scripts/dry-run.sh`<BR/>
@@ -190,6 +181,18 @@ One example file for `<input_sample_info_csv>` can be found at `snake_pipeline/s
 
 ⚠️⚠️⚠️: Job interruptions may be caused by issues with specific compute nodes (e.g. Timelimit or QOSMaxSubmitJobPerUserLimit). To avoid such interruptions, consider modifying your `scripts/run_snakemake.slurm` file (e.g. `snakemake --jobs <maxSubmitJob> xxx` for QOSMaxSubmitJobPerUserLimit) or modifying your config.yaml file (`<output_dir>/conf/config.yaml`, e.g. change `jobs: 400` to `jobs: <maxSubmitJob>` for QOSMaxSubmitJobPerUserLimit).
 
+----------------------------------
+Notes for Step-1: 
+
+One example (This example uses commands like `python accusnv_snakemake.py xxx`. If you installed the tool via Bioconda, please replace those with: `accusnv_snakemake xxx`)  with test data can be found in `snake_pipeline/test_run.sh`
+
+If you cloned the repository (e.g. a new download) and have already downloaded the pre-built Conda environment (e.g., /path/snake_pipeline/accusnv_sub), there's no need to download it again. Just try:
+
+`python accusnv_snakemake.py -i <input_sample_info_csv> -c /path/snake_pipeline/accusnv_sub -r <ref_dir> -o <output_dir>`
+
+One example file for `<input_sample_info_csv>` can be found at `snake_pipeline/samples.csv`. More information about the input csv and the reference genome file can be found at [here](https://github.com/liaoherui/AccuSNV/blob/main/readme_files/readme_snake_run.md#modify-files-for-your-project)
+
+----------------------------------
 
 
 ### 2.1. Local python analysis
