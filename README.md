@@ -179,7 +179,7 @@ or use (if you install the tool via **bioconda**):
 
 ⚠️: Job Interruption Warning: If your job stops before completing, you can check whether any tasks are still pending by running: `sh scripts/dry-run.sh`. If there are unfinished jobs, you can re-submit them using: `sbatch scripts/run_snakemake.slurm`.
 
-⚠️⚠️⚠️: Job interruptions may be caused by issues with specific compute nodes (e.g. Timelimit or QOSMaxSubmitJobPerUserLimit). To avoid such interruptions, consider modifying your `scripts/run_snakemake.slurm` file (e.g. `snakemake --jobs <maxSubmitJob> xxx` for QOSMaxSubmitJobPerUserLimit) or modifying your config.yaml file (`<output_dir>/conf/config.yaml`, e.g. change `jobs: 400` to `jobs: <maxSubmitJob>` to avoid QOSMaxSubmitJobPerUserLimit).
+⚠️⚠️⚠️: Job interruptions may be caused by issues with specific compute nodes or limitations of the cluster being used (e.g. Timelimit or QOSMaxSubmitJobPerUserLimit). To avoid such interruptions, consider modifying your `scripts/run_snakemake.slurm` file (e.g. `snakemake --jobs <maxSubmitJob> xxx` for QOSMaxSubmitJobPerUserLimit) or modifying your config.yaml file (`<output_dir>/conf/config.yaml`, e.g. change `jobs: 400` to `jobs: <maxSubmitJob>` to avoid QOSMaxSubmitJobPerUserLimit).
 
 ----------------------------------
 Notes for Step-1: 
