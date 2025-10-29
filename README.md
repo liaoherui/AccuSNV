@@ -36,7 +36,7 @@ python new_snv_script.py -h | accusnv -h
 python accusnv_snakemake.py -h | accusnv_snakemake -h
 python accusnv_downstream.py -h | accusnv_downstream -h
 
-The user must only change the initial python line. (See below) The other commands called within the Snakefile will be automatically dealt with.
+The user must only change the initial python line. (See below) 
 
 `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
 
