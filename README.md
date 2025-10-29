@@ -157,7 +157,7 @@ Make sure to configure your `config.yaml` file and `scripts/run_snakemake.slurm`
 
 `chmod 777 slurm_status_script.py`<BR/>
 
-Step-1: run the python script: <BR/>
+✅ Step-1: run the python script: <BR/>
 
 `python accusnv_snakemake.py -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
 
@@ -176,11 +176,11 @@ If you cloned the repository (e.g. a new download) and have already downloaded t
 One example file for `<input_sample_info_csv>` can be found at `snake_pipeline/samples.csv`. More information about the input csv and the reference genome file can be found at [here](https://github.com/liaoherui/AccuSNV/blob/main/readme_files/readme_snake_run.md#modify-files-for-your-project)
 
 
-Step-2: check the pipeline using "dry-run"<BR/>
+✅ Step-2: check the pipeline using "dry-run"<BR/>
 
 `sh scripts/dry-run.sh`<BR/>
 
-Step-3: submit your slurm job.<BR/>
+✅ Step-3: submit your slurm job.<BR/>
 
 `sbatch scripts/run_snakemake.slurm`<BR/>
 
