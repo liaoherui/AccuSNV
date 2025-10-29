@@ -28,7 +28,7 @@ Git clone:<BR/>
 
 then, `conda activate accusnv`
 
-It should be noted that some commands have been replaced if you install AccuSNV using bioconda. (See below)
+⚠️ It should be noted that some commands have been replaced if you install AccuSNV using bioconda. (See below)
 
 Command (Not bioconda)    |	Command (bioconda)
 ------------ | ------------- 
@@ -37,10 +37,11 @@ python accusnv_snakemake.py -h | accusnv_snakemake -h
 python accusnv_downstream.py -h | accusnv_downstream -h
 
 The user must only change the initial python line. (See below) The other commands called within the Snakefile will be automatically dealt with.
+
 `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
 
 
-Note: please ensure that your working directory does not contain any files or folders with the same names as those listed below (or if they are present, ensure they are identical files to those in this GitHub repository): <BR/> 
+⚠️ : please ensure that your working directory **does not contain** any files or folders with the same names as those listed below (or if they are present, ensure they are identical files to those in this GitHub repository): <BR/> 
 
 Files: `config.yaml`,`experiment_info.yaml`,`Snakefile` <BR/>
 Folders: `scripts` (and all files under `snake_pipeline/scripts` on Github repo)<BR/>
@@ -53,7 +54,7 @@ If you install the tool via bioconda, you can test the tool with the command lin
 `sh scripts/dry_run.sh`<BR/>
 `sbatch scripts/run_snakemake.slurm`<BR/>
 
-Note: if you still want to run Snakemake directly from the `snake_pipeline` folder within the conda environment, please run:
+⚠️ : if you still want to run Snakemake directly from the `snake_pipeline` folder within the conda or bioconda environment, please run:
 
 `cd snake_pipeline`<BR/>
 `cp Snakefiles_diff_options/Snakefile_conda_env.txt  ./Snakefile`
@@ -152,7 +153,7 @@ The first portion of AccuSNV aligns raw sequencing data from bacterial isolates 
 
 Make sure to configure your `config.yaml` file and `scripts/run_snakemake.slurm` before starting the steps below.. -->
 
-Please ensure the right permission of the file `slurm_status_script.py`:
+⚠️: **Please ensure the right permission of the file `slurm_status_script.py`**:
 
 `chmod 777 slurm_status_script.py`<BR/>
 
@@ -164,7 +165,7 @@ or use (if you install the tool via **bioconda**):
 
 `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
 
-(For bioconda installation, we strongly recommend running the command in a clean, empty folder. For example: `mkdir work_dir`,`cd work_dir`, then run `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`)
+(⚠️ For bioconda installation, we strongly recommend running the command in a clean, empty folder. For example: `mkdir work_dir`,`cd work_dir`, then run `accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`)
 
 One example with test data can be found in `snake_pipeline/test_run.sh`
 
@@ -183,13 +184,13 @@ Step-3: submit your slurm job.<BR/>
 
 `sbatch scripts/run_snakemake.slurm`<BR/>
 
-Note: If you need to modify any slurm job configuration, you can edit the config.yaml file generated in your output folder: `<output_dir>/conf/config.yaml`
+⚠️: If you need to modify any slurm job configuration, you can edit the config.yaml file generated in your output folder: `<output_dir>/conf/config.yaml`
 
 
 
 ### 2.1. Local python analysis
 
-Note: This step has been incorporated into the Snakemake pipeline and will be executed automatically by default. However, you can still use this local Python script to rerun the analysis with different parameters if needed.
+⚠️: This step has been incorporated into the Snakemake pipeline and will be executed automatically by default. However, you can still use this local Python script to rerun the analysis with different parameters if needed.
 
 `python new_snv_script.py -i <input_mutation_table> -c <input_raw_coverage_matrix> -r <ref_dir> -o <output_dir>`
 
