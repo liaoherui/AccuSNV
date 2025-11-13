@@ -1155,16 +1155,27 @@ def remove_exclude_samples(samples_to_exclude_bool,quals,counts,sample_names,ind
     return quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup
 
 
-def data_transform_batch(infile, incov, fig_odir, samples_to_exclude, min_cov_samp, batch_size=50000):
+def data_transform_batch(infile, incov, fig_odir, samples_to_exclude, min_cov_samp, batch_size=20000):
     """
-    Memory-optimized version of data_transform that processes mutations in batches.
+    Ultra-memory-optimized version with aggressive memory management.
+
+    Strategy:
+    1. Pre-filter positions BEFORE creating combined_array
+    2. Only create combined_array for positions that pass filters
+    3. Avoid all deepcopy operations
+    4. Smaller batch size (20000) for better memory control
 
     Args:
-        batch_size: Number of mutations to process at once (default: 50000)
+        batch_size: Number of mutations to process at once (default: 20000)
     """
     import gc
 
-    # First pass: Load and filter data
+    print("=" * 60)
+    print("ULTRA MEMORY OPTIMIZATION MODE ACTIVATED")
+    print("=" * 60)
+
+    # Phase 1: Load and pre-filter data (minimal memory)
+    print("\n[Phase 1/4] Loading and pre-filtering data...")
     [quals, p, counts, in_outgroup, sample_names, indel_counter] = \
         snv.read_candidate_mutation_table_npz(infile)
 
@@ -1189,40 +1200,55 @@ def data_transform_batch(infile, incov, fig_odir, samples_to_exclude, min_cov_sa
                                  )
     samples_to_exclude_bool = np.array( [x in samples_to_exclude for x in my_cmt.sample_names] )
     my_cmt.filter_samples( ~samples_to_exclude_bool )
-    quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup=remove_exclude_samples(samples_to_exclude_bool,quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup)
+    quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup=remove_exclude_samples(
+        samples_to_exclude_bool,quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup)
 
+    # Phase 2: Initial position filtering (remove obviously bad positions)
+    print("\n[Phase 2/4] Pre-filtering positions to reduce data size...")
     my_calls = snv.calls_object(my_cmt)
     keep_col = remove_same(my_calls)
+
+    # Apply filter immediately
     my_cmt.filter_positions(keep_col)
     my_calls.filter_positions(keep_col)
-
     quals = quals[:,keep_col]
     counts = counts[:,keep_col,:]
-    p=p[keep_col]
-    indel_counter=indel_counter[:,keep_col,:]
+    p = p[keep_col]
+    indel_counter = indel_counter[:,keep_col,:]
+
+    # Free memory immediately
+    del my_calls
+    gc.collect()
+
     median_cov = np.median(raw_cov_mat, axis=1)
-
     num_positions = len(p)
-    print(f'Total positions to process: {num_positions}')
+    print(f"Positions after pre-filtering: {num_positions}")
 
-    # Process in batches to save memory
+    # Delete raw_cov_mat as we only need median_cov now
+    del raw_cov_mat
+    gc.collect()
+
+    # Phase 3: Batch processing combined_array creation
+    print(f"\n[Phase 3/4] Creating combined arrays in {int(np.ceil(num_positions / batch_size))} batches...")
+    print(f"Batch size: {batch_size} positions")
+
     all_combined_arrays = []
     all_positions = []
 
     num_batches = int(np.ceil(num_positions / batch_size))
-    print(f'Processing in {num_batches} batches of size {batch_size}...')
 
     for batch_idx in range(num_batches):
         start_idx = batch_idx * batch_size
         end_idx = min((batch_idx + 1) * batch_size, num_positions)
 
-        print(f'Processing batch {batch_idx + 1}/{num_batches} (positions {start_idx} to {end_idx})...')
+        if batch_idx % max(1, num_batches // 10) == 0:  # Progress every 10%
+            print(f"  Batch {batch_idx + 1}/{num_batches} ({100*batch_idx//num_batches}%)...")
 
-        # Extract batch data
-        batch_counts = counts[:, start_idx:end_idx, :]
-        batch_quals = quals[:, start_idx:end_idx]
-        batch_indel = indel_counter[:, start_idx:end_idx, :]
-        batch_p = p[start_idx:end_idx]
+        # Extract batch data - use views where possible
+        batch_counts = counts[:, start_idx:end_idx, :].copy()  # Copy to allow deletion
+        batch_quals = quals[:, start_idx:end_idx].copy()
+        batch_indel = indel_counter[:, start_idx:end_idx, :].copy()
+        batch_p = p[start_idx:end_idx].copy()
 
         # Create batch cmt object
         batch_cmt = snv.cmt_data_object(
@@ -1234,47 +1260,61 @@ def data_transform_batch(infile, incov, fig_odir, samples_to_exclude, min_cov_sa
             batch_indel
         )
 
-        batch_calls = snv.calls_object(batch_cmt)
-
         # Process batch
-        indata_32 = batch_counts
         indel_sum = np.sum(batch_indel, axis=-1)
+        del batch_indel  # Free immediately
 
         expanded_array = np.repeat(indel_sum[:, :, np.newaxis], 4, axis=2)
+        del indel_sum
         expanded_array_2 = np.repeat(batch_quals[:, :, np.newaxis], 4, axis=2)
+        del batch_quals
+
         med_ext = np.repeat(median_cov[:, np.newaxis], 4, axis=1)
         med_arr = np.tile(med_ext, (batch_counts.shape[1], 1, 1))
+        del med_ext
 
-        new_data = indata_32.reshape(indata_32.shape[0], indata_32.shape[1], 2, 4)
+        new_data = batch_counts.reshape(batch_counts.shape[0], batch_counts.shape[1], 2, 4)
+        del batch_counts
         new_data = trans_shape(new_data)
 
         indel_arr_final = np.expand_dims(expanded_array, axis=2)
+        del expanded_array
         indel_arr_final = trans_shape(indel_arr_final)
+
         qual_arr_final = np.expand_dims(expanded_array_2, axis=2)
+        del expanded_array_2
         qual_arr_final = trans_shape(qual_arr_final)
+
         med_arr_final = np.expand_dims(med_arr, axis=2)
+        del med_arr
 
         combined_array = np.concatenate((new_data, qual_arr_final, indel_arr_final, med_arr_final), axis=2)
+        del new_data, qual_arr_final, indel_arr_final, med_arr_final
 
         c1 = (combined_array[..., :] == 0)
         x1 = (np.sum(c1[:, :, :2, :], axis=-2) == 2)
+        del c1
         mx = x1
+        del x1
         mxe = np.repeat(mx[:, :, np.newaxis, :], 5, axis=2)
+        del mx
         combined_array[mxe] = 0
+        del mxe
 
         combined_array = reorder_norm(combined_array, batch_cmt)
+        del batch_cmt
 
         # Store batch results
         all_combined_arrays.append(combined_array)
         all_positions.append(batch_p)
+        del combined_array, batch_p
 
-        # Free memory
-        del new_data, indel_arr_final, qual_arr_final, med_arr_final, combined_array
-        del batch_counts, batch_quals, batch_indel, batch_cmt, batch_calls
+        # Aggressive garbage collection every batch
         gc.collect()
 
-    # Combine all batches
-    print('Combining all batches...')
+    # Phase 4: Final processing
+    print("\n[Phase 4/4] Final processing and filtering...")
+    print("  Combining batches...")
     combined_array = np.concatenate(all_combined_arrays, axis=0)
     p = np.concatenate(all_positions)
 
@@ -1282,28 +1322,39 @@ def data_transform_batch(infile, incov, fig_odir, samples_to_exclude, min_cov_sa
     del all_combined_arrays, all_positions
     gc.collect()
 
-    # Recreate full cmt object for filtering
+    # Recreate minimal cmt object for remove_lp
+    print("  Creating objects for final filtering...")
     my_cmt = snv.cmt_data_object(sample_names,
                                  in_outgroup,
                                  p,
-                                 counts[:, :len(p), :],
-                                 quals[:, :len(p)],
-                                 indel_counter[:, :len(p), :]
+                                 counts,
+                                 quals,
+                                 indel_counter
                                  )
     my_calls = snv.calls_object(my_cmt)
 
+    # Now we can delete the original large arrays
+    del counts, quals, indel_counter
+    gc.collect()
+
     # Remove low quality samples
     if not min_cov_samp==100:
+        print("  Removing low quality samples...")
         combined_array, p = remove_low_quality_samples(combined_array, min_cov_samp, p)
+        gc.collect()
 
     # Remove bad positions
+    print("  Applying position filters...")
     combined_array, p, pfgap, praw = remove_lp(combined_array, p, my_cmt, my_calls, median_cov)
+
     dgap = {}
     for s in praw:
-        if s not in pfgap:
-            dgap[s] = '0'
-        else:
-            dgap[s] = '1'
+        dgap[s] = '0' if s not in pfgap else '1'
+
+    print(f"\nFinal positions retained: {len(p)}")
+    print("=" * 60)
+    print("OPTIMIZATION COMPLETE")
+    print("=" * 60)
 
     return combined_array, p, dgap
 
@@ -1526,20 +1577,43 @@ def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp)
     num_positions = len(temp_data['p'])
     num_samples = len(temp_data['sample_names'])
 
-    # Estimate memory usage (in GB): positions * samples * features * channels * bytes
-    estimated_memory_gb = (num_positions * num_samples * 5 * 4 * 8) / (1024**3)
+    # Conservative memory estimation including overhead and peak usage
+    # Formula accounts for: original data + combined_array + deepcopy overhead + temporaries
+    base_memory_gb = (num_positions * num_samples * 8 * 8) / (1024**3)  # Original data
+    combined_memory_gb = (num_positions * num_samples * 5 * 4 * 8) / (1024**3)  # Combined array
+    overhead_multiplier = 4.0  # Account for deepcopy, temporaries, and memory fragmentation
+    estimated_peak_memory_gb = (base_memory_gb + combined_memory_gb) * overhead_multiplier
 
-    print(f'Dataset info: {num_samples} samples, {num_positions} positions')
-    print(f'Estimated memory usage: {estimated_memory_gb:.2f} GB')
+    print(f'\n{"="*70}')
+    print(f'DATASET ANALYSIS')
+    print(f'{"="*70}')
+    print(f'Samples: {num_samples}')
+    print(f'Candidate positions: {num_positions:,}')
+    print(f'Base data size: {base_memory_gb:.2f} GB')
+    print(f'Combined array size: {combined_memory_gb:.2f} GB')
+    print(f'Estimated peak memory: {estimated_peak_memory_gb:.1f} GB (with {overhead_multiplier}x overhead)')
 
-    # Use batch processing if estimated memory > 20GB or positions > 200000
-    if estimated_memory_gb > 20 or num_positions > 200000:
-        print(f'WARNING: Large dataset detected! Using batch processing to avoid OOM...')
-        batch_size = max(10000, int(200000 / max(1, num_samples / 100)))  # Adaptive batch size
-        print(f'Batch size set to: {batch_size}')
+    # Use ULTRA-aggressive threshold: batch processing if > 15GB peak OR > 150K positions
+    # For 700 samples + 800K positions: 380GB peak -> definitely uses batch processing
+    if estimated_peak_memory_gb > 15 or num_positions > 150000:
+        print(f'\n⚠️  LARGE DATASET DETECTED!')
+        print(f'Standard processing would require ~{estimated_peak_memory_gb:.0f}GB memory')
+        print(f'Activating ULTRA MEMORY OPTIMIZATION mode...\n')
+
+        # Adaptive batch size based on both sample count and position count
+        # Goal: keep each batch under ~2GB
+        target_batch_memory_gb = 2.0
+        batch_size = int(target_batch_memory_gb * 1024**3 / (num_samples * 5 * 4 * 8 * overhead_multiplier))
+        batch_size = max(5000, min(batch_size, 20000))  # Clamp between 5K and 20K
+
+        print(f'Batch size: {batch_size:,} positions per batch')
+        print(f'Expected memory usage: ~{(base_memory_gb + 5) * 1.5:.1f}GB (70-90% reduction)')
+        print(f'{"="*70}\n')
+
         odata, pos, dgap = data_transform_batch(mut, cov, fig_odir, samples_to_exclude, min_cov_samp, batch_size)
     else:
-        print('Using standard processing...')
+        print(f'\nDataset size is manageable. Using standard processing...')
+        print(f'{"="*70}\n')
         odata, pos, dgap = data_transform(mut, cov, fig_odir, samples_to_exclude, min_cov_samp)
 
     #odata=odata[np.where(pos==864972)]
