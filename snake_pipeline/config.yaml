@@ -21,7 +21,7 @@ reason: True
 
 cluster:
   mkdir -p ./logs/ &&
-  sbatch
+  ./scripts/safe_sbatch.py
     --partition={resources.partition}
     --ntasks={resources.ntasks}
     --cpus-per-task={resources.cpus_per_task}

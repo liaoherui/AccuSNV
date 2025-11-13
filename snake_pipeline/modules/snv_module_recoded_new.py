@@ -482,14 +482,23 @@ class cmt_data_object:
         
         # Compute coverage from candidate SNV counts array
         # total coverage
-        self.coverage = np.zeros( (self.num_samples,self.num_pos), dtype='int') # init coverage array
-        np.sum( self.counts, axis=2, out=self.coverage ) # compute with specified output
+        self.coverage = np.sum(
+            self.counts,
+            axis=2,
+            dtype=np.int32,
+        )
         # forward read coverage
-        self.fwd_cov = np.zeros( (self.num_samples,self.num_pos), dtype='int') # init forward coverage array
-        np.sum( self.counts[:,:,0:4], axis=2, out=self.fwd_cov ) # compute with specified output
+        self.fwd_cov = np.sum(
+            self.counts[:, :, 0:4],
+            axis=2,
+            dtype=np.int32,
+        )
         # reverse read coverage
-        self.rev_cov = np.zeros( (self.num_samples,self.num_pos), dtype='int') # init reverse coverage array
-        np.sum( self.counts[:,:,4:8], axis=2, out=self.rev_cov ) # compute with specified output
+        self.rev_cov = np.sum(
+            self.counts[:, :, 4:8],
+            axis=2,
+            dtype=np.int32,
+        )
         
         # Compute major and minor allele identities and frequencies
         # major_nt, minor_nt, major_nt_freq, minor_nt_freq
@@ -501,9 +510,9 @@ class cmt_data_object:
         counts_major = np.squeeze( counts_sort[:,:,3:4], axis=2 ) # number of reads for most common nucleotide
         counts_minor = np.squeeze( counts_sort[:,:,2:3], axis=2 ) # number of reads for next most common nucleotide
         with np.errstate(divide='ignore',invalid='ignore'): # suppress warning for division by zero
-            self.major_nt_freq = counts_major / self.coverage # add major allele frequency attribute
-            self.minor_nt_freq = counts_minor / self.coverage # add minor allele frequency attribute
-        self.major_nt_freq[ np.isnan(self.major_nt_freq) ] = 0 # set major allele frequency to zero to indicate there is no data; leave minor allele frequency as nan 
+            self.major_nt_freq = (counts_major / self.coverage).astype(np.float32, copy=False) # add major allele frequency attribute
+            self.minor_nt_freq = (counts_minor / self.coverage).astype(np.float32, copy=False) # add minor allele frequency attribute
+        self.major_nt_freq[ np.isnan(self.major_nt_freq) ] = 0 # set major allele frequency to zero to indicate there is no data; leave minor allele frequency as nan
         # get major and minor nucleotide identities
         # note: if counts for all bases are zero, sort will not change the order, so the major alelle will always be the fourth nucleotide and the minor allele will always be the third nucleotide
         counts_argsort = np.argsort(counts_by_allele,axis=2) # sort idx of nucleotides by number of reads
@@ -537,15 +546,15 @@ class cmt_data_object:
         counts_major_fwd = np.squeeze(counts_sort_fwd[:, :, 3:4], axis=2)  # number of reads for most common nucleotide
         counts_major_rev = np.squeeze(counts_sort_rev[:, :, 3:4], axis=2)  # number of reads for most common nucleotide
         #print(counts_sort_fwd[:,4409,:])
-        cov_fwd=np.sum(counts_sort_fwd,axis=2)
-        cov_rev = np.sum(counts_sort_rev, axis=2)
+        cov_fwd=np.sum(counts_sort_fwd,axis=2, dtype=np.int32)
+        cov_rev = np.sum(counts_sort_rev, axis=2, dtype=np.int32)
         #print(cov_fwd[:,4409])
         #print(counts_major_fwd[:,4409])
         #print(self.coverage[:,4409])
         #exit()
         with np.errstate(divide='ignore', invalid='ignore'):  # suppress warning for division by zero
-            self.major_nt_freq_fwd = counts_major_fwd / cov_fwd  # add major allele frequency attribute
-            self.major_nt_freq_rev = counts_major_rev / cov_rev  # add major allele frequency attribute
+            self.major_nt_freq_fwd = (counts_major_fwd / cov_fwd).astype(np.float32, copy=False)  # add major allele frequency attribute
+            self.major_nt_freq_rev = (counts_major_rev / cov_rev).astype(np.float32, copy=False)  # add major allele frequency attribute
         self.major_nt_freq_fwd=np.nan_to_num(self.major_nt_freq_fwd, nan=0.0)
         self.major_nt_freq_rev = np.nan_to_num(self.major_nt_freq_rev, nan=0.0)
         #print(self.major_nt_freq_fwd[:,4409])
@@ -660,9 +669,8 @@ def read_cov_mat_npz( raw_cov_mat_file ):
     '''Loads raw coverage matrix from file.'''
     
     # Reads from file
-    with open(raw_cov_mat_file, 'rb') as f:
-        raw_cov_mat_npz = np.load(f,allow_pickle=True)
-        raw_cov_mat = raw_cov_mat_npz['all_coverage_per_bp']
+    raw_cov_mat_npz = np.load(raw_cov_mat_file, allow_pickle=True, mmap_mode='r')
+    raw_cov_mat = raw_cov_mat_npz['all_coverage_per_bp']
     return raw_cov_mat
 
 def read_cov_mat_gzip( raw_cov_mat_file ):

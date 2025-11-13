@@ -60,6 +60,42 @@ import os
 import sys, argparse
 import gzip
 from scipy import sparse
+from pathlib import Path
+
+MEMMAP_THRESHOLD_BYTES = 2 * 1024 ** 3  # 2 GiB
+
+
+def _needs_memmap(shape, dtype):
+    size = np.prod(shape, dtype=np.int64) * np.dtype(dtype).itemsize
+    return size >= MEMMAP_THRESHOLD_BYTES
+
+
+def _allocate_array(base_dir, name, shape, dtype, use_memmap=True):
+    """Allocate a potentially huge array without exhausting RAM."""
+
+    if use_memmap and _needs_memmap(shape, dtype):
+        base_dir = Path(base_dir)
+        base_dir.mkdir(parents=True, exist_ok=True)
+        path = base_dir / f".{name}.memmap"
+        arr = np.memmap(path, dtype=dtype, mode="w+", shape=shape)
+        arr.fill(0)
+        return arr, path
+
+    return np.zeros(shape, dtype=dtype), None
+
+
+def _close_memmap(array, path):
+    if path is None:
+        return
+    try:
+        array.flush()
+    finally:
+        if hasattr(array, "_mmap"):
+            array._mmap.close()
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
 
 ''' positional and optional argument parser'''
 
@@ -126,14 +162,21 @@ def main(path_to_p_file, path_to_sample_names_file, path_to_outgroup_boolean_fil
     with open(fname, 'r') as f:
         paths_to_quals_files = f.read().splitlines()
     # Make Quals
-    Quals = np.zeros((len(p), numSamples), dtype='int')  # initialize
+    scratch_dir = os.path.dirname(path_to_candidate_mutation_table) or "."
+
+    Quals, quals_path = _allocate_array(
+        scratch_dir,
+        "candidate_quals",
+        (numSamples, len(p)),
+        np.int32,
+    )
     for i in range(numSamples):
         print('Loading quals matrix for sample: ' + str(i))
         print('Filename: ' + paths_to_quals_files[i])
         with gzip.open(paths_to_quals_files[i], "rb") as f:
             quals_temp = pickle.load(f)
         quals = quals_temp.flatten()
-        Quals[:, i] = quals[p - 1]  # -1 convert position to index
+        Quals[i, :] = quals[p - 1]  # -1 convert position to index
 
     ## counts: counts for each base from forward and reverse reads at each candidate position for all samples
     print('Gathering counts data at each candidate position...\n')
@@ -149,70 +192,111 @@ def main(path_to_p_file, path_to_sample_names_file, path_to_outgroup_boolean_fil
     GenomeLength = size[0]
 
     # Make counts and coverage at the same time
-    counts = np.zeros((dim, len(p), numSamples), dtype='uint')  # initialize
-    all_coverage_per_bp = np.zeros((GenomeLength, numSamples), dtype='uint')
-    indel_counter = np.zeros((2, len(p), numSamples), dtype='uint')
-
+    counts, counts_path = _allocate_array(
+        scratch_dir,
+        "candidate_counts",
+        (numSamples, len(p), dim),
+        np.uint32,
+    )
+    if flag_cov_raw or flag_cov_norm:
+        all_coverage_per_bp, cov_path = _allocate_array(
+            scratch_dir,
+            "candidate_cov_raw",
+            (GenomeLength, numSamples),
+            np.uint32,
+        )
+    else:
+        all_coverage_per_bp, cov_path = None, None
+    indel_counter, indel_path = _allocate_array(
+        scratch_dir,
+        "candidate_indel",
+        (numSamples, len(p), 2),
+        np.uint32,
+    )
 
     for i in range(numSamples):
         print('Loading counts matrix for sample: ' + str(i))
         print('Filename: ' + paths_to_diversity_files[i])
         with gzip.open(paths_to_diversity_files[i], 'rb') as f:
             data = np.array(pickle.load(f))
-        counts[:, :, i] = data[p - 1, 0:dim].T  # -1 convert position to index
+        counts[i, :, :] = data[p - 1, 0:dim]
 
-        if flag_cov_raw:
+        if all_coverage_per_bp is not None:
             np.sum(data[:, 0:dim], axis=1, out=all_coverage_per_bp[:, i])
 
-        indel_counter[:, :, i] = data[p - 1, 38:40].T  # Num reads supporting indels and reads supporting deletions
+        indel_counter[i, :, :] = data[p - 1, 38:40]  # Num reads supporting indels and reads supporting deletions
         # -1 convert position to index
 
 
     # Normalize coverage by sample and then position; ignore /0 ; turn resulting inf to 0
 
-    if flag_cov_norm:
-        with np.errstate(divide='ignore', invalid='ignore'):
-            # 1st normalization
-            array_cov_norm = (all_coverage_per_bp - np.mean(all_coverage_per_bp, axis=1, keepdims=True)) / np.std(
-                all_coverage_per_bp, axis=1,
-                keepdims=True)  # ,keepdims=True maintains 2D array (second dim == 1), necessary for braodcasting
-            array_cov_norm[~np.isfinite(array_cov_norm)] = 0
+    cov_norm_memmap = None
+    cov_norm_path = None
+    if flag_cov_norm and all_coverage_per_bp is not None:
+        chunk_rows = max(1, min(20000, max(1, int(MEMMAP_THRESHOLD_BYTES // max(1, numSamples * 8)))))
+        row_mean = np.zeros(GenomeLength, dtype=np.float64)
+        row_std = np.zeros(GenomeLength, dtype=np.float64)
+        col_sum = np.zeros(numSamples, dtype=np.float64)
+        col_sq_sum = np.zeros(numSamples, dtype=np.float64)
 
-            # 2nd normalization
-            array_cov_norm = (array_cov_norm - np.mean(array_cov_norm, axis=0, keepdims=True)) / np.std(array_cov_norm,
-                                                                                                        axis=0,
-                                                                                                        keepdims=True)  # ,keepdims=True maintains 2D array (second dim == 1), necessary for braodcasting
-            array_cov_norm[~np.isfinite(array_cov_norm)] = 0
+        for start in range(0, GenomeLength, chunk_rows):
+            stop = min(start + chunk_rows, GenomeLength)
+            chunk = np.asarray(all_coverage_per_bp[start:stop, :], dtype=np.float64)
+            row_mean_chunk = chunk.mean(axis=1)
+            row_std_chunk = chunk.std(axis=1)
+            row_std_chunk = np.where(row_std_chunk > 0, row_std_chunk, 1.0)
+            norm_chunk = (chunk - row_mean_chunk[:, None]) / row_std_chunk[:, None]
+            norm_chunk[~np.isfinite(norm_chunk)] = 0
+            col_sum += norm_chunk.sum(axis=0)
+            col_sq_sum += np.square(norm_chunk).sum(axis=0)
+            row_mean[start:stop] = row_mean_chunk
+            row_std[start:stop] = row_std_chunk
 
-            # Scale and convert to int to save space
-            array_cov_norm_scaled = (np.round(array_cov_norm, 3) * 1000).astype('int64')
-            print(array_cov_norm_scaled.dtype)
+        col_mean = col_sum / GenomeLength
+        col_var = col_sq_sum / GenomeLength - col_mean ** 2
+        col_var = np.where(col_var > 0, col_var, 1.0)
+        col_std = np.sqrt(col_var)
+        col_std = np.where(col_std > 0, col_std, 1.0)
+
+        cov_norm_memmap, cov_norm_path = _allocate_array(
+            scratch_dir,
+            "candidate_cov_norm",
+            (numSamples, GenomeLength),
+            np.int32,
+        )
+
+        for start in range(0, GenomeLength, chunk_rows):
+            stop = min(start + chunk_rows, GenomeLength)
+            chunk = np.asarray(all_coverage_per_bp[start:stop, :], dtype=np.float64)
+            row_mean_chunk = row_mean[start:stop]
+            row_std_chunk = row_std[start:stop]
+            norm_chunk = (chunk - row_mean_chunk[:, None]) / row_std_chunk[:, None]
+            norm_chunk[~np.isfinite(norm_chunk)] = 0
+            norm_chunk = (norm_chunk - col_mean) / col_std
+            norm_chunk[~np.isfinite(norm_chunk)] = 0
+            scaled = np.round(norm_chunk, 3) * 1000
+            cov_norm_memmap[:, start:stop] = scaled.T.astype(np.int32)
 
     # Reshape & save matrices
 
-    Quals = Quals.transpose() #quals: num_samples x num_pos
     p = p.transpose() #p: num_pos
-    counts = counts.swapaxes(0,2) #counts: num_samples x num_pos x 8
-    in_outgroup = in_outgroup.flatten() #in_outgroup: num_samples 
+    in_outgroup = in_outgroup.flatten() #in_outgroup: num_samples
     SampleNames = SampleNames #sampleNames: num_samples
-    indel_counter = indel_counter.swapaxes(0,2) #indel_counter: num_samples x num_pos x 2
 
 
     outdir = os.path.dirname(path_to_candidate_mutation_table)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    if flag_cov_raw:
+    if flag_cov_raw and all_coverage_per_bp is not None:
         print("Saving " + path_to_cov_mat_raw)
-        all_coverage_per_bp = all_coverage_per_bp.transpose() #all_coverage_per_bp: num_samples x num_pos
         with open(path_to_cov_mat_raw, 'wb') as f:
-            np.savez_compressed(path_to_cov_mat_raw, all_coverage_per_bp=all_coverage_per_bp)
+            np.savez_compressed(path_to_cov_mat_raw, all_coverage_per_bp=all_coverage_per_bp.transpose())
 
-    if flag_cov_norm:
+    if flag_cov_norm and cov_norm_memmap is not None:
         print("Saving " + path_to_cov_mat_norm)
-        array_cov_norm_scaled = array_cov_norm_scaled.transpose() #array_cov_norm_scaled: num_samples x num_pos
         with open(path_to_cov_mat_norm, 'wb') as f:
-            np.savez_compressed(path_to_cov_mat_norm, array_cov_norm_scaled=array_cov_norm_scaled)
+            np.savez_compressed(path_to_cov_mat_norm, array_cov_norm_scaled=cov_norm_memmap)
 
     CMT = {'sample_names': SampleNames,
            'p': p,
@@ -227,6 +311,14 @@ def main(path_to_p_file, path_to_sample_names_file, path_to_outgroup_boolean_fil
     np.savez_compressed(file_path, **CMT)
 
     print('DONE')
+
+    _close_memmap(Quals, quals_path)
+    _close_memmap(counts, counts_path)
+    _close_memmap(indel_counter, indel_path)
+    if all_coverage_per_bp is not None:
+        _close_memmap(all_coverage_per_bp, cov_path)
+    if cov_norm_memmap is not None:
+        _close_memmap(cov_norm_memmap, cov_norm_path)
 
 
 # %%

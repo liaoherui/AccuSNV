@@ -673,9 +673,8 @@ def read_cov_mat_npz( raw_cov_mat_file ):
     '''Loads raw coverage matrix from file.'''
     
     # Reads from file
-    with open(raw_cov_mat_file, 'rb') as f:
-        raw_cov_mat_npz = np.load(f,allow_pickle=True)
-        raw_cov_mat = raw_cov_mat_npz['all_coverage_per_bp']
+    raw_cov_mat_npz = np.load(raw_cov_mat_file, allow_pickle=True, mmap_mode='r')
+    raw_cov_mat = raw_cov_mat_npz['all_coverage_per_bp']
     return raw_cov_mat
 
 def read_cov_mat_gzip( raw_cov_mat_file ):

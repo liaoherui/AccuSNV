@@ -28,14 +28,16 @@ def setup_seed(seed):
 # Custom Dataset Class
 class CustomDataset(Dataset):
     def __init__(self, data, labels):
-        self.data = torch.tensor(data, dtype=torch.float32)
-        self.labels = torch.tensor(labels, dtype=torch.float32)
+        self.data = data
+        self.labels = np.asarray(labels, dtype=np.float32)
 
     def __len__(self):
-        return len(self.data)
+        return self.labels.shape[0]
 
     def __getitem__(self, idx):
-        return self.data[idx], self.labels[idx]
+        sample = torch.as_tensor(self.data[idx], dtype=torch.float32)
+        label = torch.as_tensor(self.labels[idx], dtype=torch.float32)
+        return sample, label
 
 # Make major, minor, other_1, other_2 as the channel
 class CNNModel(nn.Module):
@@ -1204,7 +1206,8 @@ def data_transform(infile,incov,fig_odir,samples_to_exclude,min_cov_samp):
     p=p[keep_col]
     #sample_names = sample_names[in_outgroup]
     indel_counter=indel_counter[:,keep_col,:]
-    median_cov = np.median(raw_cov_mat, axis=1)
+    median_cov = np.median(raw_cov_mat, axis=1).astype(np.float32, copy=False)
+    del raw_cov_mat
     #print(median_cov.shape)
     #exit()
  
@@ -1224,31 +1227,42 @@ def data_transform(infile,incov,fig_odir,samples_to_exclude,min_cov_samp):
     #print(check)
     '''
 
-    indata_32 = counts
-    indel = indel_counter
-    qual = quals
-    indel= np.sum(indel, axis=-1)
+    indel = np.sum(indel_counter, axis=-1, dtype=np.float32)
 
-    expanded_array = np.repeat(indel[:, :, np.newaxis], 4, axis=2)
-    expanded_array_2 = np.repeat(qual[:, :, np.newaxis], 4, axis=2)
-    med_ext = np.repeat(median_cov[:, np.newaxis], 4, axis=1)
-    med_arr = np.tile(med_ext, (counts.shape[1], 1, 1))
+    reshaped_counts = counts.reshape(counts.shape[0], counts.shape[1], 2, 4)
+    new_data = trans_shape(reshaped_counts)
+    num_pos, num_samples = new_data.shape[0], new_data.shape[1]
 
-    new_data = indata_32.reshape(indata_32.shape[0], indata_32.shape[1], 2, 4)
-    new_data=trans_shape(new_data)
-    
-    indel_arr_final = np.expand_dims(expanded_array, axis=2)
-    indel_arr_final=trans_shape(indel_arr_final)
-    qual_arr_final = np.expand_dims(expanded_array_2, axis=2)
-    qual_arr_final=trans_shape(qual_arr_final)
-    med_arr_final = np.expand_dims(med_arr, axis=2)
-    combined_array = np.concatenate((new_data, qual_arr_final, indel_arr_final, med_arr_final), axis=2)
-    check_idx = 0
-    c1 = (combined_array[..., :] == 0)
-    x1 = (np.sum(c1[:, :, :2, :], axis=-2) == 2)
-    mx = x1
-    mxe = np.repeat(mx[:, :, np.newaxis, :], 5, axis=2)
-    combined_array[mxe] = 0
+    combined_array = np.empty((num_pos, num_samples, 5, 4), dtype=np.float32)
+    combined_array[:, :, :2, :] = new_data
+    del new_data
+
+    qual_view = np.transpose(quals, (1, 0)).astype(np.float32, copy=False)
+    combined_array[:, :, 2, :] = np.broadcast_to(
+        qual_view[:, :, np.newaxis],
+        (num_pos, num_samples, 4),
+    )
+    del qual_view
+
+    indel_view = np.transpose(indel, (1, 0))
+    combined_array[:, :, 3, :] = np.broadcast_to(
+        indel_view[:, :, np.newaxis],
+        (num_pos, num_samples, 4),
+    )
+    del indel_view
+
+    med_vals = median_cov.astype(np.float32, copy=False)
+    combined_array[:, :, 4, :] = np.broadcast_to(
+        med_vals[np.newaxis, :, np.newaxis],
+        (num_pos, num_samples, 4),
+    )
+
+    chunk_size = max(1, 4096)
+    for start in range(0, num_pos, chunk_size):
+        end = min(num_pos, start + chunk_size)
+        chunk = combined_array[start:end]
+        zero_mask = (chunk[:, :, :2, :] == 0).all(axis=2, keepdims=True)
+        chunk *= (~zero_mask)
     ####### Reorder the columns and normalize & split the count info
     '''
     keep_col = []
