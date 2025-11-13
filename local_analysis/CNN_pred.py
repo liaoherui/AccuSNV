@@ -1155,6 +1155,158 @@ def remove_exclude_samples(samples_to_exclude_bool,quals,counts,sample_names,ind
     return quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup
 
 
+def data_transform_batch(infile, incov, fig_odir, samples_to_exclude, min_cov_samp, batch_size=50000):
+    """
+    Memory-optimized version of data_transform that processes mutations in batches.
+
+    Args:
+        batch_size: Number of mutations to process at once (default: 50000)
+    """
+    import gc
+
+    # First pass: Load and filter data
+    [quals, p, counts, in_outgroup, sample_names, indel_counter] = \
+        snv.read_candidate_mutation_table_npz(infile)
+
+    if not len(in_outgroup)==len(sample_names):
+        in_outgroup=np.array([False] * len(sample_names))
+
+    # Remove outgroup samples
+    quals = quals[~in_outgroup]
+    counts = counts[~in_outgroup]
+    sample_names = sample_names[~in_outgroup]
+    indel_counter = indel_counter[~in_outgroup]
+    raw_cov_mat = snv.read_cov_mat_npz(incov)
+    raw_cov_mat = raw_cov_mat[~in_outgroup]
+    in_outgroup=in_outgroup[~in_outgroup]
+
+    my_cmt = snv.cmt_data_object(sample_names,
+                                 in_outgroup,
+                                 p,
+                                 counts,
+                                 quals,
+                                 indel_counter
+                                 )
+    samples_to_exclude_bool = np.array( [x in samples_to_exclude for x in my_cmt.sample_names] )
+    my_cmt.filter_samples( ~samples_to_exclude_bool )
+    quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup=remove_exclude_samples(samples_to_exclude_bool,quals,counts,sample_names,indel_counter,raw_cov_mat,in_outgroup)
+
+    my_calls = snv.calls_object(my_cmt)
+    keep_col = remove_same(my_calls)
+    my_cmt.filter_positions(keep_col)
+    my_calls.filter_positions(keep_col)
+
+    quals = quals[:,keep_col]
+    counts = counts[:,keep_col,:]
+    p=p[keep_col]
+    indel_counter=indel_counter[:,keep_col,:]
+    median_cov = np.median(raw_cov_mat, axis=1)
+
+    num_positions = len(p)
+    print(f'Total positions to process: {num_positions}')
+
+    # Process in batches to save memory
+    all_combined_arrays = []
+    all_positions = []
+
+    num_batches = int(np.ceil(num_positions / batch_size))
+    print(f'Processing in {num_batches} batches of size {batch_size}...')
+
+    for batch_idx in range(num_batches):
+        start_idx = batch_idx * batch_size
+        end_idx = min((batch_idx + 1) * batch_size, num_positions)
+
+        print(f'Processing batch {batch_idx + 1}/{num_batches} (positions {start_idx} to {end_idx})...')
+
+        # Extract batch data
+        batch_counts = counts[:, start_idx:end_idx, :]
+        batch_quals = quals[:, start_idx:end_idx]
+        batch_indel = indel_counter[:, start_idx:end_idx, :]
+        batch_p = p[start_idx:end_idx]
+
+        # Create batch cmt object
+        batch_cmt = snv.cmt_data_object(
+            sample_names,
+            in_outgroup,
+            batch_p,
+            batch_counts,
+            batch_quals,
+            batch_indel
+        )
+
+        batch_calls = snv.calls_object(batch_cmt)
+
+        # Process batch
+        indata_32 = batch_counts
+        indel_sum = np.sum(batch_indel, axis=-1)
+
+        expanded_array = np.repeat(indel_sum[:, :, np.newaxis], 4, axis=2)
+        expanded_array_2 = np.repeat(batch_quals[:, :, np.newaxis], 4, axis=2)
+        med_ext = np.repeat(median_cov[:, np.newaxis], 4, axis=1)
+        med_arr = np.tile(med_ext, (batch_counts.shape[1], 1, 1))
+
+        new_data = indata_32.reshape(indata_32.shape[0], indata_32.shape[1], 2, 4)
+        new_data = trans_shape(new_data)
+
+        indel_arr_final = np.expand_dims(expanded_array, axis=2)
+        indel_arr_final = trans_shape(indel_arr_final)
+        qual_arr_final = np.expand_dims(expanded_array_2, axis=2)
+        qual_arr_final = trans_shape(qual_arr_final)
+        med_arr_final = np.expand_dims(med_arr, axis=2)
+
+        combined_array = np.concatenate((new_data, qual_arr_final, indel_arr_final, med_arr_final), axis=2)
+
+        c1 = (combined_array[..., :] == 0)
+        x1 = (np.sum(c1[:, :, :2, :], axis=-2) == 2)
+        mx = x1
+        mxe = np.repeat(mx[:, :, np.newaxis, :], 5, axis=2)
+        combined_array[mxe] = 0
+
+        combined_array = reorder_norm(combined_array, batch_cmt)
+
+        # Store batch results
+        all_combined_arrays.append(combined_array)
+        all_positions.append(batch_p)
+
+        # Free memory
+        del new_data, indel_arr_final, qual_arr_final, med_arr_final, combined_array
+        del batch_counts, batch_quals, batch_indel, batch_cmt, batch_calls
+        gc.collect()
+
+    # Combine all batches
+    print('Combining all batches...')
+    combined_array = np.concatenate(all_combined_arrays, axis=0)
+    p = np.concatenate(all_positions)
+
+    # Free memory
+    del all_combined_arrays, all_positions
+    gc.collect()
+
+    # Recreate full cmt object for filtering
+    my_cmt = snv.cmt_data_object(sample_names,
+                                 in_outgroup,
+                                 p,
+                                 counts[:, :len(p), :],
+                                 quals[:, :len(p)],
+                                 indel_counter[:, :len(p), :]
+                                 )
+    my_calls = snv.calls_object(my_cmt)
+
+    # Remove low quality samples
+    if not min_cov_samp==100:
+        combined_array, p = remove_low_quality_samples(combined_array, min_cov_samp, p)
+
+    # Remove bad positions
+    combined_array, p, pfgap, praw = remove_lp(combined_array, p, my_cmt, my_calls, median_cov)
+    dgap = {}
+    for s in praw:
+        if s not in pfgap:
+            dgap[s] = '0'
+        else:
+            dgap[s] = '1'
+
+    return combined_array, p, dgap
+
 def data_transform(infile,incov,fig_odir,samples_to_exclude,min_cov_samp):
 
     # infile='../../../Scan_FP_TP_for_CNN/Cae_files/npz_files/Lineage_10c/candidate_mutation_table_cae_Lineage_10c.npz'
@@ -1367,7 +1519,29 @@ def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp)
 
     info=[]
     #print('Test data :'+pre)
-    odata,pos,dgap=data_transform(mut,cov,fig_odir,samples_to_exclude,min_cov_samp)
+
+    # Auto-detect if batch processing is needed
+    # First, get a quick estimate of data size
+    temp_data = np.load(mut, allow_pickle=True)
+    num_positions = len(temp_data['p'])
+    num_samples = len(temp_data['sample_names'])
+
+    # Estimate memory usage (in GB): positions * samples * features * channels * bytes
+    estimated_memory_gb = (num_positions * num_samples * 5 * 4 * 8) / (1024**3)
+
+    print(f'Dataset info: {num_samples} samples, {num_positions} positions')
+    print(f'Estimated memory usage: {estimated_memory_gb:.2f} GB')
+
+    # Use batch processing if estimated memory > 20GB or positions > 200000
+    if estimated_memory_gb > 20 or num_positions > 200000:
+        print(f'WARNING: Large dataset detected! Using batch processing to avoid OOM...')
+        batch_size = max(10000, int(200000 / max(1, num_samples / 100)))  # Adaptive batch size
+        print(f'Batch size set to: {batch_size}')
+        odata, pos, dgap = data_transform_batch(mut, cov, fig_odir, samples_to_exclude, min_cov_samp, batch_size)
+    else:
+        print('Using standard processing...')
+        odata, pos, dgap = data_transform(mut, cov, fig_odir, samples_to_exclude, min_cov_samp)
+
     #odata=odata[np.where(pos==864972)]
     #odata=odata[:,20:23,:,:]
     #print(odata,odata.shape)
