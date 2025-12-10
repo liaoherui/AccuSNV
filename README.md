@@ -220,7 +220,9 @@ The second portion of AccuSNV filters candidate SNVs based on data arrays genera
 <a id="custom-anchor"></a>
 ### 2.2. Local downstream analysis
 
-Based on the identified SNVs and **the output final mutation table (in .npz format, e.g. candidate_mutation_table_final.npz) from Snakemake pipeline**, AccuSNV offers a set of downstream analysis modules (e.g. dN/dS calculation). You can run these modules using the command below.
+Based on the identified SNVs and **the output final mutation table (in .npz format, e.g. candidate_mutation_table_final.npz under the folder 3-AccuSNV) from Snakemake pipeline**, AccuSNV offers a set of downstream analysis modules (e.g. dN/dS calculation). You can run these modules using the command below.
+
+(Note, .npz file under the folder 2-Case can by only used as input to Local python analysis - `new_snv_script.py`)
 
 `python accusnv_downstream.py -i  test_data/candidate_mutation_table_final.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_ds_pe`
 
