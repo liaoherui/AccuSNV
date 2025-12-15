@@ -157,6 +157,11 @@ Make sure to configure your `config.yaml` file and `scripts/run_snakemake.slurm`
 
 `chmod 777 slurm_status_script.py`<BR/>
 
+⚠️ : if you want to run Snakemake directly from the `snake_pipeline` folder (instead of in a empty folder as mentioned in Option-1 of Install section) within the conda or bioconda environment, please run before you do anything:
+
+`cd snake_pipeline`<BR/>
+`cp Snakefiles_diff_options/Snakefile_conda_env.txt  ./Snakefile`
+
 ✅ Step-1: run the python script: <BR/>
 
 `python accusnv_snakemake.py -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
