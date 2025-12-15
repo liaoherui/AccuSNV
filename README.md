@@ -157,7 +157,7 @@ Make sure to configure your `config.yaml` file and `scripts/run_snakemake.slurm`
 
 `chmod 777 slurm_status_script.py`<BR/>
 
-⚠️ : if you want to run Snakemake directly from the `snake_pipeline` folder (instead of in a empty folder as mentioned in Option-1 of Install section) within the conda or bioconda environment, please run before you do anything:
+⚠️ : If you installed the tool via Bioconda and want to run Snakemake directly from the snake_pipeline folder (instead of from an empty directory as described in Option-1 of the installation section), please run the following command before doing anything else::
 
 `cd snake_pipeline`<BR/>
 `cp Snakefiles_diff_options/Snakefile_conda_env.txt  ./Snakefile`
