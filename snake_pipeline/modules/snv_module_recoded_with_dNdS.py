@@ -2405,9 +2405,15 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
 
         # Get info on annotations at this SNV position
         contig_idx = contigpos_gp[i][0]
+
+        # Check if contig_idx is within valid range for annotation_genes
+        if contig_idx-1 >= len(annotation_genes):
+            print(f"WARNING: contig_idx {contig_idx} is out of range for annotation_genes (length: {len(annotation_genes)}). Skipping this position.")
+            continue
+
         if mut_cds_indices[i] == int(mut_cds_indices[i]): # Intragenic
-        
-            # Get annotations from row in dataframe 
+
+            # Get annotations from row in dataframe
             p_anno = annotation_genes[contig_idx-1].iloc[int(mut_cds_indices[i])-1] # first -1 bcs contigs indexed starting at 1; second -1 bcs cds_indices indexed at 1 but dataframe rows indexed at zero
             if re.search('gene',p_anno.loc['locustag']):
                 p_anno.loc['locustag']=re.sub('gene','pseudogene',p_anno.loc['locustag'])
