@@ -1497,10 +1497,17 @@ def parse_gff( dir_ref_genome, contig_names, ortholog_info_series=pd.Series(dtyp
                             else:
                                 gene_dict['note'] = "."
 
-                            gene_dict['indices'] = [gene_feature.location.start.position+1,gene_feature.location.end.position] # Arolyn, 2022.10: +1 for indexing on first pos only
-                            gene_dict['loc1'] = gene_feature.location.start.position+1 # Arolyn, 2022.10: +1 for indexing since default is 0-based
-                            gene_dict['loc2'] = gene_feature.location.end.position # Arolyn, 2022.10: final pos is already correct
-
+                            # Helper function to extract position -- robust to Biopython version changes (AHM 2025.07.11)
+                            def get_position(pos_obj):
+                                if hasattr(pos_obj, 'position'):
+                                    return pos_obj.position
+                                else:
+                                    return int(pos_obj)
+                            
+                            gene_dict['indices'] = [get_position(gene_feature.location.start)+1, get_position(gene_feature.location.end)]
+                            gene_dict['loc1'] = get_position(gene_feature.location.start)+1 
+                            gene_dict['loc2'] = get_position(gene_feature.location.end) 
+                            
                             gene_dict['strand'] = gene_feature.location.strand 
                             dna_seq = rec.seq[gene_feature.location.start:gene_feature.location.end]
                             if gene_dict['strand'] == 1:
@@ -3433,7 +3440,6 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             genome_pos_key = str(row['genome_pos'])
             chart_name = d.get(genome_pos_key, placeholder_chart)
             f.write('<td rowspan="6"><a href="bar_charts/' + chart_name + '"><img src="bar_charts/' + chart_name + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
-            
             html_p1='''
             <th class="snp">genome_pos</th>
             <th class="snp">contig_idx</th>
