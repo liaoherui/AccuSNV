@@ -3308,6 +3308,7 @@ def merge_two_tables(in_cnn_table,output_tsv_filename,out_merge_tsv):
 
 def generate_html_with_thumbnails(input_file, output_file, chart_dir):
     df = pd.read_csv(input_file, sep='\t')
+    placeholder_chart = "placeholder.png"
     d = {}
     for fn in os.listdir(chart_dir):
         if not re.search('chart', fn): continue
@@ -3435,7 +3436,10 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             # Add the thumbnail column (assuming a chart image exists for each row)
             # chart_filename = f"{chart_dir}/chart_{idx + 1}.png"
             f.write(f'<td rowspan="6"> {idx+1}</td>')
-            f.write('<td rowspan="6"><a href="bar_charts/' + d[str(row['genome_pos'])] + '"><img src="bar_charts/' + d[str(row['genome_pos'])] + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
+            #f.write('<td rowspan="6"><a href="bar_charts/' + d[str(row['genome_pos'])] + '"><img src="bar_charts/' + d[str(row['genome_pos'])] + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
+            genome_pos_key = str(row['genome_pos'])
+            chart_name = d.get(genome_pos_key, placeholder_chart)
+            f.write('<td rowspan="6"><a href="bar_charts/' + chart_name + '"><img src="bar_charts/' + chart_name + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
             html_p1='''
             <th class="snp">genome_pos</th>
             <th class="snp">contig_idx</th>
