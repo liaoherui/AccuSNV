@@ -1,9 +1,0 @@
-experiment_name: "test"
-sample_table: cae_pe_test_new/temp/samples_cae_test_pe_rebuild_6f7572920db211f081526c92cf1f4c20_tem.csv
-myscripts_directory: ./scripts
-ref_genome_directory: /nfs/tamilab001/c3ddb-scratch-mit_lieberman/projects/herui/combine_cnn_to_snakemake/AccuSNV/snake_pipeline/reference_genomes
-min_cov_samp: "45"
-min_cov_filt: "5"
-greport: "1"
-exclude_samp: "null"
-outdir: cae_pe_test_new
