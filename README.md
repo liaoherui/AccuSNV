@@ -97,7 +97,7 @@ python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/ca
 # This is likely because: On some clusters, activating your conda environment on compute nodes may require additional steps.
 # To solve it, in your scripts/run_snakemake.slurm file, you may need something like the following:
 
-conda activate accusnv
+# conda activate accusnv
 ----------------------------------------------------------------------------------------------------------------------------------
 ```
 
