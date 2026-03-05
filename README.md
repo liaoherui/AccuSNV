@@ -88,6 +88,7 @@ To adjust the Slurm configuration (e.g., the partitions to submit to, CPU and me
 
 
 3. For either Test (1) or Test (2), if the jobs finish successfully, the output folders should look like [this](readme_files/readme_test_output.md).
+4. For more example command lines for the Step 1 Snakemake pipeline (e.g., using `samclip` or replacing bwa with `bowtie2`), please check the file `test_run.sh`.
 
 
 ## Usage
