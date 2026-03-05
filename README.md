@@ -211,7 +211,7 @@ options:
                         aligner. (Default: 0)
   -t ALIGNER_THREADS, --aligner_threads ALIGNER_THREADS
                         The threads for the aligner - bwa or bowtie2 (Default: 4)
- -f TF_SLURM, --turn_off_slurm TF_SLURM
+  -f TF_SLURM, --turn_off_slurm TF_SLURM
                         If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node.
                         (Default: 0)
   -c CP_ENV, --conda_prebuilt_env CP_ENV
