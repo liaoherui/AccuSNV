@@ -19,7 +19,7 @@ Note: This tool is powered by Lieberman and Key Lab SNV calling pipeline - [Wide
 ## Contents
 
 - [Install](#install)
-- [Quick Test](#quick-test-(with-the-provided-test-data))
+- [Quick Test](#quick-test)
 - [Usage](#usage)
 
 
@@ -43,7 +43,9 @@ then, `conda activate accusnv`
 
 If this installation method doesn’t work for your case, there are several other options you can try. See here.
 
-## Quick Test (with the provided test data)
+## Quick Test 
+
+Quick test with the provided test data.
 
 1. Test the tool on your Laptop (Support Linux or Ubuntu systems only):
 
