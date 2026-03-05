@@ -71,6 +71,7 @@ Note: Running the tool locally is convenient, but it may not fully utilize the c
 which can execute many jobs in parallel by submitting them to different nodes or partitions on an HPC cluster.
 To improve efficiency (especially for large-scale datasets),
 it is recommended to run the Snakemake pipeline on an HPC system with Slurm (see the example below).
+----------------------------------------------------------------------------------------------------------------------------------
 ```
 
 
@@ -97,6 +98,7 @@ This is likely because: On some clusters, activating your conda environment on c
 To solve it, in your scripts/run_snakemake.slurm file, you may need something like the following:
 
 conda activate accusnv
+----------------------------------------------------------------------------------------------------------------------------------
 ```
 
 To adjust the Slurm configuration (e.g., the partitions to submit to, CPU and memory requirements for specific tasks, or the maximum number of submitted jobs), you can modify the config.yaml file in the output folder generated in Step 1 (in this example: `cae_pe_test_snakemake/conf/config.yaml`). Some notes on how to modify this file can be found here.
