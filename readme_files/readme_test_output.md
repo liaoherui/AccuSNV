@@ -3,7 +3,7 @@
 
 ##  Main output of Snakemake pipeline
 
-The main output files of the Quick Test (Snakemake pipeline) are in the cae_pe_test_snakemake/3-AccuSNV/group_pe_test folder. The folder structure should look like this:
+The main output files of the **Quick Test** (Snakemake pipeline) are in the `cae_pe_test_snakemake/3-AccuSNV/group_pe_test` folder. The folder structure should look like this:
 
 ```
 tree cae_pe_test_snakemake/3-AccuSNV/group_pe_test/
@@ -90,7 +90,7 @@ For final SNV calling results, please use:
 ##  Output of Downstream analysis
 
 
-The main output files of the Quick Test (Downstream analysis) are in the cae_accusnv_pe_downstream folder. The folder structure should look like this:
+The main output files of the **Quick Test** (Downstream analysis) are in the `cae_accusnv_pe_downstream` folder. The folder structure should look like this:
 
 ```
 cae_accusnv_pe_downstream
