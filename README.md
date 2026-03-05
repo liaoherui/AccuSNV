@@ -23,7 +23,7 @@ Git clone:<BR/>
 
 
 Change the permission of the file:<BR/>
-`cd AccuSNV/snake_pipeline`<BR/>
+`cd AccuSNV`<BR/>
 `chmod 777 slurm_status_script.py`<BR/>
 
 Install via bioconda:<BR/>
@@ -31,6 +31,49 @@ Install via bioconda:<BR/>
 `conda create -n accusnv -c conda-forge -c bioconda accusnv`<BR/>
 
 then, `conda activate accusnv`
+
+If this installation method doesn’t work for your case, there are several other options you can try. See here.
+
+## Quick Test (with the provided test data)
+
+1. Test the tool on your Laptop (Support Linux or Ubuntu systems only):
+
+```
+# Step-1: Snakemake pipeline
+python accusnv_snakemake.py -f 1 -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
+
+#  simulates the execution of a workflow without actually running any jobs or creating output files
+sh scripts/dru-run.sh
+
+# Run the pipeline locally
+sh scripts/run_snakemake_local.sh
+
+# Step-2: Downstream analysis
+python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
+```
+
+Note: Running the tool locally is convenient, but it may not fully utilize the capabilities of the Snakemake framework, which can execute many jobs in parallel by submitting them to different nodes or partitions on an HPC cluster. To improve efficiency (especially for large-scale datasets), it is recommended to run the Snakemake pipeline on an HPC system with Slurm (see the example below).
+
+2. Test the tool on the Linux HPC system with Slurm system:
+
+```
+# Step-1: Snakemake pipeline
+python accusnv_snakemake.py -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
+
+#  simulates the execution of a workflow without actually running any jobs or creating output files
+sh scripts/dru-run.sh
+
+# Run the pipeline on HPC compute nodes; the job will be automatically submitted through the Slurm system.
+sh scripts/run_snakemake.slurm
+
+# Step-2: Downstream analysis
+python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
+```
+To adjust the Slurm configuration (e.g., the partitions to submit to, CPU and memory requirements for specific tasks, or the maximum number of submitted jobs), you can modify the config.yaml file in the output folder generated in Step 1 (in this example: `cae_pe_test_snakemake/conf/config.yaml`). Some notes on how to modify this file can be found here.
+
+## Usage (on your own data)
+
+Key point: Ensure that all of your input files follow the same format as the tested files used in the **Quick Test** above.
 
 
 
