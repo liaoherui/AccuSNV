@@ -42,7 +42,7 @@ If this installation method doesn’t work for your case, there are several othe
 # Step-1: Snakemake pipeline
 python accusnv_snakemake.py -f 1 -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
 
-#  simulates the execution of a workflow without actually running any jobs or creating output files
+# Snakemake dry-run step: simulates the execution of a workflow without actually running any jobs or creating output files
 sh scripts/dru-run.sh
 
 # Run the pipeline locally
@@ -60,18 +60,21 @@ Note: Running the tool locally is convenient, but it may not fully utilize the c
 # Step-1: Snakemake pipeline
 python accusnv_snakemake.py -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
 
-#  simulates the execution of a workflow without actually running any jobs or creating output files
+# Snakemake dry-run step: simulates the execution of a workflow without actually running any jobs or creating output files
 sh scripts/dru-run.sh
 
 # Run the pipeline on HPC compute nodes; the job will be automatically submitted through the Slurm system.
 sh scripts/run_snakemake.slurm
 
-# Step-2: Downstream analysis
+# Step-2: Downstream analysis (as this step usually not need a lot of computational resour)
 python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 ```
 To adjust the Slurm configuration (e.g., the partitions to submit to, CPU and memory requirements for specific tasks, or the maximum number of submitted jobs), you can modify the config.yaml file in the output folder generated in Step 1 (in this example: `cae_pe_test_snakemake/conf/config.yaml`). Some notes on how to modify this file can be found here.
 
-## Usage (on your own data)
+-> If the job finishes successfully, the output folder should look like this:
+
+
+## Usage
 
 Key point: Ensure that all of your input files follow the same format as the tested files used in the **Quick Test** above.
 
