@@ -1,0 +1,2839 @@
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNP Table with Charts</title>
+<style>
+table {width: 100%; border-collapse: collapse;}
+th, td {border: 1px solid black; padding: 8px; text-align: left;}
+th {background-color: #c8d4dc;}
+.snp{ background-color: #dae9f8;}
+.pred{ background-color: #fbe2d5;}
+.rotate{writing-mode: vertical-lr; white-space: nowrap;}
+
+
+                .popup {
+                    display: none;
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 400px;
+                    max-width: 90%; 
+                    padding: 20px;
+                    background-color: white;
+                    border: 1px solid #333;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                    z-index: 1000;
+                }
+                .popup h2 {
+                    margin-top: 0;
+                }
+                .overlay {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    z-index: 999;
+                }
+                .close-btn {
+                    cursor: pointer;
+                    color: #333;
+                    text-align: right;
+                    font-weight: bold;
+                }
+                
+                .sequence-container {
+                    overflow-x: auto; 
+                    white-space: nowrap; 
+                    border-top: 1px solid #ddd;
+                    padding-top: 10px;
+                    margin-top: 10px;
+                    font-family: monospace; 
+                    height: 100px;
+                }
+                .copy-btn {
+                    display: inline-block;
+                    margin-top: 10px;
+                    padding: 6px 12px;
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 14px;
+                }
+                .copy-btn:hover {
+                    background-color: #45a049;
+                }
+
+                .rotate {
+                writing-mode: vertical-rl;
+                transform: rotate(180deg); 
+                transform-origin: center;
+                white-space: nowrap;
+                }
+
+
+                
+</style>
+</head>
+<body>
+<h2>SNP Table with Bar Charts</h2>
+<table>
+<tr>
+<th>ID</th>
+<th>Bar charts</th>
+<th colspan="3">SNP information</th>
+<th colspan="5">Prediction information</th><th ><div class="rotate">strain1</div></th>
+<th ><div class="rotate">strain2</div></th>
+<th ><div class="rotate">strain3</div></th>
+<th ><div class="rotate">strain4</div></th>
+</tr>
+<tr>
+<td rowspan="6"> 1</td><td rowspan="6"><a href="bar_charts/p_10866_bar_chart.png"><img src="bar_charts/p_10866_bar_chart.png" alt="Chart 1" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 10866</font></b></td>
+            <td>1</td>
+            <td>10866</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.99999654</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>1353.0</td>
+            <td>451.0</td>
+            <td>K451N / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>DNA topoisomerase (ATP-hydrolyzing) subunit B</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002519782.1', 'MPESVTDGDTPEDLLIDATDHPDGLDSELPPTAVDGSYDAGQITVLEGLEAVRKRPGMYIGSTGERGLHHCVYEIVDNSVDEAMAGYCDTIQVELLDDNWCQVTDNGRGIPVKEHPVEHIPTVTLVLTKLHAGGKFGNGGYKVSGGLHGVGSSVVNALAAHFIVEVRRDGYHWRQSFSLGEPDGPLEQLEALGPDDHEGTTVRFQPSDEIFDAIVFDYQTLSNRFREMAFLNKGLRIVLTDRRADHADEDGNPVHEDFLYKEGLKDYVRFLTGTRDVINPTIISLESHRPEEGMGLEIAMQWNTSYATSVHTFANAINTIEGGAHEEGFRAALTNTVNRWGETWGLIKKREDRVSGDDIREGLTAVVSIKLTEPQFEGQTKTKLGNAEAKSFVQKALNEKLSDWFEENPNEGKSIVRKSQAAAQARVAARKARDLARNRKGLLGSTSLPGKLKDCSSTSPEECEIFIVEGDSAGGSASQGRDPRIQAILPLRGKILNVEKARLDRALGSETIESIINALGTGVHEDFDLDKLRYHKIILMADADVDGAHIRTLLLTLLFRFMRPVIDAGHVYLAQPPLFRLRWTNSPHELAYSDEERDLLREDGLTHGKKLPQVNPIQRYKGLGEMDAEDLWDTTMDPDKRLLLQVTLEDAALADQMFSILMGEDVEQRRSFIQRNAKDVRFLDI*')" style="text-decoration: none;  cursor: pointer;">WP_002519782.1</a></td>
+            <td>cds-WP_002519782.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 2</td><td rowspan="6"><a href="bar_charts/p_265874_bar_chart.png"><img src="bar_charts/p_265874_bar_chart.png" alt="Chart 2" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 265874</font></b></td>
+            <td>1</td>
+            <td>265874</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>568.0</td>
+            <td>190.0</td>
+            <td>A190S / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>FtsX-like permease family protein</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_041446199.1', 'MSARTTPEMPTSAVRLSGDAIARGRPHRRLINRLAVRDIGRHKLRSLLIVMLIALPVAIMSGLGVLLRSDGSVSGSQALNNYGDADMVISPISNWDGHCSQQGPTNTYCDDGAEPDAHQRAQQQTALANLRLPGHKLHPLRTTEASVSWRLATLSATVKAMDLTTMRPYRMEFPRGPMPTGNNIWVTTGAAKDYGWSVGSRVTVNGHRYTITGVVREEWPGNGPTFWVAPRSPLARGGELTYYVNGASLTRQQVEKLNASGVGVADRRAEESASQGGTFERDMFALILAAGVLSAIVVATIAAAAFAIGARQQRRMLALLGITGAARRDLMGVMIHQGLLLGLTGALLGVGLGVGMGNGAVAIIRMVYPDYITYGVDWGYAAVGSVVGLLAALTACWFPARDVARQDALMGVKHAESAARPARRPTLAIVIAAIGLLAGVGGVIYGRRGTTGDVMVRLNIGIIVTIVVLYLAAVSAMPWLVDKVSGRKSSRLPIRFALRDLNRNRGRAVPGVAASMAITVLACAAVTFCDSLAIQDKAEYVPEFGDHIGVLAGEHDDGVRTSDDRVAGEIKRVTAVFGPHVKYLRPEEPVTCGQDGKYCTSSLEVTPKVPNGAMSSTVAIDDGTLYELLTGEKADGRVMKALDDGVVLFSPDATRISQAIISDHDERHGAGTTVLPAIHAPHHALGYGVPNLISRRTAAKVLGVSPDNMKTQSTTVWLRLPHTPTAKEGDRLQHSLMDVTGSPSEFIWEKGYSDISGTVMRWSAVVGTLLAVCVGAVVLALTLSDSRGSRTAIASVGASKATLRRMVAAQALVTTGLGQILGFLVGFVPVAVMTCVGPRWPMPMPLPWLALIVFAPPVLLALVTMVAVPVPRPRMQRVD*')" style="text-decoration: none;  cursor: pointer;">WP_041446199.1</a></td>
+            <td>cds-WP_041446199.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 3</td><td rowspan="6"><a href="bar_charts/p_271668_bar_chart.png"><img src="bar_charts/p_271668_bar_chart.png" alt="Chart 3" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 271668</font></b></td>
+            <td>1</td>
+            <td>271668</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>nan</td>
+            <td>nan</td>
+            <td>. / P</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>nan</td>
+            <td>nan</td>
+            <td>nan</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 4</td><td rowspan="6"><a href="bar_charts/p_311601_bar_chart.png"><img src="bar_charts/p_311601_bar_chart.png" alt="Chart 4" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 311601</font></b></td>
+            <td>1</td>
+            <td>311601</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.9999839</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>320.0</td>
+            <td>107.0</td>
+            <td>S107I / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>NAD(P)/FAD-dependent oxidoreductase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002517091.1', 'MYDSIIIGAGLAGLTAAEELASAGHSVVVLEARARVGGRLENAELSNGQVVELGGQWVGEGHEELRSLLSSQGLELVDSTDGDVVVKARGRVSHVTSLSEPSAHSLSPFELADLGQGLLRFRRLADRVANNKGWAAANATWLNQSLSQWTASNVRTEAGRGYITNLFRQAFGVSANDTPLFNGLAKANAGVDLESLVAVNGGLKQQRVKGGVAQVTRNLAEPLGDDLKLSSPVRSVHSDDDGVTVTTTDGTQYQGRSVIVTVPPRLLKDMTFEPALPAERLEMADKVPAGNVIKAYLVYDSPWWRTSGASGQMGADEGAVRVIFDTSDDETGKGILMGFFEGAEASGYGKLSIGLRQRAFEEVVESAFGKAPSSPIEYLDRDWLAEPYTGGCHGAHFAPSLWTTTGPILAEPLGRVLFAGAEYASSFNGYMEGALRAAARAAQEVLDLL*')" style="text-decoration: none;  cursor: pointer;">WP_002517091.1</a></td>
+            <td>cds-WP_002517091.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 5</td><td rowspan="6"><a href="bar_charts/p_353798_bar_chart.png"><img src="bar_charts/p_353798_bar_chart.png" alt="Chart 5" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 353798</font></b></td>
+            <td>1</td>
+            <td>353798</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.9999615</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>927.0</td>
+            <td>309.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>glutamate-1-semialdehyde 2,1-aminomutase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_015011350.1', 'MTSNAELFSAAQAVIPGGVDSPVRAYGSVGGVPRFIEKAQGPWIWDAEGTRYVDLVCTWGPALLGHARPEVVSAVQVAASKGLSFGAPTRTETELADAIIERMAPVEKVRFVSTGTEATMTAVRLARGATGRDVIVKFAGNYHGHSDVLLAAAGSGVATAGLPGSAGVPAASTADTIVVDYNDVAALDAVFSERGDQIAAVIVESCPANMGVVPPEPGFNAAIRRLTTEHGALMITDEVLTGFRCSPSGFWGLQQQAGEDFAPDIFTFGKVVGGGMPLAALGGRAEVMDLLAPTGPVYQAGTLSGNPLATVAGVKTLQLADAGVYQRLDARSEKWRSELVSALDAAGVTYRLQNAGNLFSVFLGVDSPVRNYDNAKPQNAEAYTAFFHAMLDAGVNLPPSCFEAWFLSDAHDDEAFEVFRAALPKAAQAASQVISA*')" style="text-decoration: none;  cursor: pointer;">WP_015011350.1</a></td>
+            <td>cds-WP_015011350.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 6</td><td rowspan="6"><a href="bar_charts/p_354183_bar_chart.png"><img src="bar_charts/p_354183_bar_chart.png" alt="Chart 6" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 354183</font></b></td>
+            <td>1</td>
+            <td>354183</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>542.0</td>
+            <td>181.0</td>
+            <td>Y181C / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>glutamate-1-semialdehyde 2,1-aminomutase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_015011350.1', 'MTSNAELFSAAQAVIPGGVDSPVRAYGSVGGVPRFIEKAQGPWIWDAEGTRYVDLVCTWGPALLGHARPEVVSAVQVAASKGLSFGAPTRTETELADAIIERMAPVEKVRFVSTGTEATMTAVRLARGATGRDVIVKFAGNYHGHSDVLLAAAGSGVATAGLPGSAGVPAASTADTIVVDYNDVAALDAVFSERGDQIAAVIVESCPANMGVVPPEPGFNAAIRRLTTEHGALMITDEVLTGFRCSPSGFWGLQQQAGEDFAPDIFTFGKVVGGGMPLAALGGRAEVMDLLAPTGPVYQAGTLSGNPLATVAGVKTLQLADAGVYQRLDARSEKWRSELVSALDAAGVTYRLQNAGNLFSVFLGVDSPVRNYDNAKPQNAEAYTAFFHAMLDAGVNLPPSCFEAWFLSDAHDDEAFEVFRAALPKAAQAASQVISA*')" style="text-decoration: none;  cursor: pointer;">WP_015011350.1</a></td>
+            <td>cds-WP_015011350.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 7</td><td rowspan="6"><a href="bar_charts/p_372419_bar_chart.png"><img src="bar_charts/p_372419_bar_chart.png" alt="Chart 7" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 372419</font></b></td>
+            <td>1</td>
+            <td>372419</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>198.0</td>
+            <td>66.0</td>
+            <td>D66E / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>aspartate-semialdehyde dehydrogenase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_041446201.1', 'MGIMKLGVFGATGQVGRVMRTLLAERHFPADEVRFFASARSAGQKLSWNNGSGDSEVVVEDTATADFAGLDIAIFSAGGGTSREFAPRVAAAGAVVIDNSSAWRRDPDVPLVVSEVNPEDVAKRPKGIIANPNCTTMVAMPVLKPLHDAAGLTRLVVATYQAVSGSGVAGVRALTDQTTAIDDPAGLALDGRGVPVADLGPYVAPIAFNALPVAGNFVDDGSGETDEEQKLRNESRKILHIPDLLVAGTCVRIPVYSGHGLVVHAEFRESLSPEKATELLTQAPGVRVVDVPDPRSAAGIDPSLVGRIRADQSAPAGKGLVFFCAADNLRKGAALNAVQLAELVAAE*')" style="text-decoration: none;  cursor: pointer;">WP_041446201.1</a></td>
+            <td>cds-WP_041446201.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 8</td><td rowspan="6"><a href="bar_charts/p_383947_bar_chart.png"><img src="bar_charts/p_383947_bar_chart.png" alt="Chart 8" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 383947</font></b></td>
+            <td>1</td>
+            <td>383947</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.99999475</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>629.0</td>
+            <td>210.0</td>
+            <td>I210T / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>hypothetical protein</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_338141079.1', 'MSTSNQSTTESKDAQAIKTEIFDLYSDITKPKSPHRTGRPGKNVAEQAVALGGVAVKYNKSIFDVCEMLHEKKIEQRTIERQNYNLFNRFRLQIGGLCDRFNSYYYNRAKTVDQKIFYDICSTYKQNARPTTSVTELRSCLCDTGARCDATPHAVWAAAEQYMSHSLGAVKNSLDYAKPNYRALLLLSATFFVILLIFSLPNATTSLSPIEIAAFIISAVLFSVVLAIMFLPVTARWTGIYKMSTRILDFLFSVLLFLLSFQFGSSKMTSASTPYLIIDIWLITPTFIMCLIAHNRTNEVVSQQNHIRDLQDQLQTLRMSEPQQIVEPDTVGHAPKESSRPRLLGMVSNPFQRPRF*')" style="text-decoration: none;  cursor: pointer;">WP_338141079.1</a></td>
+            <td>cds-WP_338141079.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 9</td><td rowspan="6"><a href="bar_charts/p_394271_bar_chart.png"><img src="bar_charts/p_394271_bar_chart.png" alt="Chart 9" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 394271</font></b></td>
+            <td>1</td>
+            <td>394271</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>991.0</td>
+            <td>331.0</td>
+            <td>C331G / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>phosphate ABC transporter substrate-binding protein PstS</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002517294.1', 'VNRFAKITALAAISAISLTACGANGDKGSSSASSSKTTSTASSAAQPSDSSADAVSFKPACPGGSISGAGSSAQLNAINQVISDYKAACSSATVNYSPTGSGAGVKSFIGRQTDWAGSDSVLNADKGEPDKAKQRCNADPWHLPMAAGPIAVVYNVDGVKDLTLSTATLAKIFSGAITNWNDDAIKKENPKAALPSAQIEVFYRKDESGTTDNFTKFLNKAAGDIWTEKHSKTWKGAGKGADKSAGIAQAVKSTKNSISYDEWSYATKNSLDMAAIDNGNGPVKLTGESAGKAVSAAKVVGQGHDLQLELQYKNTPAGVYPAVLVTYEIACSKGQDSGKAALLKDFLSFYASEREQKKIQDLGYAPLPSDVASKVLGSAQALS*')" style="text-decoration: none;  cursor: pointer;">WP_002517294.1</a></td>
+            <td>cds-WP_002517294.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 10</td><td rowspan="6"><a href="bar_charts/p_491580_bar_chart.png"><img src="bar_charts/p_491580_bar_chart.png" alt="Chart 10" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 491580</font></b></td>
+            <td>1</td>
+            <td>491580</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>nan</td>
+            <td>nan</td>
+            <td>. / P</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>nan</td>
+            <td>nan</td>
+            <td>nan</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 11</td><td rowspan="6"><a href="bar_charts/p_559568_bar_chart.png"><img src="bar_charts/p_559568_bar_chart.png" alt="Chart 11" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 559568</font></b></td>
+            <td>1</td>
+            <td>559568</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>1855.0</td>
+            <td>619.0</td>
+            <td>T619P / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>nitrate reductase subunit alpha</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_015011400.1', 'MTEYDETSDAESPSGSALLKMGTWLRRGTTSPDTRQLFLEGGRDADVFYRKCWSHDKVVRSTHGVNCTGSCSWKIYVKEGIITWESQQTDYPSTGPDMPDYEPRGCPRGASFSWYEYSPTRIRHPYVRSVLLDAWRDKLAEFGDPVDAWASITNDPELSQAYKCARGHGGMVRVSWEEATQIIAAAYVHTIKAYGPDRIAGFSVIPAMSMVSYGAGSRFTELLGGTMLSFYDWYADLPPASPQVFGDQTDVPEAGDWFNSQYLIMWGSNVPVTRTPDAHFMTEARYHGQKVVVVSPDYADNTKFADEWLRVASGTDGALAMAMGHVILSEFHVTRREPMFLDYMRRYTDSPFLVELDRFDRPQADGAAYVPGKFLTADKVNLQTRPDHPEFRPLVMEADGSLKDPGGTLADRFSESGVGHWNLDLDGVNPVMSMMDVNSWEAVEIALPRFDLPSSPDQTSLGAGIVHRGVPARRIGDRLVTTVYDLLLAQYAVSREGLPGQWPSGYDDPTVPGTPAWQAELTGVPAAAAERIGREFALNSLETGGRSMIVMGAGVNHFYHADEIYRTFLALTNMCATQGVNGGGWAHYVGQEKVRPFTGWANYSFALDWARPARQMIATAWYYLTTDQWRYDGARAESIASPLGSGSFAGRTTADCMVYSARRGWTPSYPTFTRNPLDLADEAAAAGMEPAEYIAQKLTDGSLGFACEDPDATQNYPRLLANWRTNLLGSSAKGTEFFMKHMLGCENDVNATELTEGKRPTDIRWRDDTPPGKLDLMWTADFRNTSTTLHSDVVLPAATWYEKHDLSSTDMHPYVHSFNPAVDPPWEARTDFEVFRTLAYSVSQMAVKHLGTRTDIVAAPLMHDTPDEMTTPAGSVSREQEAWIPGVTMPKLVTVERDYTQIGAKFDTLGPLTESLGMVTKGVPFHPDPEVADLAQRHGVATSGPGAGRPLLDTAIKACDTILATSGTTNGRLATAGFEQLEARTGTKLTDLSVGSQDRRVTFTDTVIQPQPVITSPEWSGSEHGGRRYSAFVINMERHKPWHTLTGRMHYYLDHDWMRDMGESLPIFRPPLDVAHIYDEPPAGYTGTDADGAAVVSVRYMTPHNKWGIHSQYYDNLHMLTLARGGQTIWMSPADAAKIGVSDNDWVEAYNRNGTVDARAIVSHRIPEGTVFMYHGQERTVNTPLTERSGKRGGTHNSLTRILLKPSHFIGGYAQLSYAFNYYGPTGNQRDEVTLIRRRGQEVTF*')" style="text-decoration: none;  cursor: pointer;">WP_015011400.1</a></td>
+            <td>cds-WP_015011400.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 12</td><td rowspan="6"><a href="bar_charts/p_605030_bar_chart.png"><img src="bar_charts/p_605030_bar_chart.png" alt="Chart 12" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 605030</font></b></td>
+            <td>1</td>
+            <td>605030</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.9999777</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>15.0</td>
+            <td>5.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>hypothetical protein</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002516731.1', 'LVPSSKVTASVSPLDGIHTRAIINELVAASGNGPITKVDITKGALSITVQIGNSPTIWTWQNGKIDSSATQSTQTASRPFNPGDFAVEKLPVILSRAADISGSHMNQNLQIVEYNQGTVLMTVSTKPETQTVFFRPNGSAINHIDFASTSGMTEALSDAVASAKQVDQISYQPGKAIIVDTPTTTPGIVMRRTRSADMPAWAVQRRSDASATFSPGLLNPHVIVRIMNLAAAQAHQKPSDMEWTISQDTKLDTPVLRVDINGLTRAFNTDGTDVTDKIK*')" style="text-decoration: none;  cursor: pointer;">WP_002516731.1</a></td>
+            <td>cds-WP_002516731.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 13</td><td rowspan="6"><a href="bar_charts/p_739168_bar_chart.png"><img src="bar_charts/p_739168_bar_chart.png" alt="Chart 13" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 739168</font></b></td>
+            <td>1</td>
+            <td>739168</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>592.0</td>
+            <td>198.0</td>
+            <td>I198F / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>type I glutamate--ammonia ligase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002519168.1', 'MFEGPDDLLAYVKKEGIEMIDVRFCDLIGIMQHFTVPAREFDKDQYENGLAFDGSSIRGFQKINESDMALLPDPTTAWIDPFRERKTLIVNFNVHDPITKEAYSRDPRNIARKAEAYLASTGIGDTAFFAPEAEFYVFDDIRFDTRQNTSYYSIDSEAGAWNTGRTEDGGNRGYKVKYKGGYFPVAPTDHFGDLRDEIVTIMERLGMKVERAHHEVGTAGQAEINWRFDTLSRSADDVMKFKYIVKNVAWQHGKTATFMPKPIFGDNGSGMHVHSSIWKGGEPLFFDESGYAQLSDMARYYIGGILKHAPSLLAFTNPSANSYHRLVPGFEAPVNLVYSQRNRSACMRIPITGPNPKAKRVEFRCPDPSANPYMAFAALLLAGLDGIQNKIEPPAPVDKDIYELPPEEHAAMDHVPGNLGAVLDNLEADHEFLLAGDVFTPDLIETWVELKRGDLAALQQRPHPYEFDLYYDI*')" style="text-decoration: none;  cursor: pointer;">WP_002519168.1</a></td>
+            <td>cds-WP_002519168.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 14</td><td rowspan="6"><a href="bar_charts/p_852062_bar_chart.png"><img src="bar_charts/p_852062_bar_chart.png" alt="Chart 14" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 852062</font></b></td>
+            <td>1</td>
+            <td>852062</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.9999994</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>951.0</td>
+            <td>317.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>undecaprenyldiphospho-muramoylpentapeptide beta-N-acetylglucosaminyltransferase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_015011462.1', 'MVNVVLAGGGTAGHTSPLIATAMALQERGATVSCIGTPRGLEGRVIPEAGLQLDMIPPVPLPRTVNADLFKVPARLAGAVRKAGEVLQRRQTDVVVGFGGYVSLPAYLAARRAKIPVVIHEQNAVPGLANKIAARFAVFVGTAFPDTPLPKARFVGMPLRSQITDLADASGQARAERCARARADLGLDINRPTLLVSGGSQGAVAINEAVVAARTRLLADGVQILHVLGPKNIRGATRITDELTGASWLPMGYVDDMASAYAAADLMVARSGAGTVVETATVGLPTIYVPLPHGNGEQARNATSAVDAGAGVVVANADLDVERLLAETPRIHDADVLAQMSAAGRGLMPAHAAEEMAVRVISAATSIDPTIG*')" style="text-decoration: none;  cursor: pointer;">WP_015011462.1</a></td>
+            <td>cds-WP_015011462.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 15</td><td rowspan="6"><a href="bar_charts/p_956476_bar_chart.png"><img src="bar_charts/p_956476_bar_chart.png" alt="Chart 15" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 956476</font></b></td>
+            <td>1</td>
+            <td>956476</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>692.0</td>
+            <td>231.0</td>
+            <td>S231* / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>ATP-binding cassette domain-containing protein</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_041446291.1', 'MCMDCSGLGYVDGIDLQELIAPDRSLNEGAVRFPSFEPGTYRWKRLVCSGLFDPDVPWKELPEASRKLLLHGQGVRLERPLTGYPKHGIFDGIIPRLKASYLEKANAKTTEKEDAALRRIVKRVVCPHCHGQRINEAARASRIEGLNIAEASHLSIDECIAFIKTITDEITEAPRQAVLARLNNMRDIGLGYLSLDRPTDTLSGGEAQRLRLVSLLDAPITDATFVMDEPSSGLHPADIERLLRSLRKLRDSGNTMIIVEHNLQVLAACDHVVELGPGAGDDGGRVLFEGSPRSLTRSDTPTGKALRAGIQLNRRSRPATDVIEVTHARCNNLGDVSVSFPVGALTVVSGVAGSGKSSLASALAQQHPEVTIIDQLPLAASSRSSILTALGLESPIREAFSKISGLTTSWFSANGKGACPLCKGRGTTHVDMAFMDDVQTPCERCGGRKFNETTMAVRLPMGSLNPTIADVLDSGLNQVSELYATQDDVLTVISLLQQVGLGYLTLGRTLNTLSGGELQRIKLVQFLKEHREEQESVLVLDEITTGLHPKDVEQLIQFLRRLSERGATAIAIDHNPGLISQADYNIDIGPGAGTQGGTVVFTGTAWGLANCPASTTGKWLHKLVCSPAGVEPAP*')" style="text-decoration: none;  cursor: pointer;">WP_041446291.1</a></td>
+            <td>cds-WP_041446291.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 16</td><td rowspan="6"><a href="bar_charts/p_1041058_bar_chart.png"><img src="bar_charts/p_1041058_bar_chart.png" alt="Chart 16" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1041058</font></b></td>
+            <td>1</td>
+            <td>1041058</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>721.0</td>
+            <td>241.0</td>
+            <td>G241R / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>tRNA dihydrouridine synthase DusB</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002515525.1', 'MRVVISRCATGAGTTVSAQPDCHAYHGLVFSDPLTLIAPSGGTVSVDTPVVLAPMAGVTNAAFRQLCAEQGAGLYVCEMITSRGLVYGDHKTHGMLAFAECEDVRSVQLYGVDPGMVGEATSILCEKYGVNHVDLNFGCPVPKVTRKGGGGVLPWKLDRFAAVVSAAVQAGDAHGVPVTVKTRIGIDPEHITYIDSARAAVDSGAAAVCLHARTVAEAYAGHSHWDAIGELVKTVDVPVIGNGDIWEASDAMAMVGQTGCAGVEVGRGCLGRPWLFRDLADAFAGRDTTTLPTLGEVCAMIRRHAELLVKYQGMHGLVDMRKHMAWYLKGFPVGGETRHVLGQISSFDELDSLLATLDHDAPFPVKELGKARGRQGAPRRKVVMPHGWLDTHTLDDDDLSAAEIDASGG*')" style="text-decoration: none;  cursor: pointer;">WP_002515525.1</a></td>
+            <td>cds-WP_002515525.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 17</td><td rowspan="6"><a href="bar_charts/p_1054786_bar_chart.png"><img src="bar_charts/p_1054786_bar_chart.png" alt="Chart 17" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1054786</font></b></td>
+            <td>1</td>
+            <td>1054786</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>284.0</td>
+            <td>95.0</td>
+            <td>A95G / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>pyridoxal 5'-phosphate synthase glutaminase subunit PdxT</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002519029.1', 'MYQPRTVWLSEVGEMAPLVGVVALQGGFAEHIEVLESLGANTRRVRRSADLQGLDGIVLPGGESTVIDKLMRSFSLAEPLKDAVRRGLPVLATCAGLVVLATDLEDAAKGQHTLSLLDVTVRRNAFGSQLDSFEGTLDIDGVGDGVSATFIRAPVITRVGPGVEVIAQLPDEAGNVSGAIVGVRQRNVLALSFHPEETDDDRVHRTWLRQVSEEV*')" style="text-decoration: none;  cursor: pointer;">WP_002519029.1</a></td>
+            <td>cds-WP_002519029.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 18</td><td rowspan="6"><a href="bar_charts/p_1154874_bar_chart.png"><img src="bar_charts/p_1154874_bar_chart.png" alt="Chart 18" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1154874</font></b></td>
+            <td>1</td>
+            <td>1154874</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>1035.0</td>
+            <td>345.0</td>
+            <td>N345K / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>APC family permease</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_015011532.1', 'VKVFQAVKRVLIGRKLESSALGETLLPKRIALPVFASDALSSVAYAPDEILITLSLAGTAGFAFSWKIGIAVALVMLIVVMSYRQTVHAYPSGGGDYEVATANLSPRFGLVVASALLVDYVLTVAVSVSSGVQNAEAMIPGLAGHEGVAAAVVIAILTAMNLRGVRESGTFFAVPTYAFMISVICMVVWGLTRIFVLGDNLRAPTADFTVVGAPKYTGLVGVAFVVLMARTFSSGCAALTGVEAISNGVPSFREPKSKNAATTLAMLGGIAVSMLMGILVLASVTGVKMFDETGESHLVDTHGHAVKEQVTVVGQLARTVFYDSFKPGFYIMIVCTMIILFLAANTAFNGFPVLGSILARDGFLPRRLHARGDRLAYSNGILTLATGAIILVLVFNASVTALIQLYVVGVFISFTVSQTGMMRHWTRLLRTDTSAGTKERRRWQHSRIINGIGLVGTGIVLIIILASKFIHGAYLALIAMAVVYVLMMSIKKHYDSVVRELELNSPSDRALPSRVHAVIMISDLNKPTMRAIQFAKATVPTFLEAVIVDVDSDATERLLERWDEEDIDIPLRIIASPYREITNPLIDHIRRIRSENPRDMVEVFIPEYVVGHWWEHLLHNQTALVARARLHFMPGVLISSVPYQLRSSAILEKRWKRNDPRSWRDPGATITPRR*')" style="text-decoration: none;  cursor: pointer;">WP_015011532.1</a></td>
+            <td>cds-WP_015011532.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 19</td><td rowspan="6"><a href="bar_charts/p_1202244_bar_chart.png"><img src="bar_charts/p_1202244_bar_chart.png" alt="Chart 19" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1202244</font></b></td>
+            <td>1</td>
+            <td>1202244</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>1074.0</td>
+            <td>358.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>phosphoglucomutase (alpha-D-glucose-1,6-bisphosphate-dependent)</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002514990.1', 'MAHERAGKPAQESDLIDVDAVLSAYHDISPDPSNPDQMVVFGTSGHRGSSLDGAFNDAHIAATTQAIVEYRTCQGIDGPLFIGKDTHALSMPAWTTAIEVLCANDVEVIAEHDDEWTPTPAVSRAIIVHNRLSEGRQADGIVVTPSHNPPRDGGFKYNPPHGGPADTDATGWIADRANELLADPSGIRRKPYEQVRNEVSRYDYRSAYCDDLRNAIDLDAIDEAGVHIGADPLGGASVQYWEYIADHLGIDLTVVNPTVDPTWRFMTLDSDGKIRMDCSSPSAMASLIANKDAYDIATGNDADSDRHGIVTPDAGLMNPNAYLAVAIGYLFAHRPGWRPDAGIGKTLVSSSLIDKVAADLGRRLIEVPVGFKWFVPGLMRGDIGFGGEESAGASFLDLDGQTWTTDKDGILLALLASEIKAVTGRSPSEHYADLEDRFGKSYYARIDADANREQKARLKALSPDDVSANTIAGEKIEKILTKAPGNGAAIGGIKVMTENAWFAARPSGTEDKYKIYAESLRDADHLAAVQEEARHIVDQALKG*')" style="text-decoration: none;  cursor: pointer;">WP_002514990.1</a></td>
+            <td>cds-WP_002514990.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 20</td><td rowspan="6"><a href="bar_charts/p_1266762_bar_chart.png"><img src="bar_charts/p_1266762_bar_chart.png" alt="Chart 20" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1266762</font></b></td>
+            <td>1</td>
+            <td>1266762</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>nan</td>
+            <td>nan</td>
+            <td>. / P</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>nan</td>
+            <td>nan</td>
+            <td>nan</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 21</td><td rowspan="6"><a href="bar_charts/p_1282310_bar_chart.png"><img src="bar_charts/p_1282310_bar_chart.png" alt="Chart 21" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1282310</font></b></td>
+            <td>1</td>
+            <td>1282310</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>676.0</td>
+            <td>226.0</td>
+            <td>G226C / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>acyl-CoA dehydratase activase-related protein</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002529970.1', 'MDAHIGNAIPPDAQDLRMGLDVGSTTIKAVILDPDENILFEDYRRHHADITGAMASLLGDAADALPGTKVRATVTGSAGLGTAEALGLTFIQEVMAETAAVQRWNPDADVLLELGGEDAKITYLKPVPEQRMNGSCAGGTGAFIDQMATLLHTDTPGLNDLASRAKTIHPIASRCGVFAKSDLQPLINEGARHEDLAASVLQAVATQCIAGLACGRPIRGKVIFLGGPLHFMPSLRDAFSRVLDGKVDAYITPDRAQLYVAMGAALTSTSEPVDLAETAKRSRHARTQNGISQSMPPLFRSEEELDEFNRRHSHAKLPRLPLHDARGSLFLGIDAGSTTIKSVLIDESLNIVASHYASNEGDPVSAAVQILADLYDAMPAEATIARTCTTGYGEGLVKAALEAEDGEVETMAHYRAADHLLPGVTAIIDIGGQDMKYLRVVDQVIDSISVNEACSSGCGSFLQTFAAGMDTDIESFSSMSLLAQHPVDLGSRCTVFMNSSVKQAQKEGASPADIAAGLSYSVVRNALYKVIKLTDPAQLGNKVVVQGGTFLNNAVLRAFEKLTGREVVRPAEAGLMGAYGAALTAHARFHAGEPTTSEGLRERAELDGFAVETHRDDCALCQNHCQRTIATFSDGRVFVSGNRCDRGAEVNNRKMAKLPKSELPNVFEDKYKRLFSYRRLTAKKAFRGDLGLPRALNMYENYPFWFTTLSALGYRVMISGRSSHALFEKGMESIASENICYPAKLNNGHVEDLVQRGVKRIFDPCIRYEQVSVADADAHFNCPVVASYPEVIRANVESLRDKDVELISPFLSLADPDKLAERLAEVFADDDVTVDEARRAIAKGLEEDKAFHDEIRKMGEDALAYMAEHNVPGIVLAGRPYHVDPEIHHGIPEMVNSLGMAVLTEDSVAHLGADLLERPLRVRDQWMFHSRLYQAAAFVGSRPDLELVQLNSFGCGLDAITTDQVREILAARDRIYTTLKIDEVSNLGAARIRMRSLQAASKERASHNRKLVTHPLSDDRVPFTKEMKATHTILVPQFAPYQTSIAEAALRASGYQVEVLKQASRENIDYGLSVVNNDACFPAIVVIGQLVSALKSGKYDLDHTTLFLTQTGGMCRATNYIGLLRKALKDAGFGNIPVIAASLQGVEDNPGFSLTAPLIHRMVQAITLGDLLQNVHLRTRPYEAVPGSADGLMRRWTTIAREHFLNGGHSTTWGRRTSYKTMINSIVDDFEHLELADGPRKPRVGVLGEILVQFHPDANNHIVETIESEGCEAVLPGLMWFVYNCLSAGDYNYKTFGTDKWSRHVKKAFRALLMQYQKPVTTALRKSTRFEVPTPITELMADAQRIVQLGNQAGEGWYLVGEMVDMIREGVPNIAVVQPFACLPNHVTGRGIFREIRRQFPQANVVSVDYDPGASQVNQLNRIKLMAATARDRNVSEERDAGQAVRPEPDEEIPTSPPTASRPDLNGKPVMELSVHL*')" style="text-decoration: none;  cursor: pointer;">WP_002529970.1</a></td>
+            <td>cds-WP_002529970.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 22</td><td rowspan="6"><a href="bar_charts/p_1324180_bar_chart.png"><img src="bar_charts/p_1324180_bar_chart.png" alt="Chart 22" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1324180</font></b></td>
+            <td>1</td>
+            <td>1324180</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>nan</td>
+            <td>nan</td>
+            <td>. / I</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>nan</td>
+            <td>nan</td>
+            <td>nan</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 23</td><td rowspan="6"><a href="bar_charts/p_1428080_bar_chart.png"><img src="bar_charts/p_1428080_bar_chart.png" alt="Chart 23" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1428080</font></b></td>
+            <td>1</td>
+            <td>1428080</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.9999896</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>264.0</td>
+            <td>88.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>ATP-dependent DNA helicase UvrD2</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002516423.1', 'MLLSVTTLMVIAVRTRTADAILAALDPEQVKVAKTFDVPVCVIAGAGTGKTRAVTHRIAYGAVTGKLDPRRTLAVTFTTKAAGTMRGRLADLGVVGVQARTIHSAALRQIKFFWPRAYNCELPPVSDSRFSMVAETTHRIGLGNDKALLRDLSAEISWAKVSNVPTDQYASLARAEGRVVAGVSATDVGRVLAGYEAVKRERCVIDLDDILLCAVGLLVQHRDITEEIRARYRHFVVDEYQDVSPLQHRLLELWFGDRNDVCVVGDPHQAIHSYAGARADYLLDFVADHPGAKRIDLVRNYRSTPEIVQLANEVLVNRMTPEEALEHGRGVTLVSRGRSGPEPIYQALGDDASEASAVAMWIESRHAAGIPWSEIAVLYRINSQAAQLETALAERSIPYLVKGSERFYDRGEVRRSLDALARLAADEPGADPLRAFDRILAAQGWSAIAPDGEGDVRQRWESLQALHDLTVSVVDDGTRTLEELAAVFSRRAATQEAPVGDGVTLATLHASKGLEWDVVALYGINDTMVPFIMAEAPAEVASERRLLHVGVTRARRDLWVSYSWSGGNRDRQGISRFLRGLPGTGETTDKPPRHRRKRRATITVCSVCGKALTAARDRKLGHHLACEVGVDPVLVERLRQWRSERAEADRVPAFVILTDATLLGVAEKRPNSMESLLQVPGIGRRKADLYAADLIKVLHGSSDNQQ*')" style="text-decoration: none;  cursor: pointer;">WP_002516423.1</a></td>
+            <td>cds-WP_002516423.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 24</td><td rowspan="6"><a href="bar_charts/p_1438395_bar_chart.png"><img src="bar_charts/p_1438395_bar_chart.png" alt="Chart 24" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1438395</font></b></td>
+            <td>1</td>
+            <td>1438395</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>2523.0</td>
+            <td>841.0</td>
+            <td>D841E / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>ATP-dependent DNA helicase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002517954.1', 'MTSLIGNAPVDGVDVAALLGIPISAEQERAVQAPLKPCAVIAGAGTGKTTVMAARVVWLVASRLVSPEEILGLTFTNKATAELSERIESNLTRVGLLTSEQPRPTVATYDSFAGTLVNDYGAWDGISTGAHLITGARAYQLAAEVVMGLDKAPLAATHMGPTFIAQAVVKLAGAMASHDASPGKVRRADARWRQMLLAAPTKRGGDRYADIDKWLSRVDEREELLDLVAAYQNLKKERGLVEFGDRMVQALHLVTHHPRVGEELRARYRVVLLDEYQDTSSAQADVLAALFSGPDSAHGMGHPVMAVGDPLQAIYEWRGAAASNILEFHRRFPNKEGTPAQVLSLATNRRCADQIINAANVASEELRQTLSSAVESGDHDPADDRAEVAVGQPLVAPEGNRRGEVTVAAYPDWVKECQACADILVEAKERGTIARWSDAAILVRRNSDVADLYDSLTARDVPVRFANLSGLLRLPDIAMVVAHLRVLVDRQDDAAMATLLAAPRLGLSTDDLAMVYRRARALAKARAKDDGLDLDDVEIHLSDAVMEGRPGGHERLQCALKRVCAEIVEVDAHRADSPDDLVLRIEAITGLVDDMAADDPHRSAARRDHLDALWNAIREARRSDPTMTIAGIVTWLAAEEDVGDGLPRAATDDRDAVTVSTVHGAKGLEWPLVIIPDMAQGVFPSTSTPDNFTSEAAVLPSFARGDASDISHPLSGSVVDTKAYVAALKEDSQWAEARLAYVALTRAKERLVVSWHQWRPRRKGSLGPGRYADLLADMLGTVWPDFGERPDDDIQAGTPWPVFAKDVGHGLIDNTSRSVDDPGQADRVKAWRTDADTLLKDARRHIDLQDEVALPPRLTTSQIVRLHANPQAFRDDLRRPMPRPADRGAGIGTAFHEWVSQRLAPAEPIPLFDAEEIAELDEESITQEAVAVEPSGAENRALRSLCQAFEESRWAGATVLAVEKSFVMTIGQTVVRGRLDAVVADPDHPGDELVIDWKTSPPRSADPLQLSIYRLAWAQARGIDPSRVRAVFHHVGANETISAEPLLDADQVAAILTASSSGNRPTKNASDA*')" style="text-decoration: none;  cursor: pointer;">WP_002517954.1</a></td>
+            <td>cds-WP_002517954.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 25</td><td rowspan="6"><a href="bar_charts/p_1492820_bar_chart.png"><img src="bar_charts/p_1492820_bar_chart.png" alt="Chart 25" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1492820</font></b></td>
+            <td>1</td>
+            <td>1492820</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>557.0</td>
+            <td>186.0</td>
+            <td>. / U</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>PAC1_RS14085</td>
+            <td>.</td>
+            <td>pseudogene-PAC1_RS14085</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 26</td><td rowspan="6"><a href="bar_charts/p_1587411_bar_chart.png"><img src="bar_charts/p_1587411_bar_chart.png" alt="Chart 26" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1587411</font></b></td>
+            <td>1</td>
+            <td>1587411</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>nan</td>
+            <td>nan</td>
+            <td>. / P</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>nan</td>
+            <td>nan</td>
+            <td>nan</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 27</td><td rowspan="6"><a href="bar_charts/p_1591527_bar_chart.png"><img src="bar_charts/p_1591527_bar_chart.png" alt="Chart 27" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1591527</font></b></td>
+            <td>1</td>
+            <td>1591527</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>929.0</td>
+            <td>310.0</td>
+            <td>P310L / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>ABC transporter ATP-binding protein</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002516872.1', 'MTGAHVDDRTAVLEARNVSLDFDGTDSSGSKVTIHALDRVNLTIHRGEITALVGESGSGKTSIARLFALIYKPTSGELYRNGELVHVHGKRAERAYYRDVQLIYQDPFASLNGLKKISTILGRVFKIHYPKMRRKEIAQRIDDVLTKVNMTPPSRYLNRYPTDLSGGQRQRIAIARALAVSPQVLLADEPTSMLDASIRLDVLNLLSDLRETEGVSVLYITHDIASARYICDRINVMYGGRIVEAGPTKQIISDTIHPYTRLLLSAAPDPARYKGSANSTAIDILEGAPMNNSVRVKGCRFAPLCPLAQPRCTEEELPKFHSEDGTREVTCWEAEERREFHRV*')" style="text-decoration: none;  cursor: pointer;">WP_002516872.1</a></td>
+            <td>cds-WP_002516872.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 28</td><td rowspan="6"><a href="bar_charts/p_1652537_bar_chart.png"><img src="bar_charts/p_1652537_bar_chart.png" alt="Chart 28" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1652537</font></b></td>
+            <td>1</td>
+            <td>1652537</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>108.0</td>
+            <td>36.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>NADP-specific glutamate dehydrogenase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_015011651.1', 'MDRQLENAYESVLRRNPGEAEFHQAVREIFESLGPVLDTNPQYVEAAVLSRICEPERQIIFRVPWVDDEGKIRINRGFRVEYSSVLGPYKGGLRFHPSVYLGTIKFLGFEQIFKNALTGMPIGGAKGGSDFDPHDASEAEVMRFCQSFMTELYRHLGEHSDVPAGDIGVGSREIGFLFGQYKRITNRHESGVLTGKGLTWGGSLVRTEATGYGTVFFVQRMLATNGKSLDGLRVTVSGSGNVAIYAIEKAQDLGATVVACSDSSGYVVDEKGIDVALLKQIKEVERARICEYAARRDSATFHSDGSIWDVPVDVALPCATQNELNGQAAATLIRNGVVAVAEGANMPCTPEAVHSFQDAGVIFAPGKASNAGGVATSALEMQQNAARDSWDFDATEARLQQIMADIHDRCIETADEYGHPGDYVMGANIAGFTKVADAVIAMGVV*')" style="text-decoration: none;  cursor: pointer;">WP_015011651.1</a></td>
+            <td>cds-WP_015011651.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 29</td><td rowspan="6"><a href="bar_charts/p_1708419_bar_chart.png"><img src="bar_charts/p_1708419_bar_chart.png" alt="Chart 29" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1708419</font></b></td>
+            <td>1</td>
+            <td>1708419</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>2050.0</td>
+            <td>684.0</td>
+            <td>. / U</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>PAC1_RS08115</td>
+            <td>.</td>
+            <td>pseudogene-PAC1_RS08115</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 30</td><td rowspan="6"><a href="bar_charts/p_1877852_bar_chart.png"><img src="bar_charts/p_1877852_bar_chart.png" alt="Chart 30" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1877852</font></b></td>
+            <td>1</td>
+            <td>1877852</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.99996746</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>nan</td>
+            <td>nan</td>
+            <td>. / P</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>nan</td>
+            <td>nan</td>
+            <td>nan</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 31</td><td rowspan="6"><a href="bar_charts/p_1920698_bar_chart.png"><img src="bar_charts/p_1920698_bar_chart.png" alt="Chart 31" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 1920698</font></b></td>
+            <td>1</td>
+            <td>1920698</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>537.0</td>
+            <td>179.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>tRNA (adenosine(37)-N6)-threonylcarbamoyltransferase complex dimerization subunit type 1 TsaB</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002516067.1', 'MNTIVLGIDTSTAVSVGLARGSEVLVSLHYDDPRAHAEQLMPLIHRGCEEAGIALTDIAEVAIGVGPGPYTGLRVGVATGRVLAHLAGLTPHPVCSLDILARQWAGVDGEFVVCTDARRHELYWARYDASGHRLDGPNVTRPEDLPKDLPIGGPGCLVRGLTPTPGSPEHLDAGVLAASWQAMPDVGLEPLYLRDPDATVPTARKATLTPTRLTLPGLR*')" style="text-decoration: none;  cursor: pointer;">WP_002516067.1</a></td>
+            <td>cds-WP_002516067.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 32</td><td rowspan="6"><a href="bar_charts/p_2120824_bar_chart.png"><img src="bar_charts/p_2120824_bar_chart.png" alt="Chart 32" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 2120824</font></b></td>
+            <td>1</td>
+            <td>2120824</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>375.0</td>
+            <td>125.0</td>
+            <td>Q125H / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>MFS transporter</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_041446319.1', 'MTWVVWITAVIAYGFAVMQRTSLGVMGLTAAAHFNAPASVVATFMVLQLAVYAVLQIPAGITVDRLGSRVVITAGSIVMTVGQVVMALTGSVGGAVLARVLVGCGDAFIFGAAIRLVPAWFPPKQTPLVTQLTGLLGQFGQVVSAVGLVAMVNSSGWRSTYLLAAGGAAVAAALAFLLIRDAPPGVEPERTDGNVKQLPHQVAEVISHPSTRLAFWAHMSSNFAGIVFSLMWGMPYLTHAEGRSTATASTLMTVYVIANAIAGPTAGILTSRHPIRRGTLIEAMIAAYAVAWLIVLVWPGPAPLWMLFLLVICLGISLPGGNVGFDVARTFQPGNRLATATGVAITGGFFFGLLEIEIIGLLLDMLCPGGRYTLSGFRWAMSTQLVLFAIGLAGLEVNQRRLYQIMADNGVTVPTWREALARQWRVVKQRRR*')" style="text-decoration: none;  cursor: pointer;">WP_041446319.1</a></td>
+            <td>cds-WP_041446319.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 33</td><td rowspan="6"><a href="bar_charts/p_2176902_bar_chart.png"><img src="bar_charts/p_2176902_bar_chart.png" alt="Chart 33" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 2176902</font></b></td>
+            <td>1</td>
+            <td>2176902</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>222.0</td>
+            <td>74.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>ABC transporter ATP-binding protein</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002516354.1', 'MSASVTAATTMTSRTASAVRTLDLTKTYGSGTTLVRALRSVTLDIPSGRFTAIMGASGSGKSTLLHCITGLDSPTSGRVWIGDTEITHLDDDALTKLRRQHVGFVFQSFNLMPTLSAADNITLPLRLSHTKVDKEWFDHITGMLGITERLGHKPSQMSGGQQQRVAVARALVTRPDVIVADEPTGALDSEASGDLLTFLRHCVDDLGQTVVMVTHDHDAAARADDIVTVTDGQVSTARSQEALA*')" style="text-decoration: none;  cursor: pointer;">WP_002516354.1</a></td>
+            <td>cds-WP_002516354.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 34</td><td rowspan="6"><a href="bar_charts/p_2279219_bar_chart.png"><img src="bar_charts/p_2279219_bar_chart.png" alt="Chart 34" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+<td rowspan="6"><b><font color="#2ca02c">C</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 2279219</font></b></td>
+            <td>1</td>
+            <td>2279219</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.9999944</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>756.0</td>
+            <td>252.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>alpha/beta hydrolase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_236886383.1', 'IVHGAAEHSGRYDYLAKRLNDAGYSTYRFDHRGHGRSARPYVDNAIPRGHIDDWSNLVNDVHQFVQIAHQENAGKKVFLFGHSMGSFAVQSYGAKYPGTVAGIVSNGGGIAVNPWGRDTEGPEKVTAHDLTDAEKNAAPTISQLLPMDKLTSFNGILLTQAVRHPKAIHLPSTAAEAFIQFKNPLANGVCTDPAVIEDYKKDPLNNKYMSLGMVKQMGVAQVYNTFNAPSFSEPTFIMHGANDGIVPSYFDVNWYNAIGSKDKKIIEWEGLMHETINEPVKDQVDDTIINWINAHNK*')" style="text-decoration: none;  cursor: pointer;">WP_236886383.1</a></td>
+            <td>cds-WP_236886383.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 35</td><td rowspan="6"><a href="bar_charts/p_2294828_bar_chart.png"><img src="bar_charts/p_2294828_bar_chart.png" alt="Chart 35" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="ff7f0e">T</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 2294828</font></b></td>
+            <td>1</td>
+            <td>2294828</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.9999999</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>583.0</td>
+            <td>195.0</td>
+            <td>S195T / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>ABC transporter permease</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002518178.1', 'MSRYIVRRILQMIPVLIGTTFIIFCLVFALPGDPTAGRCGERPCPPSYVAAFRAEYNLDKPLLVQYGLYLEKLLHGNLGVDYYGNTVVSELGARYPVTIKLAIIALLVEIVIGILAGAWAGVRRGKFIDYFVLVSSLIVISIPIFVIGSLAQLVFGLRLGWFPVTAGDGSWGALVLPGLVLGALSVAYVARLTRSNLLENQRADYVRTAKAKGMSPSRIVTVHTLRNSLIPVITFIGYDFGALMGGAIVTERIFNINGIGNYVYRSINQRDGVSVVGAVTCLVLVYLLANLLVDLLYGVLDPRISHD*')" style="text-decoration: none;  cursor: pointer;">WP_002518178.1</a></td>
+            <td>cds-WP_002518178.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 36</td><td rowspan="6"><a href="bar_charts/p_2379762_bar_chart.png"><img src="bar_charts/p_2379762_bar_chart.png" alt="Chart 36" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 2379762</font></b></td>
+            <td>1</td>
+            <td>2379762</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.9999958</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>249.0</td>
+            <td>83.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>septal ring lytic transglycosylase RlpA family protein</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_015011798.1', 'MSKVVASAIAGALSLTSAGGLTMVQALDRDTVTFSVDGVSQQAKVKPGTVKQALAQQGITVGPHDDVQPSLDSEIHDGQVITVNYGRRVVVTIDGKKVVRWTTAKNVAEVLAQLNQSDPGNLVSVSRSLDISRAGLSFSMQTAKDVTVTIGGKTQKITAVGTVADALKAAKVEVDSSDAVNPGLGTPLSDGMKITLTMVDQKSQKRRVAVPFSTKKVEDSSLPKGEIKVITKGVNGINEETWTVVFKDGKKVSEKKVSSKVVNAPVTQVVKVGTKTASSSSPSTRSSSASHRSTASQSSDPVTSGTTCLASTYGEGDGTAGGPTASGETFDPSAFTAASKTLPLGSTIRVTNVSNGRTVTVRINDRGPYVGGRCLDLSTAAMNAIAPGQGLVTVRYS*')" style="text-decoration: none;  cursor: pointer;">WP_015011798.1</a></td>
+            <td>cds-WP_015011798.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 37</td><td rowspan="6"><a href="bar_charts/p_2396161_bar_chart.png"><img src="bar_charts/p_2396161_bar_chart.png" alt="Chart 37" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 2396161</font></b></td>
+            <td>1</td>
+            <td>2396161</td>
+            <td>1</td>
+            <td>1</td>
+            <td>0.9999957</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>946.0</td>
+            <td>316.0</td>
+            <td>R316W / N</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>amino acid permease</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_002516466.1', 'MAVAATGIPAESGEPAMDKPRMKGRHLVMMSLGSAIGTGLFVGSGKGVAAAGPATLVAYIVAGLLVIAIMYMLGEMVAAHPDSGAFSVYTSRAMGSAAGFAMGWVWWIELVVVVAAEAIAAASTLVAMWPIAPVWLLTLIFLVVLTAINLLGADRFGEFEFWFALLKVVAVVVFLTIGVLLICGVLAAPAAGTSNLVGHGGFLPNGWSGVATALLLVAFSFGGIEIMAVAAAETEDPAHNVSRAVRTIVWRILVFYMGSVAIMVIAVPWDDPELGASPFVAVLNRAGIPAASEVMTLVIVLALLSSLNANLYGAARMLGSLAERGMAPRVAMRTRGRSVPTVAVLASVAFGFCCVLATFEWGDAVLGTLLNIVGSTIIVTYFFTICSHYVLRRRAEKEGAPLPMRLKGFPVVNWAAMILLIGIVVLGMFSPDVRAQLMSTGALVVILYVIGVGWSHHAGRSPFHPTTD*')" style="text-decoration: none;  cursor: pointer;">WP_002516466.1</a></td>
+            <td>cds-WP_002516466.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            <tr>
+<td rowspan="6"> 38</td><td rowspan="6"><a href="bar_charts/p_2398730_bar_chart.png"><img src="bar_charts/p_2398730_bar_chart.png" alt="Chart 38" width="300" height="auto"></a></td>
+
+            <th class="snp">genome_pos</th>
+            <th class="snp">contig_idx</th>
+            <th class="snp">contig_pos</th>
+            <th class="pred">Pred_Label</th>
+            <th class="pred">CNN_pred</th>
+            <th class="pred">CNN_prob</th>
+            <th class="pred">Qual_filter (<30)</th>
+            <th class="pred">Cov_filter (<5)</th>
+            
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+<td rowspan="6"><b><font color="#d62728">G</font></b></td>
+<td rowspan="6"><b><font color="#1f77b4">A</font></b></td>
+</tr>
+
+            <tr>
+            <td><b><font color="#9900FF"> 2398730</font></b></td>
+            <td>1</td>
+            <td>2398730</td>
+            <td>1</td>
+            <td>1</td>
+            <td>1.0</td>
+            <td>0</td>
+            <td>0</td>
+            </tr>
+            <tr>
+            <th class="snp">nt_pos</th>
+            <th class="snp">aa_pos</th>
+            <th class="snp">muts / type</th>
+            <th class="pred">MAF_filter (>0.85)</th>
+            <th class="pred">Indel_filter (<0.33)</th>
+            <th class="pred">MFAS_filter (1)</th>
+            <th class="pred">MMCP_filter (5)</th>
+            <th class="pred">CPN_filter (4,7)</th>
+        </tr>
+        <tr>
+ 
+            <td>684.0</td>
+            <td>228.0</td>
+            <td>. / S</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+        </tr>
+        <tr>            
+            <th class="snp">product</th>
+            <th class="snp">protein_id</th>
+            <th class="snp">locustag</th>
+            <th class="pred">Fix_filter</th>
+            <th class="pred">Whether_recomb</th>
+            <th class="pred">Freq_ambigious</th>
+            <th class="pred">Gap_filter</th>
+            <th class="pred">WD_pred</th>
+        </tr>
+        <tr>
+            
+            <td>metallophosphoesterase</td>
+            <td><a href="javascript:void(0);" onclick="showPopup('WP_041446256.1', 'MTRFLHTSDWQLGMTRHYLSKRGDDDPQARFTADRIETVRRLGDVARQEGCEFVVVAGDVFETHNVSTQIIARACEAIASIDLPVYLLPGNHDSLEPGCLWDGPEFAQRCPRNVQVLRDHAETQIADGNGVVIATIVASPLTTRHPSTDPLADLVKNLEPAQTPRILVGHGQLEGLSGDAREALISRAPLEDAIARGALSYVALGDRHIAWPTNDNRAAIRYSGTQETTSFNEESVGTAVIVDLGDPLTCQTINVGTWLHARVSQEVASEADLQALRDRFDSFNRRDRTIIRYDLHGQVTISQKAKLDEIIADYETVFASLEPSETRHDLTVVGDDISLTEADVPGWVRDAAEELSDMCATNEDAVAALTLLHRLVSAEGASIASTAHTAEVSR*')" style="text-decoration: none;  cursor: pointer;">WP_041446256.1</a></td>
+            <td>cds-WP_041446256.1</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0.0</td>
+            <td>0</td>
+            <td>1</td>
+        </tr>
+        <tr><th rowspan="2" colspan="100%"></th><tr>
+            </table>
+
+
+            <div class="overlay" id="overlay" onclick="closePopup()"></div>
+
+
+            <div class="popup" id="popup">
+                <div class="close-btn" onclick="closePopup()">x</div>
+                <h2>Protein ID: <span id="popup-protein-id"></span></h2>
+                <div class="sequence-container" id="sequence-container">
+                    Sequence: <span id="popup-sequence"></span>
+                </div>
+                <button class="copy-btn" onclick="copySequence()">Copy</button>
+            </div>
+
+            <script>
+                function showPopup(proteinId, sequence) {
+
+                    document.getElementById("popup-protein-id").innerText = proteinId;
+                    document.getElementById("popup-sequence").innerText = sequence;
+
+
+                    document.getElementById("popup").style.display = "block";
+                    document.getElementById("overlay").style.display = "block";
+                }
+
+                function closePopup() {
+
+                    document.getElementById("popup").style.display = "none";
+                    document.getElementById("overlay").style.display = "none";
+                }
+
+                function copySequence() {
+
+                    const sequenceText = document.getElementById("popup-sequence").innerText;
+
+
+                    navigator.clipboard.writeText(sequenceText).then(() => {
+                        alert("Sequence copied to clipboard!");
+                    }).catch(err => {
+                        console.error("Could not copy text: ", err);
+                    });
+                }
+            </script>
+        
+</body>
+</html>
