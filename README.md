@@ -202,10 +202,16 @@ options:
   -h, --help            show this help message and exit
   -i INPUT_SP, --input_sample_info INPUT_SP
                         The dir of input sample info file --- Required
-  -t TF_SLURM, --turn_off_slurm TF_SLURM
-                        If set to 1, the SLURM system will not be used for automatic job
-                        submission. Instead, all jobs will run locally or on a single
-                        node. (Default: 0)
+  -a ALIGNER, --aligner ALIGNER
+                        The aligner used for read mapping, can be either BWA or Bowtie2. E.g. You can set "-a bowtie2" to use bowtie2. (Default: -a bwa)
+  -p SAMCLIP, --samclip SAMCLIP
+                        If set to 1, samclip will be used when the aligner is BWA. Note that this parameter is not applicable when Bowtie2 is used as the
+                        aligner. (Default: 0)
+  -t ALIGNER_THREADS, --aligner_threads ALIGNER_THREADS
+                        The threads for the aligner - bwa or bowtie2 (Default: 4)
+ -f TF_SLURM, --turn_off_slurm TF_SLURM
+                        If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node.
+                        (Default: 0)
   -c CP_ENV, --conda_prebuilt_env CP_ENV
                         The absolute dir of your pre-built conda env. e.g.
                         /path/snake_pipeline/accusnv_sub
