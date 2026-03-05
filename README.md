@@ -73,7 +73,7 @@ sh scripts/dru-run.sh
 sh scripts/run_snakemake.slurm
 # (This Slurm script starts the entire pipeline. You can modify it as needed (e.g., change the partition for job submission).)
 
-# Step-2: Downstream analysis (as this step usually not need a lot of computational resour)
+# Step-2: Downstream analysis (as this step requires minimal computational resources, it can also be run directly on a laptop.)
 python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 
 ----------------------------------------------------------------------------------------------------------------------------------
