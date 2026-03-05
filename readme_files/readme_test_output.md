@@ -50,7 +50,7 @@ tree cae_pe_test_snakemake/3-AccuSNV/group_pe_test/
 | File or Folder |  Description |
 | ---  | --- | 
 | `snv_table_merge_all_mut_annotations_final.tsv`  | Final merged SNV report table (recommended primary text result for interpretation). More details, including explanations of the columns in this file, can be found here.
-| `snv_table_cnn_plus_filter.txt` | Per-position prediction/filter summary table (CNN output + rule-based filters (from WideVariant)). But no annotation information for each SNV.
+| `snv_table_cnn_plus_filter.txt` | Per-position prediction/filter summary table (CNN output + rule-based filters (from WideVariant)). Note that this file does not include annotation information for each SNV.
 | `snv_table_with_charts_final.html`  | Interactive final HTML report for the final merged table (recommended to view). Keep `bar_charts/` in the same output folder so image links work.
 | `candidate_mutation_table_final.npz`  | Final machine-readable SNV matrix for downstream analysis. Contains arrays such as sample names, genomic positions, counts, quality values, prediction labels/probabilities, and recombination flags. This is the main input for `accusnv_downstream`.
 
