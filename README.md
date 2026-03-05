@@ -138,9 +138,9 @@ Submit with Slurm:
 
 If you do not use Slurm (single node/local-style run), set:
 
-`python accusnv_snakemake.py -t 1 -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>`
+`python accusnv_snakemake.py -f 1 -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>`
 
-(`-t 1` disables automatic Slurm submission mode).
+(`-f 1` disables automatic Slurm submission mode).
 
 ### (3) Run downstream analysis (optional but recommended for dN/dS and re-analysis)
 
