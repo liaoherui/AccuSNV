@@ -71,7 +71,7 @@ python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/ca
 ```
 To adjust the Slurm configuration (e.g., the partitions to submit to, CPU and memory requirements for specific tasks, or the maximum number of submitted jobs), you can modify the config.yaml file in the output folder generated in Step 1 (in this example: `cae_pe_test_snakemake/conf/config.yaml`). Some notes on how to modify this file can be found here.
 
--> If the job finishes successfully, the output folders should look like this.
+-> If the jobs finish successfully, the output folders should look like this.
 
 
 
