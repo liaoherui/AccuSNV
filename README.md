@@ -67,10 +67,10 @@ sh scripts/run_snakemake_local.sh
 python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 
 ----------------------------------------------------------------------------------------------------------------------------------
-Note: Running the tool locally is convenient, but it may not fully utilize the capabilities of the Snakemake framework,
-which can execute many jobs in parallel by submitting them to different nodes or partitions on an HPC cluster.
-To improve efficiency (especially for large-scale datasets),
-it is recommended to run the Snakemake pipeline on an HPC system with Slurm (see the example below).
+# Note: Running the tool locally is convenient, but it may not fully utilize the capabilities of the Snakemake framework,
+# which can execute many jobs in parallel by submitting them to different nodes or partitions on an HPC cluster.
+# To improve efficiency (especially for large-scale datasets),
+# it is recommended to run the Snakemake pipeline on an HPC system with Slurm (see the example below).
 ----------------------------------------------------------------------------------------------------------------------------------
 ```
 
@@ -93,9 +93,9 @@ sh scripts/run_snakemake.slurm
 python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 
 ----------------------------------------------------------------------------------------------------------------------------------
-Note: If you got error like "ValueError: The binary mode of fromstring is removed, use frombuffer instead",
-This is likely because: On some clusters, activating your conda environment on compute nodes may require additional steps.
-To solve it, in your scripts/run_snakemake.slurm file, you may need something like the following:
+# Note: If you got error like "ValueError: The binary mode of fromstring is removed, use frombuffer instead",
+# This is likely because: On some clusters, activating your conda environment on compute nodes may require additional steps.
+# To solve it, in your scripts/run_snakemake.slurm file, you may need something like the following:
 
 conda activate accusnv
 ----------------------------------------------------------------------------------------------------------------------------------
