@@ -93,7 +93,7 @@ python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/ca
 
 ----------------------------------------------------------------------------------------------------------------------------------
 Note: If you got error like "ValueError: The binary mode of fromstring is removed, use frombuffer instead",
-This is because: On some clusters, activating your conda environment on compute nodes may require additional steps.
+This is likely because: On some clusters, activating your conda environment on compute nodes may require additional steps.
 To solve it, in your scripts/run_snakemake.slurm file, you may need something like the following:
 
 conda activate accusnv
