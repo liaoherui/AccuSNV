@@ -81,8 +81,6 @@ Note: If you got error like "ValueError: The binary mode of fromstring is remove
 This is because: On some clusters, activating your conda environment on compute nodes may require additional steps.
 To solve it, in your scripts/run_snakemake.slurm file, you may need something like the following:
 
-conda activate miniforge
-conda activate base
 conda activate accusnv
 ```
 
