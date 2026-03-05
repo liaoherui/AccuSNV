@@ -16,6 +16,15 @@ The workflow of AccuSNV:
 
 Note: This tool is powered by Lieberman and Key Lab SNV calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
 
+## Contents
+
+- [Install](#install)
+- [Quick Test](#quick)
+- [Usage](#usage)
+
+
+-------------------------------------------------
+
 ## Install
 
 Git clone:<BR/>
