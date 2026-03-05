@@ -95,6 +95,26 @@ To adjust the Slurm configuration (e.g., the partitions to submit to, CPU and me
 
 Key point: Ensure that all of your input files follow the same format as the tested files used in the **Quick Test** above.
 
+## Output
+
+```
+### Core files:
+
+| File or Folder |  Description |
+| ---  | --- | 
+| `snv_table_merge_all_mut_annotations_final.tsv`  | Final merged SNV report table (recommended primary text result for interpretation). More details, including explanations of the columns in this file, can be found here.
+| `snv_table_cnn_plus_filter.txt` | Per-position prediction/filter summary table (CNN output + rule-based filters (from WideVariant)). But no annotation information for each SNV.
+| `snv_table_with_charts_final.html`  | Interactive final HTML report for the final merged table (recommended to view). Keep `bar_charts/` in the same output folder so image links work.
+| `candidate_mutation_table_final.npz`  | Final machine-readable SNV matrix for downstream analysis. Contains arrays such as sample names, genomic positions, counts, quality values, prediction labels/probabilities, and recombination flags. This is the main input for `accusnv_downstream`.
+
+For final SNV calling results, please use:
+
+`snv_table_merge_all_mut_annotations_final.tsv` as the primary human-readable SNV result table (final filtered/merged report).
+
+`candidate_mutation_table_final.npz` as the machine-readable final result for any downstream analysis or re-analysis.
+
+For full documentation of all output files, please see [here](readme_files/readme_test_output.md).
+
 
 
 
