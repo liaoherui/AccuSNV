@@ -66,14 +66,14 @@ it is recommended to run the Snakemake pipeline on an HPC system with Slurm (see
 # Step-1: Snakemake pipeline
 python accusnv_snakemake.py -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
 
-# Snakemake dry-run step: simulates the execution of a workflow without actually running any jobs or creating output files
+# Snakemake dry-run step
 sh scripts/dru-run.sh
 
 # Run the pipeline on HPC compute nodes; the jobs will be automatically submitted through the Slurm system.
 sh scripts/run_snakemake.slurm
 # (This Slurm script starts the entire pipeline. You can modify it as needed (e.g., change the partition for job submission).)
 
-# Step-2: Downstream analysis (as this step requires minimal computational resources, it can also be run directly on a laptop.)
+# Step-2: Downstream analysis (as this step requires minimal computational resources, it can still be run directly on a laptop.)
 python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 
 ----------------------------------------------------------------------------------------------------------------------------------
