@@ -170,10 +170,12 @@ Interactive report: `snv_table_with_charts_final.html` (keep `bar_charts/` besid
 
 Downstream input/output anchor: `candidate_mutation_table_final.npz`.
 
+You can find examples to these four output files in the [demo_output](demo_output) folder.
+
 
 ## Output
 
-The main output files  are in the `<output_folder>/3-AccuSNV/<folder_name>` (e.g., for **Quick Test**, this is `cae_pe_test_snakemake/3-AccuSNV/group_pe_test/`) folder. 
+The main output files  are in the `<output_folder>/3-AccuSNV/<folder_name>` (e.g., for **Quick Test**, this is `cae_pe_test_snakemake/3-AccuSNV/group_pe_test/`) folder. You can find examples to four core output files in the [demo_output](demo_output) folder.
 
 ### Core files:
 
