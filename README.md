@@ -65,14 +65,16 @@ sh scripts/dru-run.sh
 
 # Run the pipeline on HPC compute nodes; the jobs will be automatically submitted through the Slurm system.
 sh scripts/run_snakemake.slurm
+# (This Slurm script starts the entire pipeline. You can modify it as needed (e.g., change the partition for job submission).)
 
 # Step-2: Downstream analysis (as this step usually not need a lot of computational resour)
 python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 ```
+
 To adjust the Slurm configuration (e.g., the partitions to submit to, CPU and memory requirements for specific tasks, or the maximum number of submitted jobs), you can modify the config.yaml file in the output folder generated in Step 1 (in this example: `cae_pe_test_snakemake/conf/config.yaml`). Some notes on how to modify this file can be found here.
 
--> If the jobs finish successfully, the output folders should look like this.
 
+3. For either Test (1) or Test (2), if the jobs finish successfully, the output folders should look like this.
 
 
 ## Usage
