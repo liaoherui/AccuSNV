@@ -19,7 +19,7 @@ Note: This tool is powered by Lieberman and Key Lab SNV calling pipeline - [Wide
 ## Contents
 
 - [Install](#install)
-- [Quick Test](#quick)
+- [Quick Test](#quick-test-(with-the-provided-test-data))
 - [Usage](#usage)
 
 
