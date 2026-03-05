@@ -136,3 +136,80 @@ The downstream step exists to let users re-analyze the same final NPZ quickly wi
 So, you can use downstream when you want fast iterative biological interpretation on the final callset (e.g., alternate filtering choices, recombination handling, or repeated dN/dS runs) without rerunning the full pipeline.
 
 ##  Other output of Snakemake pipeline
+
+
+```
+tree cae_pe_test_snakemake
+
+|-- 1-Mapping
+|   |-- bwa
+|   |-- diversity
+|   |-- quals
+|   `-- vcf
+|-- 2-Case
+|   |-- candidate_mutation_table
+|   `-- temp
+|-- 3-AccuSNV
+|-- conf
+|   `-- config.yaml
+|-- data
+|   |-- strain1
+|   |-- strain2
+|   |-- strain3
+|   `-- strain4
+|-- link
+`-- temp
+```
+`1-Mapping/` <BR>
+
+Mapping-stage outputs generated from read alignment and pileup/VCF processing.
+It contains intermediate files used to build candidate mutation tables in `2-Case`.
+
+`1-Mapping/bwa/` or `1-Mapping/bowtie2/` <BR>
+
+Per-sample alignment files (SAM/BAM/BAM index and related mapping intermediates).
+
+`1-Mapping/vcf/` <BR>
+Per-sample pileup and VCF outputs (raw and SNP-filtered), produced from mapped BAM files.
+
+`1-Mapping/quals/` <BR>
+Per-sample quality matrices (*.quals.pickle.gz) derived from VCF and used later in SNV filtering/calling.
+
+`1-Mapping/diversity/` <BR>
+Per-sample diversity and coverage matrices (*.diversity.pickle.gz, *.coverage.pickle.gz) used by the candidate mutation table step.
+
+`2-Case/` <BR>
+Candidate-SNV discovery stage before final AccuSNV output.
+This stage aggregates per-sample mapping statistics into group-level candidate mutation tables.
+
+`2-Case/candidate_mutation_table/` <BR>
+Group-level candidate mutation tables (`group_<cladeID>_candidate_mutation_table.npz`) and optional coverage matrices, used as direct input to the final AccuSNV stage. (These files are the input to `new_snv_script.py`)
+
+`2-Case/temp/` <BR>
+Temporary per-sample/per-group files (position lists, string lists, prep files) created during candidate-SNV aggregation.
+
+`3-AccuSNV/` <BR>
+Final AccuSNV result folder (per group), including final SNV tables/HTML/plots/tree and `candidate_mutation_table_final.npz` for downstream analysis
+
+`conf/` <BR>
+Run-specific configuration folder generated in your output directory.
+Contains the generated config.yaml used by Snakemake/profile execution.
+
+`conf/config.yaml` <BR>
+Main run config file (resources, profile behavior, experiment linkage).
+This is the file users typically edit for cluster resource tuning.
+
+`data/` <BR>
+Per-sample working folders used by Snakemake execution (e.g., filtered read files and sample metadata files).
+
+`data/strain1`, `data/strain2`, `data/strain3`, `data/strain4` <BR>
+One folder per sample.
+Each sample folder stores its own sample_info.csv and processed files used by downstream rules.
+
+`link/` <BR>
+Symlink staging folder for normalized input file names (e.g., <sample>_1.fastq.gz, <sample>_2.fastq.gz) created by accusnv_snakemake.py.
+This makes input handling consistent regardless of original raw file naming/location
+
+`temp/` <BR>
+Temporary setup/utility files generated during initialization (e.g., rebuilt sample CSV, temporary experiment config files).
+These are helper files for orchestrating the run and are not final biological outputs.
