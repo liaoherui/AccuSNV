@@ -1216,76 +1216,39 @@ update - 1 - save candidate mutation table with only label '1' pos
 update - 2 - regenerate output text and html report
 update - 3 - add dN/dS output
 '''
-f=open(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv','r')
-o=open(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv','w+')
-o2=open(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv','w+')
-line=f.readline()
-o.write(line)
-o2.write(line)
-dk={}
-dl={}
-dr={}
-while True:
-    line=f.readline().strip()
-    if not line:break
-    ele=line.split('\t')
-    if int(ele[1])==0:
-        #continue
-        o2.write(line+'\n')
-        dl[int(ele[0])]=''
-        if ele[4]=='skip':
-            dk[int(ele[0])]=0
-        else:
-            dk[int(ele[0])]=float(ele[4])
-    else:
-        o.write(line+'\n')
-        if ele[4]=='skip':
-            dk[int(ele[0])]=0
-        else:
-            dk[int(ele[0])]=float(ele[4])
-    if int(ele[13])==1:
-        dr[int(ele[0])]=int(ele[13])
-o.close()
-o2.close()
+# Read draft TSV with pandas for vectorized split/filter
+_draft = pd.read_csv(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv', sep='\t', dtype=str)
+_header_line = '\t'.join(_draft.columns) + '\n'
+
+_pos_col   = _draft.iloc[:, 0].astype(int)
+_label_col = _draft.iloc[:, 1].astype(int)
+_prob_col  = _draft.iloc[:, 4]
+_recomb_col= _draft.iloc[:, 13].astype(int)
+
+# Build dk (pos -> prob), dl (label=0 positions set), dr (recomb positions set)
+_prob_vals = _prob_col.where(_prob_col != 'skip', other='0').astype(float)
+dk = dict(zip(_pos_col, _prob_vals))
+dl = set(_pos_col[_label_col == 0].tolist())
+dr = set(_pos_col[_recomb_col == 1].tolist())
+
+# Write final (label=1) and label0 TSVs
+_final_mask  = _label_col == 1
+_label0_mask = _label_col == 0
+_draft[_final_mask].to_csv( dir_output+'/snv_table_merge_all_mut_annotations_final.tsv',  sep='\t', index=False)
+_draft[_label0_mask].to_csv(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv', sep='\t', index=False)
+
 snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
-if len(dl)>0:
+if len(dl) > 0:
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv', dir_output+'/snv_table_with_charts_label0.html', dir_output+'/bar_charts')
-keep_p=[]
-prob=[]
-label=[]
-recomb=[]
-for s in my_cmt_zero_rebuild.p:
-    '''
-    if s in dl:
-        label.append(False)
-    else:
-        label.append(True)
-    '''
-    if s in dk:
-        keep_p.append(True)
-        prob.append(dk[s])
-        if s in dl:
-            label.append(False)
-        else:
-            label.append(True)
-        if s in dr:
-            recomb.append(True)
-        else:
-            recomb.append(False)
-    else:
-        keep_p.append(False)
-    '''
-    if s in dr:
-        recomb.append(True)
-    else:
-        recomb.append(False)
-    '''
 
+# Vectorized rebuild of per-position keep/prob/label/recomb arrays
+_rebuild_p = my_cmt_zero_rebuild.p
+keep_p  = np.array([s in dk for s in _rebuild_p])
+prob    = [dk[s] for s in _rebuild_p[keep_p]]
+label   = np.array([s not in dl  for s in _rebuild_p[keep_p]])
+recomb  = np.array([s in dr      for s in _rebuild_p[keep_p]])
 
-keep_p=np.array(keep_p)
 my_cmt_zero_rebuild.filter_positions(keep_p)
-label=np.array(label)
-recomb=np.array(recomb)
 quals_new=my_cmt_zero_rebuild.quals* -1
 new_cmt={'sample_names': my_cmt_zero_rebuild.sample_names,'p':my_cmt_zero_rebuild.p,'counts':my_cmt_zero_rebuild.counts,'quals':quals_new,'in_outgroup':my_cmt_zero_rebuild.in_outgroup,'indel_counter':my_cmt_zero_rebuild.indel_stats,'prob':prob,'label':label,'recomb':recomb,'samples_exclude_bool':samples_to_exclude_bool}
 np.savez_compressed(dir_output+'/candidate_mutation_table_final.npz', **new_cmt)
