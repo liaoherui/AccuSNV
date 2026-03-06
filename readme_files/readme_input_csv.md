@@ -40,7 +40,7 @@ Suppose the input directory is like this:
 │       └── genome.gff
 └── input_sample.csv
 ```
-Then, your `input_sample.csv` should look like this (if no outgroup sample):
+Then, the `input_sample.csv` should look like this (if no outgroup sample):
 
 ```
 Path,Sample,FileName,Reference,Group,Outgroup,Type
