@@ -9,12 +9,13 @@ The workflow of AccuSNV:
 # <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/method_fix.jpg" width = "800" height = "500" >  
 
 -------------------------------------------------
-
 ### Version: V1.0.0.6 (Last update on 2026-Mar)
+- Log: if you are looking for v1.0.0.5 (the original version, main branch), you can find it [here](https://github.com/liaoherui/AccuSNV/tree/main)!
 -------------------------------------------------
 
 
 Note: This tool is powered by Lieberman and Key Lab SNV calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
+
 
 ## Contents
 
