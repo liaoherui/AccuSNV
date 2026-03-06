@@ -78,7 +78,7 @@ python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/ca
 
 
 
-2. Test the tool on the Linux HPC system with Slurm system:
+2. Test the tool on the Linux HPC system with [Slurm](https://slurm.schedmd.com/overview.html) system:
 
 ```
 # Step-1: Snakemake pipeline
