@@ -88,7 +88,7 @@ python accusnv_snakemake.py -i test_data_csv/samples_cae_test_pe.csv -r referenc
 sh scripts/dru-run.sh
 
 # Run the pipeline on HPC compute nodes; the jobs will be automatically submitted through the Slurm system.
-sh scripts/run_snakemake.slurm
+sbatch scripts/run_snakemake.slurm
 # (This Slurm script starts the entire pipeline. You can modify it as needed (e.g., change the partition for job submission).)
 
 # Step-2: Downstream analysis (as this step requires minimal computational resources, it can still be run locally.You can also test this step directly using the provided test data, see the “or” option below.)
