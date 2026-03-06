@@ -173,7 +173,7 @@ Note: NPZ files under `2-Case/candidate_mutation_table` are for the local AccuSN
 # accusnv_downstream -i <final_cmt_npz> -r <reference_dir> -o <downstream_output_dir>
 -->
 
-### (4) Main files to look at
+### (4) Main output files to look at
 
 (Core output are in the `<output_dir>/3-AccuSNV/<folder_name>` from (2). E.g., for **Quick Test**, this is `cae_pe_test_snakemake/3-AccuSNV/group_pe_test/` folder.)
 
