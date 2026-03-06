@@ -153,6 +153,8 @@ If you do not use Slurm (single node/local-style run), set:
 
 (`-f 1` disables automatic Slurm submission mode).
 
+and `sh scripts/run_snakemake_local.sh`
+
 ### (3) Run downstream analysis (optional but recommended for dN/dS and re-analysis)
 
 Use the final NPZ from:
