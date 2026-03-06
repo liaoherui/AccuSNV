@@ -4,7 +4,7 @@ Change log (2026 Feb-Mar):
 
 2. make bwa -t (threads) parameters available to be adjusted by users, instead of hardcoded.
 
-3. Add samclip parameter when use bwa as bwa.
+3. Add samclip parameter when use bwa as the aligner.
 
 4. Add bowtie2 parameter for alternative aligner.
 
