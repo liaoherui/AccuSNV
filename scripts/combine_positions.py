@@ -82,7 +82,9 @@ def combine_positions(path_to_positions_files, path_to_output_p_file, path_to_ou
         for line in file:
             in_outgroup.append(line)
     #Bool of samples to include
-    include = [not i for i in in_outgroup]
+    #include = [not i for i in in_outgroup]
+    # Bool of samples to include (ingroup only)
+    include = np.array([s != '1' for s in in_outgroup], dtype=bool)
     
     #Get positions on reference genome
     [chr_starts,genome_length,scaf_names] = ghf.genomestats(REFGENOMEDIRECTORY)
@@ -93,7 +95,15 @@ def combine_positions(path_to_positions_files, path_to_output_p_file, path_to_ou
     positions_files_ls=[]
     with open(path_to_positions_files) as file:
         for line in file:
-            positions_files_ls.append(line)
+            #positions_files_ls.append(line)
+            positions_files_ls.append(line.rstrip('\n'))
+
+    if len(include) != len(positions_files_ls):
+        raise ValueError(
+            f"Outgroup boolean list length ({len(include)}) does not match number of position files ({len(positions_files_ls)})."
+        )
+
+    positions_files_ls = list(np.array(positions_files_ls)[include])
             
     # print(f"\nIngroup paths used to generate positions: {positions_files_ls[include]}")
     print(include)
