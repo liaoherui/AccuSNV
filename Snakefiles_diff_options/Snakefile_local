@@ -4,6 +4,21 @@
 ''' GLOBAL '''
 import sys
 import re
+import os
+import subprocess
+
+# ── Locale fix ────────────────────────────────────────────────────────────────
+# On some macOS machines Python 3.11+ raises:
+#   "Fatal Python error: config_get_locale_encoding: nl_langinfo(CODESET) failed"
+# when locale env vars are missing.  Force them here so every subprocess
+# spawned by this Snakefile inherits a valid locale.
+os.environ.setdefault("LANG", "en_US.UTF-8")
+os.environ.setdefault("LC_ALL", "en_US.UTF-8")
+os.environ.setdefault("LC_CTYPE", "en_US.UTF-8")
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+# Build a clean env dict that all subprocess.run() calls will reuse
+_SAFE_ENV = {**os.environ}
+# ──────────────────────────────────────────────────────────────────────────────
 
 # Global variables: In theory do not need to be changed
 CURRENT_DIRECTORY = os.getcwd()
@@ -404,13 +419,12 @@ if flag == "case":
                 references=REF_Genome_ls,
                 outgroup=OUTGROUP_ls),
         run:
-            import os
+            import glob
             subprocess.run(
                 f"mkdir -p {outdir}/1-Mapping/vcf/ {outdir}/1-Mapping/quals/ {outdir}/1-Mapping/diversity/ ",
-                shell=True)
+                shell=True, env=_SAFE_ENV)
             for idx, ele in enumerate(SAMPLE_ls):
                 # Use Python glob + os.symlink instead of ln -fs -T (ln -T is Linux-only)
-                import glob
                 def make_symlink(src_pattern, dst):
                     matches = glob.glob(src_pattern)
                     if not matches:
@@ -446,7 +460,7 @@ else:
             fq1o = outdir + '/data/{sampleID}/R1.filt.fq.gz',
             fq2o = outdir + '/data/{sampleID}/R2.filt.fq.gz',
         run:
-            import os
+            import glob
             runs = os.path.join(outdir, "data", wildcards.sampleID.strip())
             os.makedirs(runs, exist_ok=True)
             if len(input.fwd) > 1:  # if there is more than one file, concatenate and zip
@@ -456,8 +470,8 @@ else:
                 dst_rev = os.path.join(runs, "R2.filt.fq.gz")
                 print(f"gzip -cd {fwdstr} | gzip > {dst_fwd}")
                 # Use gzip -cd instead of zcat: macOS zcat only handles .Z files
-                subprocess.run(f"gzip -cd {fwdstr} | gzip > {dst_fwd}", shell=True)
-                subprocess.run(f"gzip -cd {revstr} | gzip > {dst_rev}", shell=True)
+                subprocess.run(f"gzip -cd {fwdstr} | gzip > {dst_fwd}", shell=True, env=_SAFE_ENV)
+                subprocess.run(f"gzip -cd {revstr} | gzip > {dst_rev}", shell=True, env=_SAFE_ENV)
             else:  # otherwise, just make a symlink using Python (ln -s -T is Linux-only)
                 src_fwd = str(input.fwd)
                 src_rev = str(input.rev)
