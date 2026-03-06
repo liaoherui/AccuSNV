@@ -1177,20 +1177,16 @@ def data_transform(infile,incov,fig_odir,samples_to_exclude,min_cov_samp):
     '''
     
 
+    print(f"[data_transform] Reordering and normalising array ({combined_array.shape[0]} positions)...", flush=True)
     combined_array = reorder_norm(combined_array, my_cmt)
+    print(f"[data_transform] Reorder/norm done.", flush=True)
     #### Remove low quality samples
-    #print(combined_array.shape,len(p))
-    #print(p,len(p))
-    #exit()
     if not min_cov_samp==100:
+        print(f"[data_transform] Removing low-quality samples (threshold={min_cov_samp}%)...", flush=True)
         combined_array,p=remove_low_quality_samples(combined_array, min_cov_samp,p)
-    #print(np.where(p==864972))
-    #exit()
     #### Remove bad positions
-    #pfgap=[]
     combined_array,p,pfgap,praw=remove_lp(combined_array,p,my_cmt,my_calls,median_cov )
     dgap={}
-    #praw=p
     for s in praw:
         if s not in pfgap:
             dgap[s]='0'
@@ -1273,10 +1269,9 @@ def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp)
     #exit()
     #print(odata[5])
     #exit()
-    print('Transformed data shape:',odata.shape)
-    #test_datasets.append((data['x'][:,:,8:].astype(np.float64), data['label']))
-    nlab=np.zeros(odata.shape[0])
-    #test_datasets.append((odata))
+    n_cnn_pos = odata.shape[0]
+    print(f'Transformed data shape: {odata.shape}  ({n_cnn_pos} positions to score)')
+    nlab=np.zeros(n_cnn_pos)
     test_datasets.append((odata,nlab))
     #odata[2][5][2][1]=1
     #print(odata.shape)
@@ -1349,21 +1344,24 @@ def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp)
     #print('Train')
     model.eval()
 
+    _total_batches = sum(len(loader) for loader in test_loader)
+    _report_every_cnn = max(1, _total_batches // 20)  # ~5% intervals
+    print(f"[CNN] Scoring {n_cnn_pos} positions ({_total_batches} batches, batch_size=512)...", flush=True)
+
     predictions = []
     y_test=[]
+    _cnn_batch = 0
     with torch.no_grad():
         for loader in test_loader:
             for inputs,label in loader:
-                #print(inputs)
-                #exit()
+                if _cnn_batch % _report_every_cnn == 0:
+                    _pos_done = min(_cnn_batch * 512, n_cnn_pos)
+                    print(f"  [CNN] {100 * _cnn_batch // _total_batches:3d}%  ({_pos_done}/{n_cnn_pos} positions)", flush=True)
+                _cnn_batch += 1
                 inputs=inputs.to(device)
-                #inputs = torch.from_numpy(np.float32(inputs)).to(device)
-                # print(inputs[20])
-                # exit()
                 outputs = model(inputs)
-                # print(model(inputs))
-                # exit()
                 predictions.extend(outputs.cpu().numpy().flatten())
+    print(f"  [CNN] 100%  ({n_cnn_pos}/{n_cnn_pos} positions) — done.", flush=True)
     #loss = criterion(outputs, y_test)
     # Convert predictions to binary labels
     prob=np.array(predictions)
