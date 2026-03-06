@@ -66,7 +66,7 @@ sh scripts/run_snakemake_local.sh
 # Step-2: Downstream analysis
 python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 
-(or: python accusnv_downstream.py -i  Test_data_local/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_ds_pe_downstream)
+# (or: python accusnv_downstream.py -i  Test_data_local/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_ds_pe_downstream)
 
 ----------------------------------------------------------------------------------------------------------------------------------
 # Note: Running the tool locally is convenient, but it may not fully utilize the capabilities of the Snakemake framework,
@@ -94,7 +94,7 @@ sbatch scripts/run_snakemake.slurm
 # Step-2: Downstream analysis (as this step requires minimal computational resources, it can still be run locally.You can also test this step directly using the provided test data, see the “or” option below.)
 python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 
-(or: python accusnv_downstream.py -i  Test_data_local/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_ds_pe_downstream)
+# (or: python accusnv_downstream.py -i  Test_data_local/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_ds_pe_downstream)
 
 ----------------------------------------------------------------------------------------------------------------------------------
 # Note: If you got error like "ValueError: The binary mode of fromstring is removed, use frombuffer instead",
