@@ -129,10 +129,12 @@ To run the tool, you will need to:
 ```
 # from AccuSNV root
 python accusnv_snakemake.py -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
+```
 
+<!---
 # or Bioconda command (equivalent to the above)
 # accusnv_snakemake -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
-```
+-->
 
 Then check workflow plan with Snakemake dry run:
 
@@ -158,11 +160,13 @@ python accusnv_downstream.py \
   -i <output_dir>/3-AccuSNV/group_<group_id>/candidate_mutation_table_final.npz \
   -r <reference_genomes_dir>/<reference_name> \
   -o <downstream_output_dir>
-
-# Bioconda command (equivalent to the above):
-# accusnv_downstream -i <final_cmt_npz> -r <reference_dir> -o <downstream_output_dir>
 ```
 Note: NPZ files under `2-Case/candidate_mutation_table` are for the local AccuSNV script (`new_snv_script.py`), not for `accusnv_downstream`
+
+<!---
+# Bioconda command (equivalent to the above):
+# accusnv_downstream -i <final_cmt_npz> -r <reference_dir> -o <downstream_output_dir>
+-->
 
 ### (4) Main files to look at
 
