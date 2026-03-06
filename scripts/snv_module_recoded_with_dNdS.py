@@ -2970,7 +2970,11 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
 
     lines = [header]
 
+    _report_every = max(1, n_pos // 20)  # ~5% intervals
+    print(f"[TSV] Writing {n_pos} positions...", flush=True)
     for i, pos in enumerate(mut_positions):
+        if i % _report_every == 0:
+            print(f"  [TSV] {100 * i // n_pos:3d}% ({i}/{n_pos})", flush=True)
         # Product / protein / locustag: preserve string, stringify NaN
         product    = product_v[i]
         protein_id = protein_id_v[i]
@@ -3028,7 +3032,8 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
 
     with open(tsv_filename, 'w') as f:
         f.writelines(lines)
-    
+    print(f"  [TSV] 100% ({n_pos}/{n_pos}) — done.", flush=True)
+
 def token_generate(inmatrix_raw, inmatrix_new,pre):
     unique_counts_raw = np.apply_along_axis(lambda row: len(np.unique(row[row != 0])), axis=1, arr=inmatrix_raw)
     unique_counts_raw[unique_counts_raw ==1]=0
@@ -3382,7 +3387,12 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir, max_rows=2
         '<th class="pred">Cov_filter (&lt;5)</th>'
     )
 
-    for idx in range(len(df)):
+    _n_html = len(df)
+    _report_every_html = max(1, _n_html // 10)  # ~10% intervals
+    print(f"[HTML] Rendering {_n_html} rows...", flush=True)
+    for idx in range(_n_html):
+        if idx % _report_every_html == 0:
+            print(f"  [HTML] {100 * idx // _n_html:3d}% ({idx}/{_n_html})", flush=True)
         gpos = gpos_arr[idx]
         chart_name = d.get(gpos, placeholder_chart)
         pid = protein_arr[idx]
@@ -3453,6 +3463,7 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir, max_rows=2
             f'<tr><th rowspan="2" colspan="100%"></th><tr>\n'
         )
 
+    print(f"  [HTML] 100% ({_n_html}/{_n_html}) — done.", flush=True)
     parts.append('</table>\n')
     pop_script = '''
         <div class="overlay" id="overlay" onclick="closePopup()"></div>

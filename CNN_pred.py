@@ -511,9 +511,9 @@ def cal_freq_amb_samples(all_p,my_cmt):
 def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     raw_p=len(inp)
     rawp=inp
-    #print(inp.shape,combined_array[40])
-    #exit()
+    print(f"[remove_lp] Start: {raw_p} candidate positions, {my_calls.calls.shape[0]} samples", flush=True)
     ######### Further Scan bad pos, eg: potential FPs caused by Low-Depth samples
+    print("[remove_lp] Stage 1/4: Coverage/strand quality filtering...", flush=True)
     keep_col = np.isin(my_cmt.p, inp)
     #print(keep_col.shape)
     #print(my_cmt.p.shape)
@@ -644,7 +644,9 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     keep_col_arr = np.isin(inp, my_calls.p)
     inp=inp[keep_col_arr]
     combined_array=combined_array[keep_col_arr]
+    print(f"[remove_lp] Stage 1/4 done: {len(inp)} positions remain after quality filters", flush=True)
     #### Filter low gap pos
+    print("[remove_lp] Stage 2/4: Gap filter — computing coverage ratios...", flush=True)
     rawp=my_cmt.p # used to check positions removed by gap filter
     #exit()
     '''
@@ -759,6 +761,7 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     count_combine_ratio[~b]=0
     c3[~mbool]=0
 
+    print(f"[remove_lp] Stage 3/4: Vectorized Welch t-test over {my_cmt.p.shape[0]} positions...", flush=True)
     # ----- Vectorized gap filter (replaces Python t-test loop) -----
     mask_large = count_combine_ratio != 0   # (n_samples, n_pos)
     mask_small = c3 != 0                    # (n_samples, n_pos)
@@ -835,7 +838,8 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
         if p not in gap_pos_set:
             gap_pos.append(p)
             gap_pos_set.add(p)
-    
+    print(f"[remove_lp] Stage 3/4 done: {len(gap_pos)} gap positions identified (gap_candidate={len(gap_candidate)}, tem_p={len(tem_p)})", flush=True)
+    print(f"[remove_lp] Stage 4/4: Final position filtering...", flush=True)
     print('gap_pos:\n',gap_pos)
     #print(p_arr[36],p_arr_ratio[36])
     #exit()
@@ -895,6 +899,7 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     inp = inp[keep_col_arr]
     combined_array = combined_array[keep_col_arr]
 
+    print(f"[remove_lp] Stage 4/4 done.", flush=True)
     print('There are ',raw_p-len(inp),' pos filtered. Keep ',len(inp),' positions.')
     print(rawp[~np.isin(rawp, inp)])
     #exit()
