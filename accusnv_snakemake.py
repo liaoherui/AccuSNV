@@ -251,6 +251,9 @@ def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm,tem_dir):
 	o3.write('snakemake  --profile '+cond+'\n')
 	o3.write('# Print "Done!!!" at end of main log file\n')
 	o3.write('echo Done!!!\n')
+	o4 = open(script_dir + '/scripts/run_snakemake_local.sh', 'w+')
+	o4.write("snakemake  --profile "+cond)
+	o4.close()
 
 
 	
@@ -471,15 +474,19 @@ def main():
 	if not aligner:
 		aligner = 'bwa'
 
+	if tf_slurm==1:
+		target_snakefile = ' Snakefiles_diff_options/Snakefile_local '
+	else:
+		target_snakefile = ' Snakefiles_diff_options/Snakefile_conda_env '
 	# Samclip is only applicable when Bowtie2 is used as the aligner
 	if aligner=='bowtie2':
 		samclip = 0
-		os.system('cp Snakefiles_diff_options/Snakefile_conda_env '+script_dir+'/Snakefile')
+		os.system('cp '+target_snakefile+' '+script_dir+'/Snakefile')
 		snakefile_modify_bowtie2('Snakefile', uid)
 
 
 	if samclip == 1:
-		os.system('cp Snakefiles_diff_options/Snakefile_conda_env '+script_dir+'/Snakefile')
+		os.system('cp '+target_snakefile+' '+script_dir+'/Snakefile')
 		snakefile_modify_samclip('Snakefile', uid)
 
 
@@ -511,7 +518,7 @@ def main():
 			snakefile_modify_samclip('Snakefile', uid)
 
 	if cp_env=='' and not aligner=='bowtie2' and not samclip == 1:
-		os.system('cp Snakefiles_diff_options/Snakefile_conda_env ' + script_dir + '/Snakefile')
+		os.system('cp '+target_snakefile+ ' '+ script_dir + '/Snakefile')
 
 
 
