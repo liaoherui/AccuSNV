@@ -4,11 +4,21 @@
 
 `<samples.csv>` tells AccuSNV what to run, where your reads are, and how samples are grouped.
 
+### Example format
+
+```
+Path,Sample,FileName,Reference,Group,Outgroup,Type
+/user/project/reads/,strain1,strain1,Cae_ref,group_pe_test,0,PE
+/user/project/reads/,strain2,strain2,Cae_ref,group_pe_test,0,PE
+/user/project/reads/,strain3,strain3,Cae_ref,group_pe_test,0,PE
+/user/project/reads/,strain4,strain4,Cae_ref,group_pe_test,1,PE
+```
+
 ### Required header (exact order)
 
 ```
 Path,Sample,FileName,Reference,Group,Outgroup,Type
-````
+```
 
 ### Column meaning
 
