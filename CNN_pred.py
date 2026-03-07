@@ -792,6 +792,9 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     mean_diff = mean_large - mean_small
     t_stat = np.where(se > 0, mean_diff / se, 0.0)
     p_arr_ratio = np.where(n_small_v == 0, 1.0, 2 * stats.t.sf(np.abs(t_stat), df_v))
+    # Original code: np.std([x], ddof=1) = NaN when n_large==1, so t-test returns NaN,
+    # and NaN < threshold is always False. Match that behaviour by setting p=1.0 here.
+    p_arr_ratio = np.where(n_large < 2, 1.0, p_arr_ratio)
 
     # z-score based p-value (p_arr_ratio_cdf)
     std_large = np.sqrt(var_large)
