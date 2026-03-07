@@ -62,13 +62,22 @@ import sys
 import os
 import re
 import copy
+import functools
 import argparse
 import numpy as np
 import pandas as pd
 from scipy import stats
 import datetime, time
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import traceback
+
+# Make all print() calls flush immediately so progress is visible in real time
+print = functools.partial(print, flush=True)
+
+# Use a font guaranteed to be present; avoids "findfont: Arial not found" warnings
+mpl.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Liberation Sans', 'Bitstream Vera Sans', 'sans-serif']
+mpl.rcParams['font.family'] = 'sans-serif'
 
 
 # Some functions needed for subsequent steps

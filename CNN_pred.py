@@ -2,7 +2,11 @@ import os
 import re
 import sys
 import copy
+import functools
 import torch
+
+# Make all print() calls flush immediately so progress is visible in real time
+print = functools.partial(print, flush=True)
 import random
 import numpy as np
 import torch.nn as nn

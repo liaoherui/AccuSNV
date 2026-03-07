@@ -112,6 +112,7 @@ Felix Key, Arolyn Conwill, A. Delphine Tripp, Evan Qu, Laura Markey
 import os
 import re
 import glob
+import functools
 import pickle
 import copy as cp # https://docs.python.org/3/library/copy.html
 import gzip
@@ -144,6 +145,13 @@ import matplotlib.pyplot as plt
 # import matplotlib.mlab as mlab
 # from matplotlib.font_manager import FontProperties
 import pylab as pl
+
+# Make all print() calls flush immediately so progress is visible in real time
+print = functools.partial(print, flush=True)
+
+# Use a font guaranteed to be present; avoids "findfont: Arial not found" warnings
+mpl.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Liberation Sans', 'Bitstream Vera Sans', 'sans-serif']
+mpl.rcParams['font.family'] = 'sans-serif'
 
 
 
