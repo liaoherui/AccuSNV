@@ -2213,29 +2213,59 @@ def plot_interactive_scatter_barplots(xcoor,ycoor,xlabel,ylabel,samplenames,anno
         fdir=dir_output+'/bar_charts'
         if not os.path.exists(fdir):
             os.makedirs(fdir)
-        for i in range(len(xcoor)):
-            p_of_mut = annotation_mutations._get_value(i, 'p')
-            if os.path.exists(fdir + '/p_' + str(p_of_mut) + '_bar_chart.png'):continue # If the bar chart already exists, skip then!
-            type_of_mut = annotation_mutations._get_value(i, 'type')
-            #print("Index of selected mutation: " + str(i))
 
-            drilldownfig = plt.figure(20)
+        num_pos = len(xcoor)
+
+        # Pre-extract pandas columns to Python lists (avoids _get_value() per iteration)
+        p_values    = annotation_mutations['p'].tolist()
+        type_values = annotation_mutations['type'].tolist()
+
+        # Pre-scan existing chart files once → O(1) set lookup instead of 2000 os.path.exists() syscalls
+        existing_charts = set(os.listdir(fdir))
+
+        # Pre-compute chart data for all positions at once (vectorized).
+        # Eliminates the inner np.concatenate loop: 2000*(nsample-1) copies → nsample numpy slice assigns.
+        # Row layout per chart: sample0_fwd, sample0_rev, [zeros, sampleS_fwd, sampleS_rev] × (nsample-1)
+        nrows = 2 + 3 * (nsample - 1)
+        all_chart_data = np.zeros((num_pos, nrows, 4))
+        all_chart_data[:, 0, :] = countdata[0, :num_pos, :4]  # sample 0 fwd
+        all_chart_data[:, 1, :] = countdata[0, :num_pos, 4:]  # sample 0 rev
+        for s in range(1, nsample):
+            base = 2 + 3 * (s - 1)
+            # row base+0 stays zero (separator), already zero-initialised
+            all_chart_data[:, base + 1, :] = countdata[s, :num_pos, :4]  # fwd
+            all_chart_data[:, base + 2, :] = countdata[s, :num_pos, 4:]  # rev
+
+        # Pre-compute static per-figure elements shared across all charts
+        xtick_positions = list(range(0, nsample * 3, 3))
+        legend_labels   = ['A', 'T', 'C', 'G']
+
+        plt.ioff()  # disable interactive mode for faster batch rendering
+        drilldownfig = plt.figure(20)
+        _report_interval = max(1, num_pos // 10)
+        for i in range(num_pos):
+            if i % _report_interval == 0:
+                print(f'  [bar_plot] {i}/{num_pos} ({100*i//num_pos}%)', flush=True)
+            p_of_mut = p_values[i]
+            chart_filename = 'p_' + str(p_of_mut) + '_bar_chart.png'
+            if chart_filename in existing_charts:
+                continue  # skip already-generated charts
+            type_of_mut = type_values[i]
+
             drilldownfig.clf()
-
-            formated_count_data = np.stack((countdata[0, i, :4], countdata[0, i, 4:]))  # initialize
-            for s in range(1, nsample):  # 0 to nsample not 1 to nsample
-                new = np.stack((np.zeros((4)), countdata[s, i, :4], countdata[s, i, 4:]))  # put zeros in between samples
-                formated_count_data = np.concatenate((formated_count_data, new))  # add next sample
-
             axsub = drilldownfig.subplots(1)
-            stackedbar = pd.DataFrame(formated_count_data)
+            stackedbar = pd.DataFrame(all_chart_data[i])  # (nrows, 4) slice — no copy
             stackedbar.plot(kind='bar', stacked=True, width=1, ax=axsub)
-            pl.legend(['A', 'T', 'C', 'G'])
+            axsub.legend(legend_labels)
             axsub.set_ylabel('counts')
-            pl.xticks(ticks=range(0, nsample * 3, 3), labels=samplenames)
-            pl.title('p=' + str(p_of_mut) + ', type=' + type_of_mut)
+            axsub.set_xticks(xtick_positions)
+            axsub.set_xticklabels(samplenames)
+            axsub.set_title('p=' + str(p_of_mut) + ', type=' + type_of_mut)
             drilldownfig.tight_layout()
-            drilldownfig.savefig(fdir + '/p_' + str(p_of_mut) + '_bar_chart.png', dpi=400)
+            drilldownfig.savefig(fdir + '/' + chart_filename, dpi=400)
+
+        print(f'  [bar_plot] {num_pos}/{num_pos} (100%) done', flush=True)
+        plt.close(drilldownfig)  # release figure 20 from memory
        
         
     fig, axs = plt.subplots()
