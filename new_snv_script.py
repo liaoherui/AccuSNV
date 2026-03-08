@@ -915,9 +915,9 @@ if len(p_recombo)>0:
 
 # Filters
 filter_SNVs_not_N = ( calls_ingroup != snv.nts2ints('N') ) # mutations must have a basecall (not N)
-filter_SNVs_not_ancestral_allele = ( calls_ingroup != np.tile( calls_ancestral, (num_samples_ingroup,1) ) ) # mutations must differ from the ancestral allele
-filter_SNVs_quals_not_NaN = ( np.tile( mut_qual, (num_samples_ingroup,1) ) >= 1) # alleles must have strong support 
-filter_SNVs_not_recombo = np.tile( np.logical_not(recombo_bool), (num_samples_ingroup,1) ) # mutations must not be due to suspected recombination
+filter_SNVs_not_ancestral_allele = ( calls_ingroup != calls_ancestral[np.newaxis, :] ) # mutations must differ from the ancestral allele
+filter_SNVs_quals_not_NaN = ( mut_qual >= 1) # alleles must have strong support
+filter_SNVs_not_recombo = np.logical_not(recombo_bool)[np.newaxis, :] # mutations must not be due to suspected recombination
 
 # Fixed mutations per sample per position
 fixedmutation = \
@@ -1051,6 +1051,7 @@ mutations_annotated = snv.annotate_mutations( \
 
 # If pos>2000, then only first 2000 charts will be plotted
 chart_limit = 2000
+tree_limit = chart_limit
 if num_goodpos_all > chart_limit:
     idx_slice = slice(0, chart_limit)
 else:
@@ -1194,7 +1195,7 @@ if num_goodpos>0:
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv', dir_output+'/snv_table_with_charts_draft.html', dir_output+'/bar_charts')
     # Generate the tree for each identified SNPs
     try:
-        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output)
+        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output,max_trees=tree_limit)
     except Exception as e:
         print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
         print(f"Error message: {str(e)}")
