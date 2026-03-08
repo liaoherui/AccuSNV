@@ -1990,27 +1990,35 @@ def compute_mutation_quality( Calls, Quals ):
     idx_for_N = NTs_to_int_dict['N']
 
     # generate template index array to sort out strains gave rise to reported FQ values
-    s_template=np.zeros( (len(Calls[0,:]),len(Calls[0,:])) ,dtype=object)
-    for i in range(s_template.shape[0]):
-        for j in range(s_template.shape[1]):
-            s_template[i,j] = str(i)+"_"+str(j)
+    # Use vectorized construction instead of nested Python loops (O(NStrain^2) string ops)
+    _idx = np.arange(NStrain)
+    s_template = np.char.add(
+        np.char.add(_idx.astype(str)[:, np.newaxis], "_"),
+        _idx.astype(str)[np.newaxis, :]
+    )
 
+    _report_interval = max(1, Nmuts // 10)
     for k in range(Nmuts):
+        if k % _report_interval == 0:
+            print(f'  [compute_mutation_quality] {k}/{Nmuts} ({100*k//Nmuts}%)', flush=True)
         if len(np.unique(np.append(Calls[k,:], idx_for_N))) <= 2: # if there is only one type of non-N (4) call, skip this location
             MutQual[k] = np.nan ;
             MutQualIsolates[k,:] = 0;
         else:
-            c = Calls[k,:] ; c1 = np.tile(c,(c.shape[0],1)); c2 = c1.transpose() # extract all alleles for pos k and build 2d matrix and a transposed version to make pairwise comparison
-            q = Quals[k,:] ; q1 = np.tile(q,(q.shape[0],1)); q2 = q1.transpose() # -"-
+            # Use broadcasting instead of np.tile() to avoid large temporary array copies
+            c = Calls[k,:] ; c1 = c[np.newaxis, :]; c2 = c[:, np.newaxis] # (1,NStrain) and (NStrain,1) broadcast to (NStrain,NStrain)
+            q = Quals[k,:] ; q1 = q[np.newaxis, :]; q2 = q[:, np.newaxis] # -"-
             g = np.all((c1 != c2 , c1 != idx_for_N , c2 != idx_for_N) ,axis=0 )  # no data ==4; boolean matrix identifying find pairs of samples where calls disagree (and are not N) at this position
             #positive_pos = find(g); # numpy has no find; only numpy where, which does not flatten 2d array that way
             # get MutQual + logical index for where this occurred
-            MutQual[k] = np.max(np.minimum(q1[g],q2[g])) # np.max(np.minimum(q1[g],q2[g])) gives lower qual for each disagreeing pair of calls, we then find the best of these; NOTE: np.max > max value in array; np.maximum max element when comparing two arryas
-            MutQualIndex = np.argmax(np.minimum(q1[g],q2[g])) # return index of first encountered maximum!
+            min_q = np.minimum(q1[g], q2[g])  # compute once, reuse
+            MutQual[k] = np.max(min_q) # np.max(np.minimum(q1[g],q2[g])) gives lower qual for each disagreeing pair of calls, we then find the best of these; NOTE: np.max > max value in array; np.maximum max element when comparing two arryas
+            MutQualIndex = np.argmax(min_q) # return index of first encountered maximum!
             # get strain ID of reorted pair (sample number)
             s = s_template
             strainPairIdx = s[g][MutQualIndex]
             MutQualIsolates[k,:] = [strainPairIdx.split("_")[0], strainPairIdx.split("_")[1]]
+    print(f'  [compute_mutation_quality] {Nmuts}/{Nmuts} (100%) done', flush=True)
             
     MutQual = MutQual.transpose()
     MutQualIsolates = MutQualIsolates.transpose()
@@ -2985,49 +2993,58 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
         f.write('translation')
         #f.write('\t')
         f.write('\t\n')
+        # Pre-extract all annotation columns as Python lists once before the loop.
+        # This avoids 20+ per-row _get_value() calls (pandas' slowest access pattern).
+        col_contig_idx    = annotation_mutations['contig_idx'].tolist()
+        col_contig_pos    = annotation_mutations['contig_pos'].tolist()
+        col_gene_num_global = annotation_mutations['gene_num_global'].tolist()
+        col_gene_num      = annotation_mutations['gene_num'].tolist()
+        col_product       = annotation_mutations['product'].tolist()
+        col_protein_id    = annotation_mutations['protein_id'].tolist()
+        col_ontology      = annotation_mutations['ontology'].tolist()
+        col_locustag      = annotation_mutations['locustag'].tolist()
+        col_strand        = annotation_mutations['strand'].tolist()
+        col_loc1          = annotation_mutations['loc1'].tolist()
+        col_loc2          = annotation_mutations['loc2'].tolist()
+        col_nt_pos        = annotation_mutations['nt_pos'].tolist()
+        col_aa_pos        = annotation_mutations['aa_pos'].tolist()
+        col_codons        = annotation_mutations['codons'].tolist()
+        col_AA            = annotation_mutations['AA'].tolist()
+        col_anc           = annotation_mutations['anc'].tolist()
+        col_muts          = annotation_mutations['muts'].tolist()
+        col_type          = annotation_mutations['type'].tolist()
+        col_sequence      = annotation_mutations['sequence'].tolist()
+        col_translation   = annotation_mutations['translation'].tolist()
+
         # one line for each position
+        # Batch writes via a StringIO buffer to reduce file I/O syscalls
+        import io as _io
+        _n = len(mut_positions)
+        _report_interval = max(1, _n // 10)
+        _buf = _io.StringIO()
         for i,pos in enumerate(mut_positions):
-            #print(i)
-            f.write( str(pos) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'contig_idx')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'contig_pos')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'gene_num_global')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'gene_num')) )
-            f.write('\t')
-            f.write( str(mut_quality[i]) )
-            f.write('\t')
-            next_product = annotation_mutations._get_value(i,'product')
-            if type(next_product)!=float:
-                f.write( next_product )
-            else:
-                f.write( str(next_product) )
-            f.write('\t')
-            next_protein_id = annotation_mutations._get_value(i,'protein_id')
+            if i % _report_interval == 0:
+                print(f'  [write_mutation_table_as_tsv] {i}/{_n} ({100*i//_n}%)', flush=True)
+            # Build each row as a list of strings, then join with tabs — one write per row
+            row_parts = []
+            row_parts.append( str(pos) )
+            row_parts.append( str(col_contig_idx[i]) )
+            row_parts.append( str(col_contig_pos[i]) )
+            row_parts.append( str(col_gene_num_global[i]) )
+            row_parts.append( str(col_gene_num[i]) )
+            row_parts.append( str(mut_quality[i]) )
+            next_product = col_product[i]
+            row_parts.append( next_product if type(next_product)!=float else str(next_product) )
+            next_protein_id = col_protein_id[i]
             if type(next_protein_id)==list:
                 next_protein_id=next_protein_id[0]
-            if type(next_protein_id)!=float:
-                f.write( next_protein_id )
-            else:
-                f.write( str(next_protein_id) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'ontology')) )
-            f.write('\t')
-            next_locustag= annotation_mutations._get_value(i,'locustag')
-            if type(next_locustag)!=float:
-                f.write( next_locustag )
-            else:
-                f.write( str(next_locustag) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'strand')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'loc1')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'loc2')) )
-            f.write('\t')
+            row_parts.append( next_protein_id if type(next_protein_id)!=float else str(next_protein_id) )
+            row_parts.append( str(col_ontology[i]) )
+            next_locustag = col_locustag[i]
+            row_parts.append( next_locustag if type(next_locustag)!=float else str(next_locustag) )
+            row_parts.append( str(col_strand[i]) )
+            row_parts.append( str(col_loc1[i]) )
+            row_parts.append( str(col_loc2[i]) )
             # next_seq = annotation_mutations._get_value(i, 'sequence')
             # if type(next_seq) != float:  # value is nan if sequence does not exist
             #     f.write(str(next_seq))
@@ -3036,51 +3053,45 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
             # if type(next_translation) != float:
             #     f.write(str(next_translation))
             # f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'nt_pos')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'aa_pos')) )
-            f.write('\t')
-            next_codons = annotation_mutations._get_value(i,'codons')
+            row_parts.append( str(col_nt_pos[i]) )
+            row_parts.append( str(col_aa_pos[i]) )
+            next_codons = col_codons[i]
             if type(next_codons)!=float:
-                for codon in next_codons:
-                    f.write( str(codon)+' ' )
-            f.write('\t')
-            next_AA = annotation_mutations._get_value(i,'AA')
+                row_parts.append( ''.join(str(codon)+' ' for codon in next_codons) )
+            else:
+                row_parts.append( '' )
+            next_AA = col_AA[i]
             if type(next_AA)!=float:
-                for AA in next_AA:
-                    f.write( AA+' ' )
-            f.write('\t')
-            f.write( annotation_mutations._get_value(i,'anc') )
-            f.write('\t')
+                row_parts.append( ''.join(AA+' ' for AA in next_AA) )
+            else:
+                row_parts.append( '' )
+            row_parts.append( col_anc[i] )
             #f.write( annotation_mutations._get_value(i,'nts') )
             unique_nts = ''.join(
                 nt for nt in sorted(set(calls_for_tree[:, i]))
                 if nt != 'N'
             ) or 'N'
-            f.write(unique_nts)
-            f.write('\t')
-            next_muts = annotation_mutations._get_value(i,'muts')
+            row_parts.append( unique_nts )
+            next_muts = col_muts[i]
             if type(next_muts)==list:
-                for mut in next_muts:
-                    f.write( mut + ',')
+                row_parts.append( ''.join(mut + ',' for mut in next_muts) )
             else:
-                f.write( '.' )
-            f.write('\t')
-            f.write( annotation_mutations._get_value(i,'type') )
+                row_parts.append( '.' )
+            row_parts.append( col_type[i] )
             # Add basecalls for all samples
-            for j,name in enumerate(names_for_tree):
-                f.write('\t')
-                f.write(calls_for_tree[j,i])
-            f.write('\t')
-            next_seq = annotation_mutations._get_value(i, 'sequence')
-            if type(next_seq) != float:  # value is nan if sequence does not exist
-                f.write(str(next_seq))
-            f.write('\t')
-            next_translation = annotation_mutations._get_value(i, 'translation')
-            if type(next_translation) != float:
-                f.write(str(next_translation))
-            #f.write('\t')
-            f.write('\t\n')
+            for j in range(len(names_for_tree)):
+                row_parts.append( calls_for_tree[j,i] )
+            next_seq = col_sequence[i]
+            row_parts.append( str(next_seq) if type(next_seq) != float else '' )
+            next_translation = col_translation[i]
+            row_parts.append( str(next_translation) if type(next_translation) != float else '' )
+            _buf.write('\t'.join(row_parts) + '\t\n')
+            # Flush buffer every 1000 rows to avoid large memory buildup
+            if (i + 1) % 1000 == 0:
+                f.write(_buf.getvalue())
+                _buf = _io.StringIO()
+        f.write(_buf.getvalue())
+        print(f'  [write_mutation_table_as_tsv] {_n}/{_n} (100%) done', flush=True)
     
 def token_generate(inmatrix_raw, inmatrix_new,pre):
     unique_counts_raw = np.apply_along_axis(lambda row: len(np.unique(row[row != 0])), axis=1, arr=inmatrix_raw)
@@ -3303,8 +3314,9 @@ def merge_two_tables(in_cnn_table,output_tsv_filename,out_merge_tsv):
     o=open(out_merge_tsv,'w+')
     o.write('genome_pos\t'+head_cnn+'\t'+head_raw+'\n')
     reorder_p=pos_raw
+    pos_raw_set = set(pos_raw)  # O(1) lookup instead of O(n) list search
     for p in pos_all:
-        if p not in pos_raw:
+        if p not in pos_raw_set:
             reorder_p.append(p)
 
     for p in reorder_p:
@@ -3425,29 +3437,37 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             f.write(f'<th ><div class="rotate">{col}</div></th>\n')
 
         f.write('</tr>\n')
-        #exit()
+        # Pre-compute column index map for fast positional access in itertuples
+        col_idx = {col: i+1 for i, col in enumerate(df.columns)}  # +1 because tup[0] is the index
+        # Pre-identify which column positions are sample-call columns (index >= 36, not sequence/transl)
+        sample_col_positions = [
+            i+1 for i, col in enumerate(df.columns)
+            if i >= 36 and not re.search('sequence', col) and not re.search('transl', col)
+        ]
         # Step 5: Populate the table rows
-        for idx, row in df.iterrows():
-            # print(row['genome_pos'])
-            #print(idx)
-            #print(row)
-            #exit()
-            # exit()
-            if str(row['protein_id'])=='nan':
+        # Use itertuples() instead of iterrows() — avoids creating a pandas Series per row (3-10x faster)
+        # Collect HTML row strings in a list and write all at once at the end
+        _n = len(df)
+        _report_interval = max(1, _n // 10)
+        html_rows = []
+        for _k, tup in enumerate(df.itertuples(index=True, name=None)):
+            if _k % _report_interval == 0:
+                print(f'  [generate_html] {_k}/{_n} ({100*_k//_n}%)', flush=True)
+            idx = tup[0]
+            # Access columns by pre-computed positional index instead of Series key lookup
+            protein_id_val = tup[col_idx['protein_id']]
+            translation_val = tup[col_idx['translation']]
+            if str(protein_id_val)=='nan':
                 link='nan'
-            elif str(row['protein_id'])=='.':
+            elif str(protein_id_val)=='.':
                 link = '.'
             else:
-                link=f'''<a href="javascript:void(0);" onclick="showPopup(\'{row['protein_id']}\', \'{row['translation']}\')" style="text-decoration: none;  cursor: pointer;">{row['protein_id']}</a>'''
-            #exit()
-            f.write('<tr>\n')
-            # Add the thumbnail column (assuming a chart image exists for each row)
-            # chart_filename = f"{chart_dir}/chart_{idx + 1}.png"
-            f.write(f'<td rowspan="6"> {idx+1}</td>')
-            #f.write('<td rowspan="6"><a href="bar_charts/' + d[str(row['genome_pos'])] + '"><img src="bar_charts/' + d[str(row['genome_pos'])] + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
-            genome_pos_key = str(row['genome_pos'])
+                link=f'''<a href="javascript:void(0);" onclick="showPopup(\'{protein_id_val}\', \'{translation_val}\')" style="text-decoration: none;  cursor: pointer;">{protein_id_val}</a>'''
+            row_html = '<tr>\n'
+            row_html += f'<td rowspan="6"> {idx+1}</td>'
+            genome_pos_key = str(tup[col_idx['genome_pos']])
             chart_name = d.get(genome_pos_key, placeholder_chart)
-            f.write('<td rowspan="6"><a href="bar_charts/' + chart_name + '"><img src="bar_charts/' + chart_name + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
+            row_html += '<td rowspan="6"><a href="bar_charts/' + chart_name + '"><img src="bar_charts/' + chart_name + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n'
             html_p1='''
             <th class="snp">genome_pos</th>
             <th class="snp">contig_idx</th>
@@ -3458,36 +3478,25 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             <th class="pred">Qual_filter (<30)</th>
             <th class="pred">Cov_filter (<5)</th>
             '''
-            f.write(html_p1+'\n')
-            # Write each cell value
-            c=0
-            for value in row:
-                #print(value)
-                if c<36:
-                    c+=1
-                    continue
-                #print(df.columns[c])
-                if re.search('sequence', df.columns[c]): continue
-                if re.search('transl', df.columns[c]): continue
+            row_html += html_p1+'\n'
+            # Write each sample-call cell value using pre-computed column positions
+            for pos in sample_col_positions:
+                value = tup[pos]
                 if value in color_code:
-                    f.write(f'<td rowspan="6"><b><font color="{color_code[value]}">{value}</font></b></td>\n')
+                    row_html += f'<td rowspan="6"><b><font color="{color_code[value]}">{value}</font></b></td>\n'
                 else:
-                    f.write(f'<td rowspan="6"><b><font color="#808080">{value}</font></b></td>\n')
-                #f.write(f'<td rowspan="6">{value}</td>\n')
-                #print(value)
-                c+=1
-            #exit()
-            f.write('</tr>\n')
+                    row_html += f'<td rowspan="6"><b><font color="#808080">{value}</font></b></td>\n'
+            row_html += '</tr>\n'
             html_p2=f'''
             <tr>
-            <td><b><font color="#9900FF"> {row['genome_pos']}</font></b></td>
-            <td>{row['contig_idx']}</td>
-            <td>{row['contig_pos']}</td>
-            <td>{row['Pred_label']}</td>
-            <td>{row['CNN_pred']}</td>
-            <td>{row['CNN_prob']}</td>
-            <td>{row['Qual_filter (<30)']}</td>
-            <td>{row['Cov_filter (<5)']}</td>
+            <td><b><font color="#9900FF"> {tup[col_idx['genome_pos']]}</font></b></td>
+            <td>{tup[col_idx['contig_idx']]}</td>
+            <td>{tup[col_idx['contig_pos']]}</td>
+            <td>{tup[col_idx['Pred_label']]}</td>
+            <td>{tup[col_idx['CNN_pred']]}</td>
+            <td>{tup[col_idx['CNN_prob']]}</td>
+            <td>{tup[col_idx['Qual_filter (<30)']]}</td>
+            <td>{tup[col_idx['Cov_filter (<5)']]}</td>
             </tr>
             <tr>
             <th class="snp">nt_pos</th>
@@ -3500,17 +3509,17 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             <th class="pred">CPN_filter (4,7)</th>
         </tr>
         <tr>
- 
-            <td>{row['nt_pos']}</td>
-            <td>{row['aa_pos']}</td>
-            <td>{re.sub(',','',str(row['muts']))} / {row['type']}</td>
-            <td>{row['MAF_filter (>0.85)']}</td>
-            <td>{row['Indel_filter (<0.33)']}</td>
-            <td>{row['MFAS_filter (1)']}</td>
-            <td>{row['MMCP_filter (5)']}</td>
-            <td>{row['CPN_filter (4,7)']}</td>
+
+            <td>{tup[col_idx['nt_pos']]}</td>
+            <td>{tup[col_idx['aa_pos']]}</td>
+            <td>{re.sub(',','',str(tup[col_idx['muts']]))} / {tup[col_idx['type']]}</td>
+            <td>{tup[col_idx['MAF_filter (>0.85)']]}</td>
+            <td>{tup[col_idx['Indel_filter (<0.33)']]}</td>
+            <td>{tup[col_idx['MFAS_filter (1)']]}</td>
+            <td>{tup[col_idx['MMCP_filter (5)']]}</td>
+            <td>{tup[col_idx['CPN_filter (4,7)']]}</td>
         </tr>
-        <tr>            
+        <tr>
             <th class="snp">product</th>
             <th class="snp">protein_id</th>
             <th class="snp">locustag</th>
@@ -3521,20 +3530,21 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             <th class="pred">WD_pred</th>
         </tr>
         <tr>
-            
-            <td>{row['product']}</td>
+
+            <td>{tup[col_idx['product']]}</td>
             <td>{link}</td>
-            <td>{row['locustag']}</td>
-            <td>{row['Fix_filter']}</td>
-            <td>{row['Whether_recomb']}</td>
-            <td>{row['Fraction_ambigious_samples']}</td>
-            <td>{row['Gap_filter']}</td>
-            <td>{row['WideVariant_pred']}</td>
+            <td>{tup[col_idx['locustag']]}</td>
+            <td>{tup[col_idx['Fix_filter']]}</td>
+            <td>{tup[col_idx['Whether_recomb']]}</td>
+            <td>{tup[col_idx['Fraction_ambigious_samples']]}</td>
+            <td>{tup[col_idx['Gap_filter']]}</td>
+            <td>{tup[col_idx['WideVariant_pred']]}</td>
         </tr>
         <tr><th rowspan="2" colspan="100%"></th><tr>
             '''
-            f.write(html_p2)
-            #exit()
+            html_rows.append(row_html + html_p2)
+        f.write(''.join(html_rows))
+        print(f'  [generate_html] {_n}/{_n} (100%) done', flush=True)
         f.write('</table>\n')
         pop_script = '''
 

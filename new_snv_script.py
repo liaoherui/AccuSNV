@@ -850,16 +850,17 @@ print('Number of candidate SNVs missing outgroup alleles: ' + str(sum(calls_ance
 
 #%% Part 2: Fill in any missing data with nucleotide from reference
 
-# WARNING! Rely on this method with caution especially if the reference genome 
+# WARNING! Rely on this method with caution especially if the reference genome
 # was derived from one of your ingroup samples.
 
+_t_step = time.time()
 # # Pull alleles from reference genome across p
 calls_reference = my_rg.get_ref_NTs_as_ints( p )
 
 # # Update ancestral alleles
 pos_to_update = ( calls_ancestral==0 )
 calls_ancestral[ pos_to_update ] = calls_reference[ pos_to_update ]
-
+print(f'[Step] Fill missing ancestral alleles from reference: {time.time()-_t_step:.1f}s')
 
 
 #%%#########################
@@ -879,8 +880,10 @@ num_samples_ingroup = sum( np.logical_not( my_calls.in_outgroup ) )
 # use calls and quals matrices that include outgroup samples.
 
 # Compute quality
-[ mut_qual, mut_qual_samples ] = snv.compute_mutation_quality( calls_ingroup, quals_ingroup ) 
+_t_step = time.time()
+[ mut_qual, mut_qual_samples ] = snv.compute_mutation_quality( calls_ingroup, quals_ingroup )
 # note: returns NaN if there is only one type of non-N call
+print(f'[Step] compute_mutation_quality: {time.time()-_t_step:.1f}s')
 
 
 #%% Identify suspected recombination positions
@@ -892,17 +895,19 @@ filter_parameter_recombination = {
                                     }
 
 # Find SNVs that are are likely in recombinant regions
+_t_step = time.time()
 [ p_recombo, recombo_bool ] = snv.find_recombination_positions( \
     my_calls, my_cmt, calls_ancestral, mut_qual, my_rg, \
     filter_parameter_recombination['distance_for_nonsnp'], \
     filter_parameter_recombination['corr_threshold_recombination'], \
     True, dir_output \
     )
+print(f'[Step] find_recombination_positions: {time.time()-_t_step:.1f}s')
 
 #print(recombo_bool.shape,my_calls.p.shape)
 dpt['recomb']=dict(zip(my_calls.p,recombo_bool))
 #exit()
-    
+
 # Save positions with likely recombination
 if len(p_recombo)>0:
     with open( dir_output + '/snvs_from_recombo.csv', 'w') as f:
@@ -913,11 +918,13 @@ if len(p_recombo)>0:
 
 #%% Determine which positions have high-quality SNVs
 
+_t_step = time.time()
 # Filters
+# Use broadcasting instead of np.tile() to avoid creating large temporary array copies
 filter_SNVs_not_N = ( calls_ingroup != snv.nts2ints('N') ) # mutations must have a basecall (not N)
-filter_SNVs_not_ancestral_allele = ( calls_ingroup != np.tile( calls_ancestral, (num_samples_ingroup,1) ) ) # mutations must differ from the ancestral allele
-filter_SNVs_quals_not_NaN = ( np.tile( mut_qual, (num_samples_ingroup,1) ) >= 1) # alleles must have strong support 
-filter_SNVs_not_recombo = np.tile( np.logical_not(recombo_bool), (num_samples_ingroup,1) ) # mutations must not be due to suspected recombination
+filter_SNVs_not_ancestral_allele = ( calls_ingroup != calls_ancestral[np.newaxis, :] ) # mutations must differ from the ancestral allele
+filter_SNVs_quals_not_NaN = ( mut_qual >= 1 ) # alleles must have strong support; mut_qual shape (1,Npos) broadcasts over (num_samples_ingroup,Npos)
+filter_SNVs_not_recombo = (~recombo_bool)[np.newaxis, :] # mutations must not be due to suspected recombination
 
 # Fixed mutations per sample per position
 fixedmutation = \
@@ -929,8 +936,6 @@ fixedmutation = \
 #print(fixedmutation.shape)
 #exit()
 
-hasmutation = np.any( fixedmutation, axis=0) # boolean over positions (true if at lest one sample has a mutation at this position)
-
 goodpos_bool = np.any( fixedmutation, axis=0 )
 #print(goodpos_bool.shape)
 #exit()
@@ -940,6 +945,7 @@ tokens_final=snv.generate_tokens_last(tokens,goodpos_idx,'filter-fixedmutation')
 dpt['fix']=dict(zip(my_calls.p,tokens_final))
 #exit()
 num_goodpos = len(goodpos_idx)
+print(f'[Step] Apply SNV filters + find goodpos: {time.time()-_t_step:.1f}s')
 print('Num mutations identified by WideVariant: '+str(num_goodpos))
 
 ####### Combine CNN and WideVariant output and generate the SNV information table #######
@@ -1178,6 +1184,7 @@ if num_goodpos_all > 0:
 if num_goodpos>0:
     # This is the raw mutation table - contain positions identified by both CNN and WD, and are not recombinations
     output_tsv_filename = dir_output + '/' + 'snv_table_mutations_annotations_raw.tsv'
+    _t_step = time.time()
     snv.write_mutation_table_as_tsv( \
         p_goodpos_all, \
         mut_qual[0,goodpos_idx_all], \
@@ -1186,12 +1193,17 @@ if num_goodpos>0:
         calls_for_tree, \
         treesampleNamesLong, \
         output_tsv_filename \
-        
+
         )
+    print(f'[Step] write_mutation_table_as_tsv: {time.time()-_t_step:.1f}s')
     out_merge_tsv=dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv'
+    _t_step = time.time()
     snv.merge_two_tables(dir_output+'/snv_table_cnn_plus_filter.txt',output_tsv_filename,out_merge_tsv)
+    print(f'[Step] merge_two_tables: {time.time()-_t_step:.1f}s')
     #exit()
+    _t_step = time.time()
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv', dir_output+'/snv_table_with_charts_draft.html', dir_output+'/bar_charts')
+    print(f'[Step] generate_html draft: {time.time()-_t_step:.1f}s')
     # Generate the tree for each identified SNPs
     try:
         bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output)
@@ -1216,6 +1228,7 @@ update - 1 - save candidate mutation table with only label '1' pos
 update - 2 - regenerate output text and html report
 update - 3 - add dN/dS output
 '''
+_t_step = time.time()
 f=open(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv','r')
 o=open(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv','w+')
 o2=open(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv','w+')
@@ -1247,9 +1260,14 @@ while True:
         dr[int(ele[0])]=int(ele[13])
 o.close()
 o2.close()
+print(f'[Step] TSV split by label: {time.time()-_t_step:.1f}s')
+_t_step = time.time()
 snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
+print(f'[Step] generate_html final: {time.time()-_t_step:.1f}s')
 if len(dl)>0:
+    _t_step = time.time()
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv', dir_output+'/snv_table_with_charts_label0.html', dir_output+'/bar_charts')
+    print(f'[Step] generate_html label0: {time.time()-_t_step:.1f}s')
 keep_p=[]
 prob=[]
 label=[]
