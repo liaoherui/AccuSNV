@@ -1974,36 +1974,52 @@ def compute_mutation_quality( Calls, Quals ):
     
     Calls = Calls.transpose()
     Quals = Quals.transpose()
-    
-    [Nmuts, NStrain] = Calls.shape ;
-    MutQual = np.zeros((Nmuts,1)) ;
-    MutQualIsolates = np.zeros((Nmuts,2));
-    
+
+    [Nmuts, NStrain] = Calls.shape
+    MutQual = np.zeros((Nmuts, 1))
+    MutQualIsolates = np.zeros((Nmuts, 2))
+
     idx_for_N = NTs_to_int_dict['N']
 
-    # generate template index array to sort out strains gave rise to reported FQ values
-    s_template=np.zeros( (len(Calls[0,:]),len(Calls[0,:])) ,dtype=object)
-    for i in range(s_template.shape[0]):
-        for j in range(s_template.shape[1]):
-            s_template[i,j] = str(i)+"_"+str(j)
-
+    # NOTE:
+    # Original implementation builds NxN tiled matrices per position, which is
+    # very expensive for large candidate SNV sets. Here we keep the exact
+    # MutQual definition while reducing per-position work to allele groups.
     for k in range(Nmuts):
-        if len(np.unique(np.append(Calls[k,:], idx_for_N))) <= 2: # if there is only one type of non-N (4) call, skip this location
-            MutQual[k] = np.nan ;
-            MutQualIsolates[k,:] = 0;
-        else:
-            c = Calls[k,:] ; c1 = np.tile(c,(c.shape[0],1)); c2 = c1.transpose() # extract all alleles for pos k and build 2d matrix and a transposed version to make pairwise comparison
-            q = Quals[k,:] ; q1 = np.tile(q,(q.shape[0],1)); q2 = q1.transpose() # -"-
-            g = np.all((c1 != c2 , c1 != idx_for_N , c2 != idx_for_N) ,axis=0 )  # no data ==4; boolean matrix identifying find pairs of samples where calls disagree (and are not N) at this position
-            #positive_pos = find(g); # numpy has no find; only numpy where, which does not flatten 2d array that way
-            # get MutQual + logical index for where this occurred
-            MutQual[k] = np.max(np.minimum(q1[g],q2[g])) # np.max(np.minimum(q1[g],q2[g])) gives lower qual for each disagreeing pair of calls, we then find the best of these; NOTE: np.max > max value in array; np.maximum max element when comparing two arryas
-            MutQualIndex = np.argmax(np.minimum(q1[g],q2[g])) # return index of first encountered maximum!
-            # get strain ID of reorted pair (sample number)
-            s = s_template
-            strainPairIdx = s[g][MutQualIndex]
-            MutQualIsolates[k,:] = [strainPairIdx.split("_")[0], strainPairIdx.split("_")[1]]
-            
+        c = Calls[k, :]
+        non_n_mask = c != idx_for_N
+        non_n_calls = c[non_n_mask]
+        if np.unique(non_n_calls).size <= 1:
+            MutQual[k] = np.nan
+            MutQualIsolates[k, :] = 0
+            continue
+
+        q = Quals[k, :]
+        best_quality = -np.inf
+        best_pair = (0, 0)
+
+        unique_alleles = np.unique(non_n_calls)
+        allele_best = {}
+        for allele in unique_alleles:
+            allele_idx = np.where(c == allele)[0]
+            allele_quals = q[allele_idx]
+            best_local = np.argmax(allele_quals)
+            allele_best[allele] = (allele_idx[best_local], allele_quals[best_local])
+
+        for i in range(len(unique_alleles) - 1):
+            a1 = unique_alleles[i]
+            idx1, q1 = allele_best[a1]
+            for j in range(i + 1, len(unique_alleles)):
+                a2 = unique_alleles[j]
+                idx2, q2 = allele_best[a2]
+                candidate = min(q1, q2)
+                if candidate > best_quality:
+                    best_quality = candidate
+                    best_pair = (idx1, idx2)
+
+        MutQual[k] = best_quality
+        MutQualIsolates[k, :] = best_pair
+
     MutQual = MutQual.transpose()
     MutQualIsolates = MutQualIsolates.transpose()
 
@@ -2052,26 +2068,37 @@ def find_recombination_positions( my_calls, my_cmt, calls_ancestral, mut_qual, m
     # Downsize mutant allele frequency to goodpos only
     mutant_allele_freq_goodpos = mutant_allele_freq[ :,goodpos_idx ]
 
-    # Find recombination regions 
-    # #TODO: this is slow
-    nonsnp = np.zeros(0,dtype='int') # init
-    for i in range(num_goodpos):
-        p_snv = p[goodpos_idx[i]]
-        # Find nearby preliminary SNVs
-        region = np.array(np.where( \
-                                   ( p_goodpos > p_snv - distance_for_nonsnp ) \
-                                   & ( p_goodpos < p_snv + distance_for_nonsnp ) \
-                                   ) ).flatten()
-        # Check if pairs are correlated
-        if len(region)>1: 
-            r = mutant_allele_freq_goodpos[:,region] # dimension = num samples in ingroup x num positions in region
-            corrmatrix = np.corrcoef(r.transpose()) # dimension = num positions in region x num positions in region
-            [a,b] = np.where( corrmatrix > corr_threshold_recombination )
-            nonsnp = np.concatenate(( nonsnp, region[a[np.where(a!=b)]] ))
+    # Find recombination regions.
+    # Original implementation recalculates a full local corrcoef matrix at each
+    # position. We keep the same rule but compute pairwise correlations only for
+    # forward neighbors within the distance window.
+    nonsnp_bool_goodpos = np.zeros(num_goodpos, dtype=bool)
+    if num_goodpos > 1:
+        right_bounds = np.searchsorted(p_goodpos, p_goodpos + distance_for_nonsnp, side='left')
+        centered = mutant_allele_freq_goodpos - mutant_allele_freq_goodpos.mean(axis=0, keepdims=True)
+        std = centered.std(axis=0, ddof=1)
+        num_samples = centered.shape[0]
 
-    # Get unique positions
-    nonsnp=np.unique(nonsnp) # indexed in goodpos
-    p_nonsnp = p_goodpos[ nonsnp ]
+        for i in range(num_goodpos - 1):
+            j_end = right_bounds[i]
+            if j_end <= i + 1:
+                continue
+            j_idx = np.arange(i + 1, j_end)
+            valid_std = (std[i] > 0) & (std[j_idx] > 0)
+            if not np.any(valid_std):
+                continue
+            j_idx = j_idx[valid_std]
+            if j_idx.size == 0:
+                continue
+
+            cov = centered[:, j_idx].T.dot(centered[:, i]) / (num_samples - 1)
+            corr = cov / (std[j_idx] * std[i])
+            hit_mask = np.isfinite(corr) & (corr > corr_threshold_recombination)
+            if np.any(hit_mask):
+                nonsnp_bool_goodpos[i] = True
+                nonsnp_bool_goodpos[j_idx[hit_mask]] = True
+
+    p_nonsnp = p_goodpos[nonsnp_bool_goodpos]
     p_keep = np.setdiff1d( p_goodpos, p_nonsnp )
     nonsnp_bool = np.isin( p, p_nonsnp )
     
@@ -2757,15 +2784,12 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
     ts = time.time()
     timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
 
-    # write alignment fasta,read alignment
-    write_calls_sampleName_to_fasta(calls_for_tree,treeSampleNamesLong,timestamp) #timestamp.fa
+    # write alignment fasta only when needed (mainly NJ path)
+    if buildTree == 'NJ':
+        write_calls_sampleName_to_fasta(calls_for_tree,treeSampleNamesLong,timestamp) #timestamp.fa
     if writeDnaparsAlignment:
-        # change tip labels and write phylip
-        write_calls_sampleName_to_fasta(calls_for_tree,sampleNamesDnapars,timestamp+"_"+filetag+"_dnapars") #timestamp_dnapars.fa > for dnapars...deleted later
-        # turn fa to phylip and delete fasta with short tip labels
-        aln = AlignIO.read(timestamp+"_"+filetag+"_dnapars.fa", 'fasta')
-        AlignIO.write(aln, timestamp+"_"+filetag+".phylip", "phylip")
-        subprocess.run(["rm -f " + timestamp+"_"+filetag+"_dnapars.fa"],shell=True)
+        # write phylip directly (avoids extra fasta conversion)
+        write_calls_sampleName_to_phylip(calls_for_tree, sampleNamesDnapars, timestamp+"_"+filetag+".phylip")
         print("Written file: " + timestamp+"_"+filetag+".phylip")
         # write parameter file
         with open(timestamp+"_"+filetag+"_options.txt",'w') as file:
@@ -2780,12 +2804,8 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
             file.write(timestamp+"_"+filetag+".tree"+"\n"+"\n")
 
     if buildTree=='PS':
-        # write phylip file with dnaparse compatible 10c samplenames
-        write_calls_sampleName_to_fasta(calls_for_tree,sampleNamesDnapars,timestamp+"_dnapars") #timestamp_dnapars.fa > for dnapars...deleted later
-        # turn fa to phylip and delete fasta with short tip labels
-        aln = AlignIO.read(timestamp+"_dnapars.fa", 'fasta')
-        AlignIO.write(aln, timestamp+".phylip", "phylip")
-        subprocess.run(["rm -f " + timestamp+"_dnapars.fa"],shell=True)
+        # write phylip file with dnapars-compatible 10-char sample names
+        write_calls_sampleName_to_phylip(calls_for_tree, sampleNamesDnapars, timestamp+".phylip")
 
         # find dnapars executable
         dnapars_path = glob.glob('dnapars')
@@ -2865,11 +2885,20 @@ def annotate_sampleNames(samplenames,locations_long_names,patients_sbj,visits_sb
     return extendend_sampleNames
 
 def write_calls_sampleName_to_fasta(calls_for_tree,treeSampleNames,timestamp):
-    fa_file = open(timestamp+".fa", "w")
-    for i,name in enumerate(treeSampleNames):
-        nucl_string = "".join(list(calls_for_tree[:,i]))
-        fa_file.write(">" + name + "\n" + nucl_string + "\n")
-    fa_file.close()
+    with open(timestamp+".fa", "w") as fa_file:
+        for i,name in enumerate(treeSampleNames):
+            nucl_string = "".join(calls_for_tree[:,i])
+            fa_file.write(f">{name}\n{nucl_string}\n")
+
+
+def write_calls_sampleName_to_phylip(calls_for_tree, treeSampleNames, phylip_filename):
+    """Write sequential PHYLIP alignment directly from calls matrix."""
+    num_sites, num_samples = calls_for_tree.shape
+    with open(phylip_filename, "w") as out:
+        out.write(f"{num_samples} {num_sites}\n")
+        for i, name in enumerate(treeSampleNames):
+            seq = "".join(calls_for_tree[:, i])
+            out.write(f"{str(name)[:10]:<10}{seq}\n")
 
 def build_table_for_tree_labeling(p_chr_table, treeSampleNamesLong, calls_for_tree, patient=""):
     # make new folder ('tree_counting'), wipe all previous content, add table
@@ -2921,158 +2950,72 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
     Writes a TSV file given an annotated SNV table.
     '''
     
+    header_fields = [
+        'genome_pos', 'contig_idx', 'contig_pos', 'gene_num', 'gene_num_global',
+        'quality', 'product', 'protein_id', 'ontology', 'locustag', 'strand',
+        'loc1', 'loc2', 'nt_pos', 'aa_pos', 'codons', 'AA', 'anc', 'nts', 'muts',
+        'type'
+    ]
+
     with open( tsv_filename, 'w') as f:
-        # header
-        f.write('genome_pos')
-        f.write('\t')
-        f.write('contig_idx')
-        f.write('\t')
-        f.write('contig_pos')
-        f.write('\t')
-        f.write('gene_num')
-        f.write('\t')
-        f.write('gene_num_global')
-        f.write('\t')
-        f.write('quality')
-        f.write('\t')
-        f.write('product')
-        f.write('\t')
-        f.write('protein_id')
-        f.write('\t')
-        f.write('ontology')
-        f.write('\t')
-        f.write('locustag')
-        f.write('\t')
-        f.write('strand')
-        f.write('\t')
-        f.write('loc1')
-        f.write('\t')
-        f.write('loc2')
-        f.write('\t')
-        # f.write('sequence')
-        # f.write('\t')
-        # f.write('translation')
-        # f.write('\t')
-        f.write('nt_pos')
-        f.write('\t')
-        f.write('aa_pos')
-        f.write('\t')
-        f.write('codons')
-        f.write('\t')
-        f.write('AA')
-        f.write('\t')
-        f.write('anc')
-        f.write('\t')
-        f.write('nts')
-        f.write('\t')
-        f.write('muts')
-        f.write('\t')
-        f.write('type')
-        for name in names_for_tree:
-            f.write('\t')
-            f.write(name)
-        f.write('\t')
-        f.write('sequence')
-        f.write('\t')
-        f.write('translation')
-        #f.write('\t')
-        f.write('\t\n')
-        # one line for each position
-        for i,pos in enumerate(mut_positions):
-            #print(i)
-            f.write( str(pos) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'contig_idx')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'contig_pos')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'gene_num_global')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'gene_num')) )
-            f.write('\t')
-            f.write( str(mut_quality[i]) )
-            f.write('\t')
-            next_product = annotation_mutations._get_value(i,'product')
-            if type(next_product)!=float:
-                f.write( next_product )
-            else:
-                f.write( str(next_product) )
-            f.write('\t')
-            next_protein_id = annotation_mutations._get_value(i,'protein_id')
-            if type(next_protein_id)==list:
-                next_protein_id=next_protein_id[0]
-            if type(next_protein_id)!=float:
-                f.write( next_protein_id )
-            else:
-                f.write( str(next_protein_id) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'ontology')) )
-            f.write('\t')
-            next_locustag= annotation_mutations._get_value(i,'locustag')
-            if type(next_locustag)!=float:
-                f.write( next_locustag )
-            else:
-                f.write( str(next_locustag) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'strand')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'loc1')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'loc2')) )
-            f.write('\t')
-            # next_seq = annotation_mutations._get_value(i, 'sequence')
-            # if type(next_seq) != float:  # value is nan if sequence does not exist
-            #     f.write(str(next_seq))
-            # f.write('\t')
-            # next_translation = annotation_mutations._get_value(i, 'translation')
-            # if type(next_translation) != float:
-            #     f.write(str(next_translation))
-            # f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'nt_pos')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'aa_pos')) )
-            f.write('\t')
-            next_codons = annotation_mutations._get_value(i,'codons')
-            if type(next_codons)!=float:
-                for codon in next_codons:
-                    f.write( str(codon)+' ' )
-            f.write('\t')
-            next_AA = annotation_mutations._get_value(i,'AA')
-            if type(next_AA)!=float:
-                for AA in next_AA:
-                    f.write( AA+' ' )
-            f.write('\t')
-            f.write( annotation_mutations._get_value(i,'anc') )
-            f.write('\t')
-            #f.write( annotation_mutations._get_value(i,'nts') )
-            unique_nts = ''.join(
-                nt for nt in sorted(set(calls_for_tree[:, i]))
-                if nt != 'N'
-            ) or 'N'
-            f.write(unique_nts)
-            f.write('\t')
-            next_muts = annotation_mutations._get_value(i,'muts')
-            if type(next_muts)==list:
-                for mut in next_muts:
-                    f.write( mut + ',')
-            else:
-                f.write( '.' )
-            f.write('\t')
-            f.write( annotation_mutations._get_value(i,'type') )
-            # Add basecalls for all samples
-            for j,name in enumerate(names_for_tree):
-                f.write('\t')
-                f.write(calls_for_tree[j,i])
-            f.write('\t')
+        f.write('\t'.join(header_fields + list(names_for_tree) + ['sequence', 'translation', '']) + '\n')
+
+        for i, pos in enumerate(mut_positions):
+            next_product = annotation_mutations._get_value(i, 'product')
+            product_str = next_product if type(next_product) != float else str(next_product)
+
+            next_protein_id = annotation_mutations._get_value(i, 'protein_id')
+            if type(next_protein_id) == list:
+                next_protein_id = next_protein_id[0]
+            protein_id_str = next_protein_id if type(next_protein_id) != float else str(next_protein_id)
+
+            next_locustag = annotation_mutations._get_value(i, 'locustag')
+            locustag_str = next_locustag if type(next_locustag) != float else str(next_locustag)
+
+            next_codons = annotation_mutations._get_value(i, 'codons')
+            codons_str = ''.join(str(codon) + ' ' for codon in next_codons) if type(next_codons) != float else ''
+
+            next_AA = annotation_mutations._get_value(i, 'AA')
+            aa_str = ''.join(AA + ' ' for AA in next_AA) if type(next_AA) != float else ''
+
+            unique_nts = ''.join(nt for nt in sorted(set(calls_for_tree[:, i])) if nt != 'N') or 'N'
+
+            next_muts = annotation_mutations._get_value(i, 'muts')
+            muts_str = ''.join(mut + ',' for mut in next_muts) if type(next_muts) == list else '.'
+
             next_seq = annotation_mutations._get_value(i, 'sequence')
-            if type(next_seq) != float:  # value is nan if sequence does not exist
-                f.write(str(next_seq))
-            f.write('\t')
+            seq_str = str(next_seq) if type(next_seq) != float else ''
+
             next_translation = annotation_mutations._get_value(i, 'translation')
-            if type(next_translation) != float:
-                f.write(str(next_translation))
-            #f.write('\t')
-            f.write('\t\n')
+            translation_str = str(next_translation) if type(next_translation) != float else ''
+
+            row_values = [
+                str(pos),
+                str(annotation_mutations._get_value(i, 'contig_idx')),
+                str(annotation_mutations._get_value(i, 'contig_pos')),
+                str(annotation_mutations._get_value(i, 'gene_num_global')),
+                str(annotation_mutations._get_value(i, 'gene_num')),
+                str(mut_quality[i]),
+                product_str,
+                protein_id_str,
+                str(annotation_mutations._get_value(i, 'ontology')),
+                locustag_str,
+                str(annotation_mutations._get_value(i, 'strand')),
+                str(annotation_mutations._get_value(i, 'loc1')),
+                str(annotation_mutations._get_value(i, 'loc2')),
+                str(annotation_mutations._get_value(i, 'nt_pos')),
+                str(annotation_mutations._get_value(i, 'aa_pos')),
+                codons_str,
+                aa_str,
+                annotation_mutations._get_value(i, 'anc'),
+                unique_nts,
+                muts_str,
+                annotation_mutations._get_value(i, 'type'),
+            ]
+
+            row_values.extend(calls_for_tree[:, i].tolist())
+            row_values.extend([seq_str, translation_str, ''])
+            f.write('\t'.join(map(str, row_values)) + '\n')
     
 def token_generate(inmatrix_raw, inmatrix_new,pre):
     unique_counts_raw = np.apply_along_axis(lambda row: len(np.unique(row[row != 0])), axis=1, arr=inmatrix_raw)
@@ -3294,9 +3237,10 @@ def merge_two_tables(in_cnn_table,output_tsv_filename,out_merge_tsv):
     head_raw, d2, pos_raw = load_table(output_tsv_filename)
     o=open(out_merge_tsv,'w+')
     o.write('genome_pos\t'+head_cnn+'\t'+head_raw+'\n')
-    reorder_p=pos_raw
+    reorder_p=list(pos_raw)
+    pos_raw_set=set(pos_raw)
     for p in pos_all:
-        if p not in pos_raw:
+        if p not in pos_raw_set:
             reorder_p.append(p)
 
     for p in reorder_p:
@@ -3315,6 +3259,19 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         pre = re.split('_', fn)[1]
         d[pre] = fn
     color_code = {'A': '#1f77b4', 'T': 'ff7f0e', 'C': '#2ca02c', 'G': '#d62728'}
+    col_idx = {col: idx for idx, col in enumerate(df.columns)}
+    display_columns = []
+    display_col_indices = []
+    for idx, col in enumerate(df.columns):
+        if idx < 36:
+            continue
+        if re.search('sequence', col):
+            continue
+        if re.search('transl', col):
+            continue
+        display_columns.append(col)
+        display_col_indices.append(idx)
+
     with open(output_file, 'w') as f:
         # Step 3: Start HTML structure
         f.write('<html>\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>SNP Table with Charts</title>\n')
@@ -3405,39 +3362,34 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         f.write('<th>Bar charts</th>\n')
         f.write('<th colspan="3">SNP information</th>\n')
         f.write('<th colspan="5">Prediction information</th>')
-        c=0
-        # Add column headers from dataframe
-        for col in df.columns:
-            #print(col,c)
-            if c<36:
-                c+=1
-                continue
-            if re.search('sequence',col):continue
-            if re.search('transl',col):continue
+        for col in display_columns:
             f.write(f'<th ><div class="rotate">{col}</div></th>\n')
 
         f.write('</tr>\n')
         #exit()
         # Step 5: Populate the table rows
-        for idx, row in df.iterrows():
+        for idx, row in enumerate(df.itertuples(index=False, name=None)):
             # print(row['genome_pos'])
             #print(idx)
             #print(row)
             #exit()
             # exit()
-            if str(row['protein_id'])=='nan':
+            protein_id = row[col_idx['protein_id']]
+            translation = row[col_idx['translation']]
+            if str(protein_id)=='nan':
                 link='nan'
-            elif str(row['protein_id'])=='.':
+            elif str(protein_id)=='.':
                 link = '.'
             else:
-                link=f'''<a href="javascript:void(0);" onclick="showPopup(\'{row['protein_id']}\', \'{row['translation']}\')" style="text-decoration: none;  cursor: pointer;">{row['protein_id']}</a>'''
+                link=f'''<a href="javascript:void(0);" onclick="showPopup(\'{protein_id}\', \'{translation}\')" style="text-decoration: none;  cursor: pointer;">{protein_id}</a>'''
             #exit()
             f.write('<tr>\n')
             # Add the thumbnail column (assuming a chart image exists for each row)
             # chart_filename = f"{chart_dir}/chart_{idx + 1}.png"
             f.write(f'<td rowspan="6"> {idx+1}</td>')
             #f.write('<td rowspan="6"><a href="bar_charts/' + d[str(row['genome_pos'])] + '"><img src="bar_charts/' + d[str(row['genome_pos'])] + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
-            genome_pos_key = str(row['genome_pos'])
+            genome_pos = row[col_idx['genome_pos']]
+            genome_pos_key = str(genome_pos)
             chart_name = d.get(genome_pos_key, placeholder_chart)
             f.write('<td rowspan="6"><a href="bar_charts/' + chart_name + '"><img src="bar_charts/' + chart_name + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
             html_p1='''
@@ -3452,34 +3404,24 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             '''
             f.write(html_p1+'\n')
             # Write each cell value
-            c=0
-            for value in row:
-                #print(value)
-                if c<36:
-                    c+=1
-                    continue
-                #print(df.columns[c])
-                if re.search('sequence', df.columns[c]): continue
-                if re.search('transl', df.columns[c]): continue
+            for col_i in display_col_indices:
+                value = row[col_i]
                 if value in color_code:
                     f.write(f'<td rowspan="6"><b><font color="{color_code[value]}">{value}</font></b></td>\n')
                 else:
                     f.write(f'<td rowspan="6"><b><font color="#808080">{value}</font></b></td>\n')
-                #f.write(f'<td rowspan="6">{value}</td>\n')
-                #print(value)
-                c+=1
             #exit()
             f.write('</tr>\n')
             html_p2=f'''
             <tr>
-            <td><b><font color="#9900FF"> {row['genome_pos']}</font></b></td>
-            <td>{row['contig_idx']}</td>
-            <td>{row['contig_pos']}</td>
-            <td>{row['Pred_label']}</td>
-            <td>{row['CNN_pred']}</td>
-            <td>{row['CNN_prob']}</td>
-            <td>{row['Qual_filter (<30)']}</td>
-            <td>{row['Cov_filter (<5)']}</td>
+            <td><b><font color="#9900FF"> {genome_pos}</font></b></td>
+            <td>{row[col_idx['contig_idx']]}</td>
+            <td>{row[col_idx['contig_pos']]}</td>
+            <td>{row[col_idx['Pred_label']]}</td>
+            <td>{row[col_idx['CNN_pred']]}</td>
+            <td>{row[col_idx['CNN_prob']]}</td>
+            <td>{row[col_idx['Qual_filter (<30)']]}</td>
+            <td>{row[col_idx['Cov_filter (<5)']]}</td>
             </tr>
             <tr>
             <th class="snp">nt_pos</th>
@@ -3493,14 +3435,14 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         </tr>
         <tr>
  
-            <td>{row['nt_pos']}</td>
-            <td>{row['aa_pos']}</td>
-            <td>{re.sub(',','',str(row['muts']))} / {row['type']}</td>
-            <td>{row['MAF_filter (>0.85)']}</td>
-            <td>{row['Indel_filter (<0.33)']}</td>
-            <td>{row['MFAS_filter (1)']}</td>
-            <td>{row['MMCP_filter (5)']}</td>
-            <td>{row['CPN_filter (4,7)']}</td>
+            <td>{row[col_idx['nt_pos']]}</td>
+            <td>{row[col_idx['aa_pos']]}</td>
+            <td>{re.sub(',','',str(row[col_idx['muts']]))} / {row[col_idx['type']]}</td>
+            <td>{row[col_idx['MAF_filter (>0.85)']]}</td>
+            <td>{row[col_idx['Indel_filter (<0.33)']]}</td>
+            <td>{row[col_idx['MFAS_filter (1)']]}</td>
+            <td>{row[col_idx['MMCP_filter (5)']]}</td>
+            <td>{row[col_idx['CPN_filter (4,7)']]}</td>
         </tr>
         <tr>            
             <th class="snp">product</th>
@@ -3514,14 +3456,14 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         </tr>
         <tr>
             
-            <td>{row['product']}</td>
+            <td>{row[col_idx['product']]}</td>
             <td>{link}</td>
-            <td>{row['locustag']}</td>
-            <td>{row['Fix_filter']}</td>
-            <td>{row['Whether_recomb']}</td>
-            <td>{row['Fraction_ambigious_samples']}</td>
-            <td>{row['Gap_filter']}</td>
-            <td>{row['WideVariant_pred']}</td>
+            <td>{row[col_idx['locustag']]}</td>
+            <td>{row[col_idx['Fix_filter']]}</td>
+            <td>{row[col_idx['Whether_recomb']]}</td>
+            <td>{row[col_idx['Fraction_ambigious_samples']]}</td>
+            <td>{row[col_idx['Gap_filter']]}</td>
+            <td>{row[col_idx['WideVariant_pred']]}</td>
         </tr>
         <tr><th rowspan="2" colspan="100%"></th><tr>
             '''
@@ -3576,5 +3518,3 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         # Step 6: Close the table and HTML tags
 
         f.write('</body>\n</html>\n')
-
-

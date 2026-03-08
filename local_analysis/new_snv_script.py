@@ -323,6 +323,7 @@ parser.add_argument('-e','--excluse_samples',dest='exclude_samp',type=str,help="
 parser.add_argument('-g','--generate_report',dest='generate_rep',type=str,help="If not generate html report and other related files, set to 0. (default: 1)")
 parser.add_argument('-r','--rer',dest='ref_genome',type=str,help="The reference genome")
 parser.add_argument('-o','--output_dir',dest='output_dir',type=str,help="The output dir")
+parser.add_argument('--max_snp_trees',dest='max_snp_trees',type=str,help="Maximum number of per-SNP tree files to generate in snp_trees. Set 0 for auto mode (default).")
 #parser.add_argument('-o','--output_file',dest='output_file',type=str,help="The output file")
 args=parser.parse_args()
 input_mat=args.input_mat
@@ -332,6 +333,7 @@ min_cov_filt=args.min_cov
 refg=args.ref_genome
 odir=args.output_dir
 greport=args.generate_rep
+max_snp_trees=args.max_snp_trees
 exclude_samp=args.exclude_samp
 if not min_cov_filt:
     min_cov_filt=5
@@ -353,6 +355,11 @@ if not greport:
     greport=1
 else:
     greport=int(greport)
+
+if not max_snp_trees:
+    max_snp_trees = 0
+else:
+    max_snp_trees = int(max_snp_trees)
 #Build
 if not os.path.exists(odir):
     os.makedirs(odir)
@@ -1194,7 +1201,20 @@ if num_goodpos>0:
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv', dir_output+'/snv_table_with_charts_draft.html', dir_output+'/bar_charts')
     # Generate the tree for each identified SNPs
     try:
-        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output)
+        if max_snp_trees > 0:
+            tree_limit = max_snp_trees
+        else:
+            tree_limit = 2000 if num_goodpos_all > 3000 else None
+        if tree_limit is not None:
+            print(f"Generate up to {tree_limit} SNP trees (auto-limited for large SNV sets).")
+        bst.mutationtypes(
+            dir_output+"/snv_tree_genome_latest.nwk.tree",
+            dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',
+            1,
+            dir_output,
+            max_trees=tree_limit,
+            only_positions_with_bar_chart=True
+        )
     except Exception as e:
         print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
         print(f"Error message: {str(e)}")
