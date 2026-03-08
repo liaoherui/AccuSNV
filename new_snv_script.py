@@ -1205,12 +1205,15 @@ if num_goodpos>0:
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv', dir_output+'/snv_table_with_charts_draft.html', dir_output+'/bar_charts')
     print(f'[Step] generate_html draft: {time.time()-_t_step:.1f}s')
     # Generate the tree for each identified SNPs
+    # Use the same position limit as bar_chart generation to avoid generating thousands of tree files
+    _t_step = time.time()
     try:
-        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output)
+        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output, max_positions=chart_limit)
     except Exception as e:
         print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
         print(f"Error message: {str(e)}")
         traceback.print_exc()
+    print(f'[Step] mutationtypes (snp_trees): {time.time()-_t_step:.1f}s')
     # # Contain all positions identified by CNN or WideVariant - even those false positions
     # snv.write_mutation_table_as_tsv( \
     #     p_goodpos_all, \
