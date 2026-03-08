@@ -2011,7 +2011,8 @@ def compute_mutation_quality( Calls, Quals ):
             g = (c1 != c2) & (c1 != idx_for_N) & (c2 != idx_for_N)  # no data ==4; boolean matrix identifying find pairs of samples where calls disagree (and are not N) at this position
             #positive_pos = find(g); # numpy has no find; only numpy where, which does not flatten 2d array that way
             # get MutQual + logical index for where this occurred
-            min_q = np.minimum(q1[g], q2[g])  # compute once, reuse
+            min_q = np.minimum(np.broadcast_to(q1, (NStrain, NStrain))[g],
+                               np.broadcast_to(q2, (NStrain, NStrain))[g])  # broadcast_to creates a view (no copy) before boolean indexing
             MutQual[k] = np.max(min_q) # np.max(np.minimum(q1[g],q2[g])) gives lower qual for each disagreeing pair of calls, we then find the best of these; NOTE: np.max > max value in array; np.maximum max element when comparing two arryas
             MutQualIndex = np.argmax(min_q) # return index of first encountered maximum!
             # get strain ID of reorted pair (sample number)
@@ -2068,25 +2069,32 @@ def find_recombination_positions( my_calls, my_cmt, calls_ancestral, mut_qual, m
     # Downsize mutant allele frequency to goodpos only
     mutant_allele_freq_goodpos = mutant_allele_freq[ :,goodpos_idx ]
 
-    # Find recombination regions 
-    # #TODO: this is slow
-    nonsnp = np.zeros(0,dtype='int') # init
+    # Find recombination regions
+    # Use searchsorted to find window boundaries in O(log N) per position instead of O(N),
+    # reducing total complexity from O(N^2) to O(N log N).
+    # p_goodpos is sorted (derived from sorted p via sorted goodpos_idx).
+    left_bounds  = np.searchsorted(p_goodpos, p_goodpos - distance_for_nonsnp, side='right')   # strict >
+    right_bounds = np.searchsorted(p_goodpos, p_goodpos + distance_for_nonsnp, side='left')    # strict <
+    nonsnp_list = []  # collect into list; concatenate once at the end to avoid O(k^2) grow
+    _report_interval = max(1, num_goodpos // 10)
     for i in range(num_goodpos):
-        p_snv = p[goodpos_idx[i]]
-        # Find nearby preliminary SNVs
-        region = np.array(np.where( \
-                                   ( p_goodpos > p_snv - distance_for_nonsnp ) \
-                                   & ( p_goodpos < p_snv + distance_for_nonsnp ) \
-                                   ) ).flatten()
+        if i % _report_interval == 0:
+            print(f'  [find_recombination_positions] {i}/{num_goodpos} ({100*i//num_goodpos}%)', flush=True)
+        lb, rb = left_bounds[i], right_bounds[i]
+        if rb - lb <= 1:  # no neighbors within window
+            continue
+        region = np.arange(lb, rb)
         # Check if pairs are correlated
-        if len(region)>1: 
-            r = mutant_allele_freq_goodpos[:,region] # dimension = num samples in ingroup x num positions in region
-            corrmatrix = np.corrcoef(r.transpose()) # dimension = num positions in region x num positions in region
-            [a,b] = np.where( corrmatrix > corr_threshold_recombination )
-            nonsnp = np.concatenate(( nonsnp, region[a[np.where(a!=b)]] ))
+        r = mutant_allele_freq_goodpos[:, region] # num_samples_ingroup x region_size
+        corrmatrix = np.corrcoef(r.T)             # region_size x region_size
+        [a, b] = np.where(corrmatrix > corr_threshold_recombination)
+        corr_pairs = a[a != b]
+        if len(corr_pairs) > 0:
+            nonsnp_list.append(region[corr_pairs])
+    print(f'  [find_recombination_positions] {num_goodpos}/{num_goodpos} (100%) done', flush=True)
 
     # Get unique positions
-    nonsnp=np.unique(nonsnp) # indexed in goodpos
+    nonsnp = np.unique(np.concatenate(nonsnp_list)) if nonsnp_list else np.zeros(0, dtype='int')
     p_nonsnp = p_goodpos[ nonsnp ]
     p_keep = np.setdiff1d( p_goodpos, p_nonsnp )
     nonsnp_bool = np.isin( p, p_nonsnp )
