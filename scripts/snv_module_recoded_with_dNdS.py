@@ -2008,7 +2008,7 @@ def compute_mutation_quality( Calls, Quals ):
             # Use broadcasting instead of np.tile() to avoid large temporary array copies
             c = Calls[k,:] ; c1 = c[np.newaxis, :]; c2 = c[:, np.newaxis] # (1,NStrain) and (NStrain,1) broadcast to (NStrain,NStrain)
             q = Quals[k,:] ; q1 = q[np.newaxis, :]; q2 = q[:, np.newaxis] # -"-
-            g = np.all((c1 != c2 , c1 != idx_for_N , c2 != idx_for_N) ,axis=0 )  # no data ==4; boolean matrix identifying find pairs of samples where calls disagree (and are not N) at this position
+            g = (c1 != c2) & (c1 != idx_for_N) & (c2 != idx_for_N)  # no data ==4; boolean matrix identifying find pairs of samples where calls disagree (and are not N) at this position
             #positive_pos = find(g); # numpy has no find; only numpy where, which does not flatten 2d array that way
             # get MutQual + logical index for where this occurred
             min_q = np.minimum(q1[g], q2[g])  # compute once, reuse
