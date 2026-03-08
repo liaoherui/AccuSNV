@@ -129,64 +129,102 @@ def convert_csv(chart_raw,mode,out):
 		
 
 
-def mutationtypes(tree, chart_raw,mode,out):
+def _load_chart_lookup(chart):
+	"""Load SNP table once and build lookup for fast per-position access."""
+	with open(chart, 'r') as fh:
+		rows = [line.strip().split(',') for line in fh if line.strip()]
+	if not rows:
+		return [], {}, []
 
-	chart,raw_pos=convert_csv(chart_raw,mode,out)
-	#print(chart,raw_pos)
-	#exit()
+	header = rows[0]
+	locations = [idx for idx, name in enumerate(header) if 'pos' not in name and 'chr' not in name]
+	lookup = {}
+	for row in rows[1:]:
+		if len(row) < 2:
+			continue
+		lookup[(row[0], row[1])] = row
+	return header, lookup, locations
 
 
-	tout=out+'/snp_trees'
+def _available_bar_chart_positions(out):
+	bar_dir = out + '/bar_charts'
+	if not os.path.isdir(bar_dir):
+		return None
+	positions = set()
+	for fn in os.listdir(bar_dir):
+		m = re.match(r'^p_(.+)_bar_chart\.png$', fn)
+		if m:
+			positions.add(m.group(1))
+	return positions
+
+
+def mutationtypes(tree, chart_raw, mode, out, max_trees=None, only_positions_with_bar_chart=True):
+
+	chart, raw_pos = convert_csv(chart_raw, mode, out)
+	tout = out + '/snp_trees'
 	if not os.path.exists(tout):
 		os.makedirs(tout)
-		
 
-	ATCG=['A','C','T','G']
+	header, chart_lookup, locations = _load_chart_lookup(chart)
+	if not header:
+		return
 
+	bar_chart_positions = _available_bar_chart_positions(out) if only_positions_with_bar_chart else None
 
-		
-	f=open(chart,'r').readlines()
-	#chromosomes=load_chr(chart)
+	with open(chart, 'r') as f:
+		lines = f.readlines()[1:]
 
-	
-	pidx=0
-	for i, line in enumerate(f[1:]):
-	
-		l=line.strip().split(',')
+	generated = 0
+	for pidx, line in enumerate(lines):
+		l = line.strip().split(',')
 		if len(l) < 5:
 			print(l)
-			pidx+=1
 			continue
-		chromosome=l[0]
-		#print(chromosome)
-		#exit()
-		pos=l[1]
-		
-		#use first strain as lca
-		lca=l[4]
 
+		chromosome = l[0]
+		pos = l[1]
+		raw_position = str(raw_pos[pidx])
 
-		#count mutations
-		newtree = annotateSNP(tree, chart, chromosome, pos)
+		if bar_chart_positions is not None and raw_position not in bar_chart_positions:
+			continue
 
-		a, mutlist= mutation_count(newtree, lca)
-		#print(a,mutlist)
-		#exit()
-		
-		if a==0:
+		if max_trees is not None and generated >= int(max_trees):
+			break
+
+		# use first strain as lca
+		lca = l[4]
+
+		# Build tree annotation directly from lookup (no repeated full file scan)
+		row = chart_lookup.get((chromosome, pos))
+		if row is None:
+			continue
+		with open('temptree.txt', 'w') as fo:
+			for idx in locations:
+				if idx < len(row) and len(row[idx]) > 0:
+					fo.write(header[idx] + '\t' + row[idx] + '\n')
+				else:
+					fo.write(header[idx] + '\t?\n')
+		newtree = nameswap(tree, 'temptree.txt')
+
+		a, mutlist = mutation_count(newtree, lca)
+
+		if a == 0:
 			print('NO MUTS:')
-			#pass
-			#print(len(line), i, chromosome, pos)
-		#save trees
-		else:
-			f1=open(tout+'/p_'+str(raw_pos[pidx])+'_'+str(a)+'.tree','w')
-			#f1=open(tout+'/'+'p_'+str(raw_pos[pidx])+'.tree','w')
-			t=open('tempnexus.txt','r').readlines()
-			for line in t:
-				f1.write(line)
-		pidx+=1
-	os.system('rm temptree.txt')
-	os.system('rm tempnexus.txt')
+			continue
+
+		outfile = tout + '/p_' + raw_position + '_' + str(a) + '.tree'
+		if os.path.exists(outfile):
+			# Align with bar_charts generation behavior: skip if already present
+			continue
+
+		with open(outfile, 'w') as f1:
+			with open('tempnexus.txt', 'r') as tf:
+				f1.writelines(tf.readlines())
+		generated += 1
+
+	for temp_file in ('temptree.txt', 'tempnexus.txt'):
+		if os.path.exists(temp_file):
+			os.remove(temp_file)
 
 
 
