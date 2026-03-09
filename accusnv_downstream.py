@@ -44,6 +44,16 @@ parser.add_argument('-P','--exclude_position_ids',dest='exclude_position_ids',ty
 
 
 parser.add_argument('-o','--output_dir',dest='output_dir',type=str,help="The output dir")
+parser.add_argument('-T','--large_snv_threshold',dest='large_snv_threshold',type=str,
+    help="When the number of passing SNVs exceeds this value, bar chart generation is "
+         "reduced to --large_snv_chart_limit instead of the default 2000. Default: 5000.")
+parser.add_argument('-X','--large_snv_chart_limit',dest='large_snv_chart_limit',type=str,
+    help="Number of bar charts to generate when SNV count exceeds --large_snv_threshold. "
+         "Default: 100.")
+parser.add_argument('-Y','--max_snv_for_tree',dest='max_snv_for_tree',type=str,
+    help="When the number of passing SNVs exceeds this value, the dnapars parsimony "
+         "tree step is skipped. Alignment files (.fa and .phylip) are always written "
+         "for use with IQ-TREE, FastTree, RAxML-NG, etc. Default: 5000.")
 args = parser.parse_args()
 
 def set_para_int(invalue,expect):
@@ -93,6 +103,9 @@ fn_min_cov=set_para_int(fn_min_cov,1)
 fn_min_qual=set_para_int(fn_min_qual,30)
 fn_min_freq=set_para_float(fn_min_freq,0.75)
 eb=set_para_int(eb,0)
+large_snv_threshold=set_para_int(args.large_snv_threshold,5000)
+large_snv_chart_limit=set_para_int(args.large_snv_chart_limit,100)
+max_snv_for_tree=set_para_int(args.max_snv_for_tree,5000)
 
 #print(max_indel,min_avg_cov,type(max_frac),min_freq,type(min_med_cov),max_mean_cp,max_max_cp)
 #exit()
@@ -388,7 +401,14 @@ sampleNamesDnapars_all = np.append(['Sanc', 'Sref'], sampleNamesDnapars)
 treesampleNamesLong_all = np.append(['inferred_ancestor', 'reference_genome'], treesampleNamesLong)
 
 try:
-    # Build tree
+    # Build tree; skip dnapars if SNV count is too large (very slow for large alignments).
+    # Alignment files (.fa, .phylip) are always written regardless of this setting.
+    if num_goodpos_all > max_snv_for_tree:
+        print(f'[Info] SNV count ({num_goodpos_all}) > max_snv_for_tree ({max_snv_for_tree}): '
+              f'skipping dnapars. Alignment files will still be written to {output_dir}.')
+        _build_tree = False
+    else:
+        _build_tree = 'PS'
     snv.generate_tree( \
         calls_for_tree_all.transpose(), \
         treesampleNamesLong_all, \
@@ -396,7 +416,7 @@ try:
         ref_genome_name, \
         output_dir, \
         "snv_tree_" + ref_genome_name, \
-        buildTree='PS' \
+        buildTree=_build_tree \
         )
 except Exception as e:
     print('#### error skip #####: something wrong in snv.generate_tree... skip...')
@@ -422,11 +442,18 @@ snv.write_mutation_table_as_tsv( \
     )
 
 # Generate bar charts and HTML summary of SNVs
+# If SNV count exceeds large_snv_threshold, use the reduced large_snv_chart_limit (default 100).
+# Otherwise cap at 2000 (existing behaviour).
 chart_limit = 2000
-if num_goodpos_all > chart_limit:
-    idx_slice = slice(0, chart_limit)
+if num_goodpos_all > large_snv_threshold:
+    effective_limit = large_snv_chart_limit
+    print(f'[Info] SNV count ({num_goodpos_all}) > threshold ({large_snv_threshold}): '
+          f'limiting bar charts to {effective_limit} positions.')
+elif num_goodpos_all > chart_limit:
+    effective_limit = chart_limit
 else:
-    idx_slice = slice(None)
+    effective_limit = num_goodpos_all
+idx_slice = slice(0, effective_limit)
 snv.plot_interactive_scatter_barplots(
     p_goodpos_all[idx_slice],
     mut_qual[0, goodpos_idx_all][idx_slice],
@@ -462,12 +489,11 @@ snv.generate_html_with_thumbnails(
 ################################################################################
 ### Identify the number of homoplasic SNVs and rebuild the tree for each SNV ###
 ################################################################################
-try:
-    bst.mutationtypes(output_dir + "/snv_tree_genome_latest.nwk.tree",output_dir + '/snv_table_mutations_annotations.tsv',2, output_dir)
-except Exception as e:
-    print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
-    print(f"Error message: {str(e)}")
-    traceback.print_exc()
+_tree_file = output_dir + "/snv_tree_genome_latest.nwk.tree"
+if os.path.exists(_tree_file):
+    bst.mutationtypes(_tree_file, output_dir + '/snv_table_mutations_annotations.tsv', 2, output_dir)
+else:
+    print(f'[Step] Skipping per-SNV tree generation: {_tree_file} not found (dnapars was skipped or did not produce output).')
 
 #exit()
 

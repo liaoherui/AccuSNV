@@ -1990,27 +1990,36 @@ def compute_mutation_quality( Calls, Quals ):
     idx_for_N = NTs_to_int_dict['N']
 
     # generate template index array to sort out strains gave rise to reported FQ values
-    s_template=np.zeros( (len(Calls[0,:]),len(Calls[0,:])) ,dtype=object)
-    for i in range(s_template.shape[0]):
-        for j in range(s_template.shape[1]):
-            s_template[i,j] = str(i)+"_"+str(j)
+    # Use vectorized construction instead of nested Python loops (O(NStrain^2) string ops)
+    _idx = np.arange(NStrain)
+    s_template = np.char.add(
+        np.char.add(_idx.astype(str)[:, np.newaxis], "_"),
+        _idx.astype(str)[np.newaxis, :]
+    )
 
+    _report_interval = max(1, Nmuts // 10)
     for k in range(Nmuts):
+        if k % _report_interval == 0:
+            print(f'  [compute_mutation_quality] {k}/{Nmuts} ({100*k//Nmuts}%)', flush=True)
         if len(np.unique(np.append(Calls[k,:], idx_for_N))) <= 2: # if there is only one type of non-N (4) call, skip this location
             MutQual[k] = np.nan ;
             MutQualIsolates[k,:] = 0;
         else:
-            c = Calls[k,:] ; c1 = np.tile(c,(c.shape[0],1)); c2 = c1.transpose() # extract all alleles for pos k and build 2d matrix and a transposed version to make pairwise comparison
-            q = Quals[k,:] ; q1 = np.tile(q,(q.shape[0],1)); q2 = q1.transpose() # -"-
-            g = np.all((c1 != c2 , c1 != idx_for_N , c2 != idx_for_N) ,axis=0 )  # no data ==4; boolean matrix identifying find pairs of samples where calls disagree (and are not N) at this position
+            # Use broadcasting instead of np.tile() to avoid large temporary array copies
+            c = Calls[k,:] ; c1 = c[np.newaxis, :]; c2 = c[:, np.newaxis] # (1,NStrain) and (NStrain,1) broadcast to (NStrain,NStrain)
+            q = Quals[k,:] ; q1 = q[np.newaxis, :]; q2 = q[:, np.newaxis] # -"-
+            g = (c1 != c2) & (c1 != idx_for_N) & (c2 != idx_for_N)  # no data ==4; boolean matrix identifying find pairs of samples where calls disagree (and are not N) at this position
             #positive_pos = find(g); # numpy has no find; only numpy where, which does not flatten 2d array that way
             # get MutQual + logical index for where this occurred
-            MutQual[k] = np.max(np.minimum(q1[g],q2[g])) # np.max(np.minimum(q1[g],q2[g])) gives lower qual for each disagreeing pair of calls, we then find the best of these; NOTE: np.max > max value in array; np.maximum max element when comparing two arryas
-            MutQualIndex = np.argmax(np.minimum(q1[g],q2[g])) # return index of first encountered maximum!
+            min_q = np.minimum(np.broadcast_to(q1, (NStrain, NStrain))[g],
+                               np.broadcast_to(q2, (NStrain, NStrain))[g])  # broadcast_to creates a view (no copy) before boolean indexing
+            MutQual[k] = np.max(min_q) # np.max(np.minimum(q1[g],q2[g])) gives lower qual for each disagreeing pair of calls, we then find the best of these; NOTE: np.max > max value in array; np.maximum max element when comparing two arryas
+            MutQualIndex = np.argmax(min_q) # return index of first encountered maximum!
             # get strain ID of reorted pair (sample number)
             s = s_template
             strainPairIdx = s[g][MutQualIndex]
             MutQualIsolates[k,:] = [strainPairIdx.split("_")[0], strainPairIdx.split("_")[1]]
+    print(f'  [compute_mutation_quality] {Nmuts}/{Nmuts} (100%) done', flush=True)
             
     MutQual = MutQual.transpose()
     MutQualIsolates = MutQualIsolates.transpose()
@@ -2060,25 +2069,32 @@ def find_recombination_positions( my_calls, my_cmt, calls_ancestral, mut_qual, m
     # Downsize mutant allele frequency to goodpos only
     mutant_allele_freq_goodpos = mutant_allele_freq[ :,goodpos_idx ]
 
-    # Find recombination regions 
-    # #TODO: this is slow
-    nonsnp = np.zeros(0,dtype='int') # init
+    # Find recombination regions
+    # Use searchsorted to find window boundaries in O(log N) per position instead of O(N),
+    # reducing total complexity from O(N^2) to O(N log N).
+    # p_goodpos is sorted (derived from sorted p via sorted goodpos_idx).
+    left_bounds  = np.searchsorted(p_goodpos, p_goodpos - distance_for_nonsnp, side='right')   # strict >
+    right_bounds = np.searchsorted(p_goodpos, p_goodpos + distance_for_nonsnp, side='left')    # strict <
+    nonsnp_list = []  # collect into list; concatenate once at the end to avoid O(k^2) grow
+    _report_interval = max(1, num_goodpos // 10)
     for i in range(num_goodpos):
-        p_snv = p[goodpos_idx[i]]
-        # Find nearby preliminary SNVs
-        region = np.array(np.where( \
-                                   ( p_goodpos > p_snv - distance_for_nonsnp ) \
-                                   & ( p_goodpos < p_snv + distance_for_nonsnp ) \
-                                   ) ).flatten()
+        if i % _report_interval == 0:
+            print(f'  [find_recombination_positions] {i}/{num_goodpos} ({100*i//num_goodpos}%)', flush=True)
+        lb, rb = left_bounds[i], right_bounds[i]
+        if rb - lb <= 1:  # no neighbors within window
+            continue
+        region = np.arange(lb, rb)
         # Check if pairs are correlated
-        if len(region)>1: 
-            r = mutant_allele_freq_goodpos[:,region] # dimension = num samples in ingroup x num positions in region
-            corrmatrix = np.corrcoef(r.transpose()) # dimension = num positions in region x num positions in region
-            [a,b] = np.where( corrmatrix > corr_threshold_recombination )
-            nonsnp = np.concatenate(( nonsnp, region[a[np.where(a!=b)]] ))
+        r = mutant_allele_freq_goodpos[:, region] # num_samples_ingroup x region_size
+        corrmatrix = np.corrcoef(r.T)             # region_size x region_size
+        [a, b] = np.where(corrmatrix > corr_threshold_recombination)
+        corr_pairs = a[a != b]
+        if len(corr_pairs) > 0:
+            nonsnp_list.append(region[corr_pairs])
+    print(f'  [find_recombination_positions] {num_goodpos}/{num_goodpos} (100%) done', flush=True)
 
     # Get unique positions
-    nonsnp=np.unique(nonsnp) # indexed in goodpos
+    nonsnp = np.unique(np.concatenate(nonsnp_list)) if nonsnp_list else np.zeros(0, dtype='int')
     p_nonsnp = p_goodpos[ nonsnp ]
     p_keep = np.setdiff1d( p_goodpos, p_nonsnp )
     nonsnp_bool = np.isin( p, p_nonsnp )
@@ -2197,29 +2213,59 @@ def plot_interactive_scatter_barplots(xcoor,ycoor,xlabel,ylabel,samplenames,anno
         fdir=dir_output+'/bar_charts'
         if not os.path.exists(fdir):
             os.makedirs(fdir)
-        for i in range(len(xcoor)):
-            p_of_mut = annotation_mutations._get_value(i, 'p')
-            if os.path.exists(fdir + '/p_' + str(p_of_mut) + '_bar_chart.png'):continue # If the bar chart already exists, skip then!
-            type_of_mut = annotation_mutations._get_value(i, 'type')
-            #print("Index of selected mutation: " + str(i))
 
-            drilldownfig = plt.figure(20)
+        num_pos = len(xcoor)
+
+        # Pre-extract pandas columns to Python lists (avoids _get_value() per iteration)
+        p_values    = annotation_mutations['p'].tolist()
+        type_values = annotation_mutations['type'].tolist()
+
+        # Pre-scan existing chart files once → O(1) set lookup instead of 2000 os.path.exists() syscalls
+        existing_charts = set(os.listdir(fdir))
+
+        # Pre-compute chart data for all positions at once (vectorized).
+        # Eliminates the inner np.concatenate loop: 2000*(nsample-1) copies → nsample numpy slice assigns.
+        # Row layout per chart: sample0_fwd, sample0_rev, [zeros, sampleS_fwd, sampleS_rev] × (nsample-1)
+        nrows = 2 + 3 * (nsample - 1)
+        all_chart_data = np.zeros((num_pos, nrows, 4))
+        all_chart_data[:, 0, :] = countdata[0, :num_pos, :4]  # sample 0 fwd
+        all_chart_data[:, 1, :] = countdata[0, :num_pos, 4:]  # sample 0 rev
+        for s in range(1, nsample):
+            base = 2 + 3 * (s - 1)
+            # row base+0 stays zero (separator), already zero-initialised
+            all_chart_data[:, base + 1, :] = countdata[s, :num_pos, :4]  # fwd
+            all_chart_data[:, base + 2, :] = countdata[s, :num_pos, 4:]  # rev
+
+        # Pre-compute static per-figure elements shared across all charts
+        xtick_positions = list(range(0, nsample * 3, 3))
+        legend_labels   = ['A', 'T', 'C', 'G']
+
+        plt.ioff()  # disable interactive mode for faster batch rendering
+        drilldownfig = plt.figure(20)
+        _report_interval = max(1, num_pos // 10)
+        for i in range(num_pos):
+            if i % _report_interval == 0:
+                print(f'  [bar_plot] {i}/{num_pos} ({100*i//num_pos}%)', flush=True)
+            p_of_mut = p_values[i]
+            chart_filename = 'p_' + str(p_of_mut) + '_bar_chart.png'
+            if chart_filename in existing_charts:
+                continue  # skip already-generated charts
+            type_of_mut = type_values[i]
+
             drilldownfig.clf()
-
-            formated_count_data = np.stack((countdata[0, i, :4], countdata[0, i, 4:]))  # initialize
-            for s in range(1, nsample):  # 0 to nsample not 1 to nsample
-                new = np.stack((np.zeros((4)), countdata[s, i, :4], countdata[s, i, 4:]))  # put zeros in between samples
-                formated_count_data = np.concatenate((formated_count_data, new))  # add next sample
-
             axsub = drilldownfig.subplots(1)
-            stackedbar = pd.DataFrame(formated_count_data)
+            stackedbar = pd.DataFrame(all_chart_data[i])  # (nrows, 4) slice — no copy
             stackedbar.plot(kind='bar', stacked=True, width=1, ax=axsub)
-            pl.legend(['A', 'T', 'C', 'G'])
+            axsub.legend(legend_labels)
             axsub.set_ylabel('counts')
-            pl.xticks(ticks=range(0, nsample * 3, 3), labels=samplenames)
-            pl.title('p=' + str(p_of_mut) + ', type=' + type_of_mut)
+            axsub.set_xticks(xtick_positions)
+            axsub.set_xticklabels(samplenames)
+            axsub.set_title('p=' + str(p_of_mut) + ', type=' + type_of_mut)
             drilldownfig.tight_layout()
-            drilldownfig.savefig(fdir + '/p_' + str(p_of_mut) + '_bar_chart.png', dpi=400)
+            drilldownfig.savefig(fdir + '/' + chart_filename, dpi=400)
+
+        print(f'  [bar_plot] {num_pos}/{num_pos} (100%) done', flush=True)
+        plt.close(drilldownfig)  # release figure 20 from memory
        
         
     fig, axs = plt.subplots()
@@ -2756,19 +2802,43 @@ def compute_observed_dnds(annotation_full, gene_nums_of_interest=None):
 def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenome,dir_output,filetag,buildTree=False,writeDnaparsAlignment=False):
     '''
     Creates a parsimony tree (calling dnapars) with provided basecalls at SNV
-    positions. 
-    '''       
-    
-    # Write alignment file (as fasta)
-    # calc NJ or Parsimonous tree or None
-    # writeDnaparsAlignment==True for writing dnapars input for usage on cluster
+    positions.
+
+    Always writes two persistent alignment files to dir_output regardless of
+    buildTree value, so downstream tools (IQ-TREE, FastTree, RAxML-NG, etc.)
+    can build their own trees:
+      {filetag}_alignment.fa      — FASTA with full sample names
+      {filetag}_alignment.phylip  — PHYLIP with full sample names
+
+    buildTree='PS'  → also run dnapars and write {filetag}_latest.nwk.tree
+    buildTree='NJ'  → also run BioPython NJ tree
+    buildTree=False → write alignment files only (skip dnapars; use when SNV
+                      count is too large for dnapars to finish in reasonable time)
+    '''
     ts = time.time()
     timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
 
-    # write alignment fasta,read alignment
-    write_calls_sampleName_to_fasta(calls_for_tree,treeSampleNamesLong,timestamp) #timestamp.fa
+    num_taxa  = calls_for_tree.shape[1]
+    num_sites = calls_for_tree.shape[0]
+
+    # --- Always write persistent alignment files for downstream tree tools ---
+    alignment_fa_path  = os.path.join(dir_output, filetag + '_alignment.fa')
+    alignment_phy_path = os.path.join(dir_output, filetag + '_alignment.phylip')
+    _name_width = max(len(str(n)) for n in treeSampleNamesLong) + 2  # padding for PHYLIP
+
+    _t = time.time()
+    with open(alignment_fa_path, 'w') as _fa, open(alignment_phy_path, 'w') as _phy:
+        _phy.write(f' {num_taxa} {num_sites}\n')
+        for _i, _name in enumerate(treeSampleNamesLong):
+            _seq = ''.join(calls_for_tree[:, _i])
+            _fa.write('>' + str(_name) + '\n' + _seq + '\n')
+            _phy.write(f'{str(_name):<{_name_width}}{_seq}\n')
+    print(f'  [generate_tree] wrote {alignment_fa_path} and {alignment_phy_path} ({time.time()-_t:.1f}s)')
+    print(f'  [generate_tree] (these files can be used directly with IQ-TREE, FastTree, RAxML-NG, etc.)')
+
     if writeDnaparsAlignment:
-        # change tip labels and write phylip
+        # write long-name fasta + dnapars short-name phylip for cluster usage
+        write_calls_sampleName_to_fasta(calls_for_tree,treeSampleNamesLong,timestamp) #timestamp.fa
         write_calls_sampleName_to_fasta(calls_for_tree,sampleNamesDnapars,timestamp+"_"+filetag+"_dnapars") #timestamp_dnapars.fa > for dnapars...deleted later
         # turn fa to phylip and delete fasta with short tip labels
         aln = AlignIO.read(timestamp+"_"+filetag+"_dnapars.fa", 'fasta')
@@ -2788,27 +2858,16 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
             file.write(timestamp+"_"+filetag+".tree"+"\n"+"\n")
 
     if buildTree=='PS':
-        # write phylip file with dnaparse compatible 10c samplenames
-        write_calls_sampleName_to_fasta(calls_for_tree,sampleNamesDnapars,timestamp+"_dnapars") #timestamp_dnapars.fa > for dnapars...deleted later
-        # turn fa to phylip and delete fasta with short tip labels
-        aln = AlignIO.read(timestamp+"_dnapars.fa", 'fasta')
-        AlignIO.write(aln, timestamp+".phylip", "phylip")
-        subprocess.run(["rm -f " + timestamp+"_dnapars.fa"],shell=True)
+        # Write dnapars-compatible PHYLIP directly from numpy array.
+        # Skips the FASTA-write → FASTA-read → PHYLIP-write round-trip (saves 2 I/O ops).
+        # dnapars requires exactly 10-char names; sampleNamesDnapars is pre-formatted that way.
+        _t = time.time()
+        with open(timestamp+".phylip", 'w') as _f:
+            _f.write(f' {num_taxa} {num_sites}\n')
+            for _i, _name in enumerate(sampleNamesDnapars):
+                _f.write(f'{str(_name):<10}{"".join(calls_for_tree[:, _i])}\n')
+        print(f'  [generate_tree] write dnapars phylip: {time.time()-_t:.1f}s')
 
-        # find dnapars executable
-        dnapars_path = glob.glob('dnapars')
-        path_extension = "../"
-        backstop = 0
-        '''
-        while len(dnapars_path) == 0 and backstop <= 5:
-            dnapars_path = glob.glob(path_extension+'dnapars')
-            path_extension = path_extension + "../"
-            backstop = backstop + 1
-        if len(dnapars_path) == 0:
-            raise ValueError('dnapars executable could not be located.')
-        elif dnapars_path[0]=='dnapars':
-            dnapars_path[0] = 'dnapars'
-        '''
         # write parameter file
         with open(timestamp+"_options.txt",'w') as file:
             file.write(timestamp+".phylip"+"\n")
@@ -2822,24 +2881,22 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
             file.write(timestamp+".tree"+"\n"+"\n")
 
         # run dnapars
+        _t = time.time()
         print("Build parsimony tree...")
-        #print( dnapars_path[0] + " < " + timestamp+"_options.txt > " + timestamp+"_dnapars.log")
         subprocess.run([ "touch outtree"  ],shell=True)
         subprocess.run([ "dnapars < " + timestamp+"_options.txt > " + timestamp+"_dnapars.log"  ],shell=True)
-        #print('done')
+        print(f'  [generate_tree] dnapars: {time.time()-_t:.1f}s')
+
         # re-write tree with new long tip labels
+        # Use a dict for O(N) lookup instead of np.where O(N^2) per leaf
+        _t = time.time()
+        name_map = dict(zip(sampleNamesDnapars, treeSampleNamesLong))
         tree = Phylo.read(timestamp+".tree", "newick")
         for leaf in tree.get_terminals():
-            # print(leaf.name)
-            idx = np.where(sampleNamesDnapars==leaf.name)
-            if len(idx[0]) > 1:
-                warnings.warn("Warning: dnapars 10c limit leads to ambigous re-naming for "+leaf.name)
-                idx = idx[0][0] #np.where returns: tuple with array with index
-            else:
-                idx = idx[0][0] #np.where returns: tuple with array with index
-            leaf.name = treeSampleNamesLong[idx]
+            leaf.name = name_map.get(leaf.name, leaf.name)
         Phylo.write(tree, timestamp+".tree", 'nexus')
         Phylo.write(tree, dir_output+"/"+filetag+"_latest.nwk.tree", 'newick')
+        print(f'  [generate_tree] relabel + write tree: {time.time()-_t:.1f}s')
 
         # clean up
         # subprocess.run(["rm -f " + timestamp+".phylip " + timestamp+"_options.txt " + timestamp+"_dnapars.log"],shell=True)
@@ -2847,6 +2904,8 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
     elif buildTree == 'NJ':
         ## biopython tree build
         print("Build NJ tree...")
+        # need long-name fasta for NJ
+        write_calls_sampleName_to_fasta(calls_for_tree,treeSampleNamesLong,timestamp) #timestamp.fa
         # build starting tree (NJ)
         aln = AlignIO.read(timestamp+'.fa', 'fasta')
         calculator = DistanceCalculator('identity')
@@ -2854,12 +2913,11 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
         treeNJ = constructor.build_tree(aln)
         # Phylo.draw(treeNJ)
         Phylo.write(treeNJ,timestamp+"_NJ.tree","nexus")
-        # build parsimonous tree
-        #scorer = ParsimonyScorer()
-        #searcher = NNITreeSearcher(scorer)
-        #constructor = ParsimonyTreeConstructor(searcher, treeNJ)
-        #treePS = constructor.build_tree(aln)
-        #Phylo.write(treePS,timestamp+"_PS.tree","nexus")
+
+    else:
+        print(f'  [generate_tree] buildTree={buildTree!r}: dnapars skipped. '
+              f'Alignment files are in {dir_output} for use with external tree tools.')
+
     return timestamp
 
 
@@ -2985,49 +3043,58 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
         f.write('translation')
         #f.write('\t')
         f.write('\t\n')
+        # Pre-extract all annotation columns as Python lists once before the loop.
+        # This avoids 20+ per-row _get_value() calls (pandas' slowest access pattern).
+        col_contig_idx    = annotation_mutations['contig_idx'].tolist()
+        col_contig_pos    = annotation_mutations['contig_pos'].tolist()
+        col_gene_num_global = annotation_mutations['gene_num_global'].tolist()
+        col_gene_num      = annotation_mutations['gene_num'].tolist()
+        col_product       = annotation_mutations['product'].tolist()
+        col_protein_id    = annotation_mutations['protein_id'].tolist()
+        col_ontology      = annotation_mutations['ontology'].tolist()
+        col_locustag      = annotation_mutations['locustag'].tolist()
+        col_strand        = annotation_mutations['strand'].tolist()
+        col_loc1          = annotation_mutations['loc1'].tolist()
+        col_loc2          = annotation_mutations['loc2'].tolist()
+        col_nt_pos        = annotation_mutations['nt_pos'].tolist()
+        col_aa_pos        = annotation_mutations['aa_pos'].tolist()
+        col_codons        = annotation_mutations['codons'].tolist()
+        col_AA            = annotation_mutations['AA'].tolist()
+        col_anc           = annotation_mutations['anc'].tolist()
+        col_muts          = annotation_mutations['muts'].tolist()
+        col_type          = annotation_mutations['type'].tolist()
+        col_sequence      = annotation_mutations['sequence'].tolist()
+        col_translation   = annotation_mutations['translation'].tolist()
+
         # one line for each position
+        # Batch writes via a StringIO buffer to reduce file I/O syscalls
+        import io as _io
+        _n = len(mut_positions)
+        _report_interval = max(1, _n // 10)
+        _buf = _io.StringIO()
         for i,pos in enumerate(mut_positions):
-            #print(i)
-            f.write( str(pos) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'contig_idx')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'contig_pos')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'gene_num_global')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'gene_num')) )
-            f.write('\t')
-            f.write( str(mut_quality[i]) )
-            f.write('\t')
-            next_product = annotation_mutations._get_value(i,'product')
-            if type(next_product)!=float:
-                f.write( next_product )
-            else:
-                f.write( str(next_product) )
-            f.write('\t')
-            next_protein_id = annotation_mutations._get_value(i,'protein_id')
+            if i % _report_interval == 0:
+                print(f'  [write_mutation_table_as_tsv] {i}/{_n} ({100*i//_n}%)', flush=True)
+            # Build each row as a list of strings, then join with tabs — one write per row
+            row_parts = []
+            row_parts.append( str(pos) )
+            row_parts.append( str(col_contig_idx[i]) )
+            row_parts.append( str(col_contig_pos[i]) )
+            row_parts.append( str(col_gene_num_global[i]) )
+            row_parts.append( str(col_gene_num[i]) )
+            row_parts.append( str(mut_quality[i]) )
+            next_product = col_product[i]
+            row_parts.append( next_product if type(next_product)!=float else str(next_product) )
+            next_protein_id = col_protein_id[i]
             if type(next_protein_id)==list:
                 next_protein_id=next_protein_id[0]
-            if type(next_protein_id)!=float:
-                f.write( next_protein_id )
-            else:
-                f.write( str(next_protein_id) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'ontology')) )
-            f.write('\t')
-            next_locustag= annotation_mutations._get_value(i,'locustag')
-            if type(next_locustag)!=float:
-                f.write( next_locustag )
-            else:
-                f.write( str(next_locustag) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'strand')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'loc1')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'loc2')) )
-            f.write('\t')
+            row_parts.append( next_protein_id if type(next_protein_id)!=float else str(next_protein_id) )
+            row_parts.append( str(col_ontology[i]) )
+            next_locustag = col_locustag[i]
+            row_parts.append( next_locustag if type(next_locustag)!=float else str(next_locustag) )
+            row_parts.append( str(col_strand[i]) )
+            row_parts.append( str(col_loc1[i]) )
+            row_parts.append( str(col_loc2[i]) )
             # next_seq = annotation_mutations._get_value(i, 'sequence')
             # if type(next_seq) != float:  # value is nan if sequence does not exist
             #     f.write(str(next_seq))
@@ -3036,51 +3103,45 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
             # if type(next_translation) != float:
             #     f.write(str(next_translation))
             # f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'nt_pos')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'aa_pos')) )
-            f.write('\t')
-            next_codons = annotation_mutations._get_value(i,'codons')
+            row_parts.append( str(col_nt_pos[i]) )
+            row_parts.append( str(col_aa_pos[i]) )
+            next_codons = col_codons[i]
             if type(next_codons)!=float:
-                for codon in next_codons:
-                    f.write( str(codon)+' ' )
-            f.write('\t')
-            next_AA = annotation_mutations._get_value(i,'AA')
+                row_parts.append( ''.join(str(codon)+' ' for codon in next_codons) )
+            else:
+                row_parts.append( '' )
+            next_AA = col_AA[i]
             if type(next_AA)!=float:
-                for AA in next_AA:
-                    f.write( AA+' ' )
-            f.write('\t')
-            f.write( annotation_mutations._get_value(i,'anc') )
-            f.write('\t')
+                row_parts.append( ''.join(AA+' ' for AA in next_AA) )
+            else:
+                row_parts.append( '' )
+            row_parts.append( col_anc[i] )
             #f.write( annotation_mutations._get_value(i,'nts') )
             unique_nts = ''.join(
                 nt for nt in sorted(set(calls_for_tree[:, i]))
                 if nt != 'N'
             ) or 'N'
-            f.write(unique_nts)
-            f.write('\t')
-            next_muts = annotation_mutations._get_value(i,'muts')
+            row_parts.append( unique_nts )
+            next_muts = col_muts[i]
             if type(next_muts)==list:
-                for mut in next_muts:
-                    f.write( mut + ',')
+                row_parts.append( ''.join(mut + ',' for mut in next_muts) )
             else:
-                f.write( '.' )
-            f.write('\t')
-            f.write( annotation_mutations._get_value(i,'type') )
+                row_parts.append( '.' )
+            row_parts.append( col_type[i] )
             # Add basecalls for all samples
-            for j,name in enumerate(names_for_tree):
-                f.write('\t')
-                f.write(calls_for_tree[j,i])
-            f.write('\t')
-            next_seq = annotation_mutations._get_value(i, 'sequence')
-            if type(next_seq) != float:  # value is nan if sequence does not exist
-                f.write(str(next_seq))
-            f.write('\t')
-            next_translation = annotation_mutations._get_value(i, 'translation')
-            if type(next_translation) != float:
-                f.write(str(next_translation))
-            #f.write('\t')
-            f.write('\t\n')
+            for j in range(len(names_for_tree)):
+                row_parts.append( calls_for_tree[j,i] )
+            next_seq = col_sequence[i]
+            row_parts.append( str(next_seq) if type(next_seq) != float else '' )
+            next_translation = col_translation[i]
+            row_parts.append( str(next_translation) if type(next_translation) != float else '' )
+            _buf.write('\t'.join(row_parts) + '\t\n')
+            # Flush buffer every 1000 rows to avoid large memory buildup
+            if (i + 1) % 1000 == 0:
+                f.write(_buf.getvalue())
+                _buf = _io.StringIO()
+        f.write(_buf.getvalue())
+        print(f'  [write_mutation_table_as_tsv] {_n}/{_n} (100%) done', flush=True)
     
 def token_generate(inmatrix_raw, inmatrix_new,pre):
     unique_counts_raw = np.apply_along_axis(lambda row: len(np.unique(row[row != 0])), axis=1, arr=inmatrix_raw)
@@ -3303,8 +3364,9 @@ def merge_two_tables(in_cnn_table,output_tsv_filename,out_merge_tsv):
     o=open(out_merge_tsv,'w+')
     o.write('genome_pos\t'+head_cnn+'\t'+head_raw+'\n')
     reorder_p=pos_raw
+    pos_raw_set = set(pos_raw)  # O(1) lookup instead of O(n) list search
     for p in pos_all:
-        if p not in pos_raw:
+        if p not in pos_raw_set:
             reorder_p.append(p)
 
     for p in reorder_p:
@@ -3425,29 +3487,42 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             f.write(f'<th ><div class="rotate">{col}</div></th>\n')
 
         f.write('</tr>\n')
-        #exit()
+        # Pre-compute column index map for fast positional access in itertuples
+        col_idx = {col: i+1 for i, col in enumerate(df.columns)}  # +1 because tup[0] is the index
+        # Pre-identify which column positions are sample-call columns (index >= 36, not sequence/transl)
+        sample_col_positions = [
+            i+1 for i, col in enumerate(df.columns)
+            if i >= 36 and not re.search('sequence', col) and not re.search('transl', col)
+        ]
         # Step 5: Populate the table rows
-        for idx, row in df.iterrows():
-            # print(row['genome_pos'])
-            #print(idx)
-            #print(row)
-            #exit()
-            # exit()
-            if str(row['protein_id'])=='nan':
+        # Use itertuples() instead of iterrows() — avoids creating a pandas Series per row (3-10x faster)
+        # Collect HTML row strings in a list and write all at once at the end
+        _n = len(df)
+        _report_interval = max(1, _n // 10)
+        html_rows = []
+        _row_count = 0
+        for _k, tup in enumerate(df.itertuples(index=True, name=None)):
+            if _k % _report_interval == 0:
+                print(f'  [generate_html] {_k}/{_n} ({100*_k//_n}%)', flush=True)
+            idx = tup[0]
+            genome_pos_key = str(tup[col_idx['genome_pos']])
+            chart_name = d.get(genome_pos_key, None)
+            # Only include positions that have an actual bar chart (skip placeholder/missing)
+            if chart_name is None:
+                continue
+            # Access columns by pre-computed positional index instead of Series key lookup
+            protein_id_val = tup[col_idx['protein_id']]
+            translation_val = tup[col_idx['translation']]
+            if str(protein_id_val)=='nan':
                 link='nan'
-            elif str(row['protein_id'])=='.':
+            elif str(protein_id_val)=='.':
                 link = '.'
             else:
-                link=f'''<a href="javascript:void(0);" onclick="showPopup(\'{row['protein_id']}\', \'{row['translation']}\')" style="text-decoration: none;  cursor: pointer;">{row['protein_id']}</a>'''
-            #exit()
-            f.write('<tr>\n')
-            # Add the thumbnail column (assuming a chart image exists for each row)
-            # chart_filename = f"{chart_dir}/chart_{idx + 1}.png"
-            f.write(f'<td rowspan="6"> {idx+1}</td>')
-            #f.write('<td rowspan="6"><a href="bar_charts/' + d[str(row['genome_pos'])] + '"><img src="bar_charts/' + d[str(row['genome_pos'])] + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
-            genome_pos_key = str(row['genome_pos'])
-            chart_name = d.get(genome_pos_key, placeholder_chart)
-            f.write('<td rowspan="6"><a href="bar_charts/' + chart_name + '"><img src="bar_charts/' + chart_name + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
+                link=f'''<a href="javascript:void(0);" onclick="showPopup(\'{protein_id_val}\', \'{translation_val}\')" style="text-decoration: none;  cursor: pointer;">{protein_id_val}</a>'''
+            row_html = '<tr>\n'
+            _row_count += 1
+            row_html += f'<td rowspan="6"> {_row_count}</td>'
+            row_html += '<td rowspan="6"><a href="bar_charts/' + chart_name + '"><img src="bar_charts/' + chart_name + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n'
             html_p1='''
             <th class="snp">genome_pos</th>
             <th class="snp">contig_idx</th>
@@ -3458,36 +3533,25 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             <th class="pred">Qual_filter (<30)</th>
             <th class="pred">Cov_filter (<5)</th>
             '''
-            f.write(html_p1+'\n')
-            # Write each cell value
-            c=0
-            for value in row:
-                #print(value)
-                if c<36:
-                    c+=1
-                    continue
-                #print(df.columns[c])
-                if re.search('sequence', df.columns[c]): continue
-                if re.search('transl', df.columns[c]): continue
+            row_html += html_p1+'\n'
+            # Write each sample-call cell value using pre-computed column positions
+            for pos in sample_col_positions:
+                value = tup[pos]
                 if value in color_code:
-                    f.write(f'<td rowspan="6"><b><font color="{color_code[value]}">{value}</font></b></td>\n')
+                    row_html += f'<td rowspan="6"><b><font color="{color_code[value]}">{value}</font></b></td>\n'
                 else:
-                    f.write(f'<td rowspan="6"><b><font color="#808080">{value}</font></b></td>\n')
-                #f.write(f'<td rowspan="6">{value}</td>\n')
-                #print(value)
-                c+=1
-            #exit()
-            f.write('</tr>\n')
+                    row_html += f'<td rowspan="6"><b><font color="#808080">{value}</font></b></td>\n'
+            row_html += '</tr>\n'
             html_p2=f'''
             <tr>
-            <td><b><font color="#9900FF"> {row['genome_pos']}</font></b></td>
-            <td>{row['contig_idx']}</td>
-            <td>{row['contig_pos']}</td>
-            <td>{row['Pred_label']}</td>
-            <td>{row['CNN_pred']}</td>
-            <td>{row['CNN_prob']}</td>
-            <td>{row['Qual_filter (<30)']}</td>
-            <td>{row['Cov_filter (<5)']}</td>
+            <td><b><font color="#9900FF"> {tup[col_idx['genome_pos']]}</font></b></td>
+            <td>{tup[col_idx['contig_idx']]}</td>
+            <td>{tup[col_idx['contig_pos']]}</td>
+            <td>{tup[col_idx['Pred_label']]}</td>
+            <td>{tup[col_idx['CNN_pred']]}</td>
+            <td>{tup[col_idx['CNN_prob']]}</td>
+            <td>{tup[col_idx['Qual_filter (<30)']]}</td>
+            <td>{tup[col_idx['Cov_filter (<5)']]}</td>
             </tr>
             <tr>
             <th class="snp">nt_pos</th>
@@ -3500,17 +3564,17 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             <th class="pred">CPN_filter (4,7)</th>
         </tr>
         <tr>
- 
-            <td>{row['nt_pos']}</td>
-            <td>{row['aa_pos']}</td>
-            <td>{re.sub(',','',str(row['muts']))} / {row['type']}</td>
-            <td>{row['MAF_filter (>0.85)']}</td>
-            <td>{row['Indel_filter (<0.33)']}</td>
-            <td>{row['MFAS_filter (1)']}</td>
-            <td>{row['MMCP_filter (5)']}</td>
-            <td>{row['CPN_filter (4,7)']}</td>
+
+            <td>{tup[col_idx['nt_pos']]}</td>
+            <td>{tup[col_idx['aa_pos']]}</td>
+            <td>{re.sub(',','',str(tup[col_idx['muts']]))} / {tup[col_idx['type']]}</td>
+            <td>{tup[col_idx['MAF_filter (>0.85)']]}</td>
+            <td>{tup[col_idx['Indel_filter (<0.33)']]}</td>
+            <td>{tup[col_idx['MFAS_filter (1)']]}</td>
+            <td>{tup[col_idx['MMCP_filter (5)']]}</td>
+            <td>{tup[col_idx['CPN_filter (4,7)']]}</td>
         </tr>
-        <tr>            
+        <tr>
             <th class="snp">product</th>
             <th class="snp">protein_id</th>
             <th class="snp">locustag</th>
@@ -3521,20 +3585,21 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             <th class="pred">WD_pred</th>
         </tr>
         <tr>
-            
-            <td>{row['product']}</td>
+
+            <td>{tup[col_idx['product']]}</td>
             <td>{link}</td>
-            <td>{row['locustag']}</td>
-            <td>{row['Fix_filter']}</td>
-            <td>{row['Whether_recomb']}</td>
-            <td>{row['Fraction_ambigious_samples']}</td>
-            <td>{row['Gap_filter']}</td>
-            <td>{row['WideVariant_pred']}</td>
+            <td>{tup[col_idx['locustag']]}</td>
+            <td>{tup[col_idx['Fix_filter']]}</td>
+            <td>{tup[col_idx['Whether_recomb']]}</td>
+            <td>{tup[col_idx['Fraction_ambigious_samples']]}</td>
+            <td>{tup[col_idx['Gap_filter']]}</td>
+            <td>{tup[col_idx['WideVariant_pred']]}</td>
         </tr>
         <tr><th rowspan="2" colspan="100%"></th><tr>
             '''
-            f.write(html_p2)
-            #exit()
+            html_rows.append(row_html + html_p2)
+        f.write(''.join(html_rows))
+        print(f'  [generate_html] done: {_row_count}/{_n} rows included (positions with bar charts)', flush=True)
         f.write('</table>\n')
         pop_script = '''
 
