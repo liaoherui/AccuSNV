@@ -324,6 +324,13 @@ parser.add_argument('-g','--generate_report',dest='generate_rep',type=str,help="
 parser.add_argument('-r','--rer',dest='ref_genome',type=str,help="The reference genome")
 parser.add_argument('-o','--output_dir',dest='output_dir',type=str,help="The output dir")
 #parser.add_argument('-o','--output_file',dest='output_file',type=str,help="The output file")
+parser.add_argument('-T','--large_snv_threshold',dest='large_snv_threshold',type=str,
+    help="When the number of passing SNVs exceeds this value, bar chart and SNV tree "
+         "generation is reduced to --large_snv_chart_limit instead of the default 2000. "
+         "Default: 5000.")
+parser.add_argument('-X','--large_snv_chart_limit',dest='large_snv_chart_limit',type=str,
+    help="Number of bar charts and SNV trees to generate when SNV count exceeds "
+         "--large_snv_threshold. Default: 100.")
 args=parser.parse_args()
 input_mat=args.input_mat
 input_cov=args.input_cov
@@ -353,6 +360,9 @@ if not greport:
     greport=1
 else:
     greport=int(greport)
+
+large_snv_threshold = int(args.large_snv_threshold) if args.large_snv_threshold else 5000
+large_snv_chart_limit = int(args.large_snv_chart_limit) if args.large_snv_chart_limit else 100
 #Build
 if not os.path.exists(odir):
     os.makedirs(odir)
@@ -1055,12 +1065,19 @@ mutations_annotated = snv.annotate_mutations( \
 #exit()
 # Clickable bar charts for each SNV position
 
-# If pos>2000, then only first 2000 charts will be plotted
+# Determine effective chart/tree limit.
+# If SNV count exceeds large_snv_threshold, use the reduced large_snv_chart_limit (default 100).
+# Otherwise cap at 2000 (existing behaviour).
 chart_limit = 2000
-if num_goodpos_all > chart_limit:
-    idx_slice = slice(0, chart_limit)
+if num_goodpos_all > large_snv_threshold:
+    effective_limit = large_snv_chart_limit
+    print(f'[Step] SNV count ({num_goodpos_all}) > threshold ({large_snv_threshold}): '
+          f'limiting bar charts and SNV trees to {effective_limit} positions.')
+elif num_goodpos_all > chart_limit:
+    effective_limit = chart_limit
 else:
-    idx_slice = slice(None)
+    effective_limit = num_goodpos_all
+idx_slice = slice(0, effective_limit)
 snv.plot_interactive_scatter_barplots(
     p_goodpos_all[idx_slice],
     mut_qual[0, goodpos_idx_all][idx_slice],
@@ -1208,7 +1225,7 @@ if num_goodpos>0:
     # Use the same position limit as bar_chart generation to avoid generating thousands of tree files
     _t_step = time.time()
     try:
-        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output, max_positions=chart_limit)
+        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output, max_positions=effective_limit)
     except Exception as e:
         print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
         print(f"Error message: {str(e)}")

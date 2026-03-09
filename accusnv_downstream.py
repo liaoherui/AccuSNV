@@ -44,6 +44,12 @@ parser.add_argument('-P','--exclude_position_ids',dest='exclude_position_ids',ty
 
 
 parser.add_argument('-o','--output_dir',dest='output_dir',type=str,help="The output dir")
+parser.add_argument('-T','--large_snv_threshold',dest='large_snv_threshold',type=str,
+    help="When the number of passing SNVs exceeds this value, bar chart generation is "
+         "reduced to --large_snv_chart_limit instead of the default 2000. Default: 5000.")
+parser.add_argument('-X','--large_snv_chart_limit',dest='large_snv_chart_limit',type=str,
+    help="Number of bar charts to generate when SNV count exceeds --large_snv_threshold. "
+         "Default: 100.")
 args = parser.parse_args()
 
 def set_para_int(invalue,expect):
@@ -93,6 +99,8 @@ fn_min_cov=set_para_int(fn_min_cov,1)
 fn_min_qual=set_para_int(fn_min_qual,30)
 fn_min_freq=set_para_float(fn_min_freq,0.75)
 eb=set_para_int(eb,0)
+large_snv_threshold=set_para_int(args.large_snv_threshold,5000)
+large_snv_chart_limit=set_para_int(args.large_snv_chart_limit,100)
 
 #print(max_indel,min_avg_cov,type(max_frac),min_freq,type(min_med_cov),max_mean_cp,max_max_cp)
 #exit()
@@ -422,11 +430,18 @@ snv.write_mutation_table_as_tsv( \
     )
 
 # Generate bar charts and HTML summary of SNVs
+# If SNV count exceeds large_snv_threshold, use the reduced large_snv_chart_limit (default 100).
+# Otherwise cap at 2000 (existing behaviour).
 chart_limit = 2000
-if num_goodpos_all > chart_limit:
-    idx_slice = slice(0, chart_limit)
+if num_goodpos_all > large_snv_threshold:
+    effective_limit = large_snv_chart_limit
+    print(f'[Info] SNV count ({num_goodpos_all}) > threshold ({large_snv_threshold}): '
+          f'limiting bar charts to {effective_limit} positions.')
+elif num_goodpos_all > chart_limit:
+    effective_limit = chart_limit
 else:
-    idx_slice = slice(None)
+    effective_limit = num_goodpos_all
+idx_slice = slice(0, effective_limit)
 snv.plot_interactive_scatter_barplots(
     p_goodpos_all[idx_slice],
     mut_qual[0, goodpos_idx_all][idx_slice],
