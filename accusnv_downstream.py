@@ -489,12 +489,11 @@ snv.generate_html_with_thumbnails(
 ################################################################################
 ### Identify the number of homoplasic SNVs and rebuild the tree for each SNV ###
 ################################################################################
-try:
-    bst.mutationtypes(output_dir + "/snv_tree_genome_latest.nwk.tree",output_dir + '/snv_table_mutations_annotations.tsv',2, output_dir)
-except Exception as e:
-    print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
-    print(f"Error message: {str(e)}")
-    traceback.print_exc()
+_tree_file = output_dir + "/snv_tree_genome_latest.nwk.tree"
+if os.path.exists(_tree_file):
+    bst.mutationtypes(_tree_file, output_dir + '/snv_table_mutations_annotations.tsv', 2, output_dir)
+else:
+    print(f'[Step] Skipping per-SNV tree generation: {_tree_file} not found (dnapars was skipped or did not produce output).')
 
 #exit()
 

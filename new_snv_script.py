@@ -1238,12 +1238,11 @@ if num_goodpos>0:
     # Generate the tree for each identified SNPs
     # Use the same position limit as bar_chart generation to avoid generating thousands of tree files
     _t_step = time.time()
-    try:
-        bst.mutationtypes(dir_output+"/snv_tree_genome_latest.nwk.tree",dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv',1,dir_output, max_positions=effective_limit)
-    except Exception as e:
-        print('#### error skip #####: something wrong in bst.mutationtypes... skip...')
-        print(f"Error message: {str(e)}")
-        traceback.print_exc()
+    _tree_file = dir_output + "/snv_tree_genome_latest.nwk.tree"
+    if os.path.exists(_tree_file):
+        bst.mutationtypes(_tree_file, dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv', 1, dir_output, max_positions=effective_limit)
+    else:
+        print(f'[Step] Skipping per-SNV tree generation: {_tree_file} not found (dnapars was skipped or did not produce output).')
     print(f'[Step] mutationtypes (snp_trees): {time.time()-_t_step:.1f}s')
     # # Contain all positions identified by CNN or WideVariant - even those false positions
     # snv.write_mutation_table_as_tsv( \

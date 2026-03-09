@@ -3500,10 +3500,16 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         _n = len(df)
         _report_interval = max(1, _n // 10)
         html_rows = []
+        _row_count = 0
         for _k, tup in enumerate(df.itertuples(index=True, name=None)):
             if _k % _report_interval == 0:
                 print(f'  [generate_html] {_k}/{_n} ({100*_k//_n}%)', flush=True)
             idx = tup[0]
+            genome_pos_key = str(tup[col_idx['genome_pos']])
+            chart_name = d.get(genome_pos_key, None)
+            # Only include positions that have an actual bar chart (skip placeholder/missing)
+            if chart_name is None:
+                continue
             # Access columns by pre-computed positional index instead of Series key lookup
             protein_id_val = tup[col_idx['protein_id']]
             translation_val = tup[col_idx['translation']]
@@ -3514,9 +3520,8 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             else:
                 link=f'''<a href="javascript:void(0);" onclick="showPopup(\'{protein_id_val}\', \'{translation_val}\')" style="text-decoration: none;  cursor: pointer;">{protein_id_val}</a>'''
             row_html = '<tr>\n'
-            row_html += f'<td rowspan="6"> {idx+1}</td>'
-            genome_pos_key = str(tup[col_idx['genome_pos']])
-            chart_name = d.get(genome_pos_key, placeholder_chart)
+            _row_count += 1
+            row_html += f'<td rowspan="6"> {_row_count}</td>'
             row_html += '<td rowspan="6"><a href="bar_charts/' + chart_name + '"><img src="bar_charts/' + chart_name + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n'
             html_p1='''
             <th class="snp">genome_pos</th>
@@ -3594,7 +3599,7 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             '''
             html_rows.append(row_html + html_p2)
         f.write(''.join(html_rows))
-        print(f'  [generate_html] {_n}/{_n} (100%) done', flush=True)
+        print(f'  [generate_html] done: {_row_count}/{_n} rows included (positions with bar charts)', flush=True)
         f.write('</table>\n')
         pop_script = '''
 
