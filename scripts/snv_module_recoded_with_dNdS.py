@@ -2802,19 +2802,43 @@ def compute_observed_dnds(annotation_full, gene_nums_of_interest=None):
 def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenome,dir_output,filetag,buildTree=False,writeDnaparsAlignment=False):
     '''
     Creates a parsimony tree (calling dnapars) with provided basecalls at SNV
-    positions. 
-    '''       
-    
-    # Write alignment file (as fasta)
-    # calc NJ or Parsimonous tree or None
-    # writeDnaparsAlignment==True for writing dnapars input for usage on cluster
+    positions.
+
+    Always writes two persistent alignment files to dir_output regardless of
+    buildTree value, so downstream tools (IQ-TREE, FastTree, RAxML-NG, etc.)
+    can build their own trees:
+      {filetag}_alignment.fa      — FASTA with full sample names
+      {filetag}_alignment.phylip  — PHYLIP with full sample names
+
+    buildTree='PS'  → also run dnapars and write {filetag}_latest.nwk.tree
+    buildTree='NJ'  → also run BioPython NJ tree
+    buildTree=False → write alignment files only (skip dnapars; use when SNV
+                      count is too large for dnapars to finish in reasonable time)
+    '''
     ts = time.time()
     timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
 
-    # write alignment fasta,read alignment
-    write_calls_sampleName_to_fasta(calls_for_tree,treeSampleNamesLong,timestamp) #timestamp.fa
+    num_taxa  = calls_for_tree.shape[1]
+    num_sites = calls_for_tree.shape[0]
+
+    # --- Always write persistent alignment files for downstream tree tools ---
+    alignment_fa_path  = os.path.join(dir_output, filetag + '_alignment.fa')
+    alignment_phy_path = os.path.join(dir_output, filetag + '_alignment.phylip')
+    _name_width = max(len(str(n)) for n in treeSampleNamesLong) + 2  # padding for PHYLIP
+
+    _t = time.time()
+    with open(alignment_fa_path, 'w') as _fa, open(alignment_phy_path, 'w') as _phy:
+        _phy.write(f' {num_taxa} {num_sites}\n')
+        for _i, _name in enumerate(treeSampleNamesLong):
+            _seq = ''.join(calls_for_tree[:, _i])
+            _fa.write('>' + str(_name) + '\n' + _seq + '\n')
+            _phy.write(f'{str(_name):<{_name_width}}{_seq}\n')
+    print(f'  [generate_tree] wrote {alignment_fa_path} and {alignment_phy_path} ({time.time()-_t:.1f}s)')
+    print(f'  [generate_tree] (these files can be used directly with IQ-TREE, FastTree, RAxML-NG, etc.)')
+
     if writeDnaparsAlignment:
-        # change tip labels and write phylip
+        # write long-name fasta + dnapars short-name phylip for cluster usage
+        write_calls_sampleName_to_fasta(calls_for_tree,treeSampleNamesLong,timestamp) #timestamp.fa
         write_calls_sampleName_to_fasta(calls_for_tree,sampleNamesDnapars,timestamp+"_"+filetag+"_dnapars") #timestamp_dnapars.fa > for dnapars...deleted later
         # turn fa to phylip and delete fasta with short tip labels
         aln = AlignIO.read(timestamp+"_"+filetag+"_dnapars.fa", 'fasta')
@@ -2834,27 +2858,16 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
             file.write(timestamp+"_"+filetag+".tree"+"\n"+"\n")
 
     if buildTree=='PS':
-        # write phylip file with dnaparse compatible 10c samplenames
-        write_calls_sampleName_to_fasta(calls_for_tree,sampleNamesDnapars,timestamp+"_dnapars") #timestamp_dnapars.fa > for dnapars...deleted later
-        # turn fa to phylip and delete fasta with short tip labels
-        aln = AlignIO.read(timestamp+"_dnapars.fa", 'fasta')
-        AlignIO.write(aln, timestamp+".phylip", "phylip")
-        subprocess.run(["rm -f " + timestamp+"_dnapars.fa"],shell=True)
+        # Write dnapars-compatible PHYLIP directly from numpy array.
+        # Skips the FASTA-write → FASTA-read → PHYLIP-write round-trip (saves 2 I/O ops).
+        # dnapars requires exactly 10-char names; sampleNamesDnapars is pre-formatted that way.
+        _t = time.time()
+        with open(timestamp+".phylip", 'w') as _f:
+            _f.write(f' {num_taxa} {num_sites}\n')
+            for _i, _name in enumerate(sampleNamesDnapars):
+                _f.write(f'{str(_name):<10}{"".join(calls_for_tree[:, _i])}\n')
+        print(f'  [generate_tree] write dnapars phylip: {time.time()-_t:.1f}s')
 
-        # find dnapars executable
-        dnapars_path = glob.glob('dnapars')
-        path_extension = "../"
-        backstop = 0
-        '''
-        while len(dnapars_path) == 0 and backstop <= 5:
-            dnapars_path = glob.glob(path_extension+'dnapars')
-            path_extension = path_extension + "../"
-            backstop = backstop + 1
-        if len(dnapars_path) == 0:
-            raise ValueError('dnapars executable could not be located.')
-        elif dnapars_path[0]=='dnapars':
-            dnapars_path[0] = 'dnapars'
-        '''
         # write parameter file
         with open(timestamp+"_options.txt",'w') as file:
             file.write(timestamp+".phylip"+"\n")
@@ -2868,24 +2881,22 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
             file.write(timestamp+".tree"+"\n"+"\n")
 
         # run dnapars
+        _t = time.time()
         print("Build parsimony tree...")
-        #print( dnapars_path[0] + " < " + timestamp+"_options.txt > " + timestamp+"_dnapars.log")
         subprocess.run([ "touch outtree"  ],shell=True)
         subprocess.run([ "dnapars < " + timestamp+"_options.txt > " + timestamp+"_dnapars.log"  ],shell=True)
-        #print('done')
+        print(f'  [generate_tree] dnapars: {time.time()-_t:.1f}s')
+
         # re-write tree with new long tip labels
+        # Use a dict for O(N) lookup instead of np.where O(N^2) per leaf
+        _t = time.time()
+        name_map = dict(zip(sampleNamesDnapars, treeSampleNamesLong))
         tree = Phylo.read(timestamp+".tree", "newick")
         for leaf in tree.get_terminals():
-            # print(leaf.name)
-            idx = np.where(sampleNamesDnapars==leaf.name)
-            if len(idx[0]) > 1:
-                warnings.warn("Warning: dnapars 10c limit leads to ambigous re-naming for "+leaf.name)
-                idx = idx[0][0] #np.where returns: tuple with array with index
-            else:
-                idx = idx[0][0] #np.where returns: tuple with array with index
-            leaf.name = treeSampleNamesLong[idx]
+            leaf.name = name_map.get(leaf.name, leaf.name)
         Phylo.write(tree, timestamp+".tree", 'nexus')
         Phylo.write(tree, dir_output+"/"+filetag+"_latest.nwk.tree", 'newick')
+        print(f'  [generate_tree] relabel + write tree: {time.time()-_t:.1f}s')
 
         # clean up
         # subprocess.run(["rm -f " + timestamp+".phylip " + timestamp+"_options.txt " + timestamp+"_dnapars.log"],shell=True)
@@ -2893,6 +2904,8 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
     elif buildTree == 'NJ':
         ## biopython tree build
         print("Build NJ tree...")
+        # need long-name fasta for NJ
+        write_calls_sampleName_to_fasta(calls_for_tree,treeSampleNamesLong,timestamp) #timestamp.fa
         # build starting tree (NJ)
         aln = AlignIO.read(timestamp+'.fa', 'fasta')
         calculator = DistanceCalculator('identity')
@@ -2900,12 +2913,11 @@ def generate_tree(calls_for_tree,treeSampleNamesLong,sampleNamesDnapars,refgenom
         treeNJ = constructor.build_tree(aln)
         # Phylo.draw(treeNJ)
         Phylo.write(treeNJ,timestamp+"_NJ.tree","nexus")
-        # build parsimonous tree
-        #scorer = ParsimonyScorer()
-        #searcher = NNITreeSearcher(scorer)
-        #constructor = ParsimonyTreeConstructor(searcher, treeNJ)
-        #treePS = constructor.build_tree(aln)
-        #Phylo.write(treePS,timestamp+"_PS.tree","nexus")
+
+    else:
+        print(f'  [generate_tree] buildTree={buildTree!r}: dnapars skipped. '
+              f'Alignment files are in {dir_output} for use with external tree tools.')
+
     return timestamp
 
 

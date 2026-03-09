@@ -50,6 +50,10 @@ parser.add_argument('-T','--large_snv_threshold',dest='large_snv_threshold',type
 parser.add_argument('-X','--large_snv_chart_limit',dest='large_snv_chart_limit',type=str,
     help="Number of bar charts to generate when SNV count exceeds --large_snv_threshold. "
          "Default: 100.")
+parser.add_argument('-Y','--max_snv_for_tree',dest='max_snv_for_tree',type=str,
+    help="When the number of passing SNVs exceeds this value, the dnapars parsimony "
+         "tree step is skipped. Alignment files (.fa and .phylip) are always written "
+         "for use with IQ-TREE, FastTree, RAxML-NG, etc. Default: 5000.")
 args = parser.parse_args()
 
 def set_para_int(invalue,expect):
@@ -101,6 +105,7 @@ fn_min_freq=set_para_float(fn_min_freq,0.75)
 eb=set_para_int(eb,0)
 large_snv_threshold=set_para_int(args.large_snv_threshold,5000)
 large_snv_chart_limit=set_para_int(args.large_snv_chart_limit,100)
+max_snv_for_tree=set_para_int(args.max_snv_for_tree,5000)
 
 #print(max_indel,min_avg_cov,type(max_frac),min_freq,type(min_med_cov),max_mean_cp,max_max_cp)
 #exit()
@@ -396,7 +401,14 @@ sampleNamesDnapars_all = np.append(['Sanc', 'Sref'], sampleNamesDnapars)
 treesampleNamesLong_all = np.append(['inferred_ancestor', 'reference_genome'], treesampleNamesLong)
 
 try:
-    # Build tree
+    # Build tree; skip dnapars if SNV count is too large (very slow for large alignments).
+    # Alignment files (.fa, .phylip) are always written regardless of this setting.
+    if num_goodpos_all > max_snv_for_tree:
+        print(f'[Info] SNV count ({num_goodpos_all}) > max_snv_for_tree ({max_snv_for_tree}): '
+              f'skipping dnapars. Alignment files will still be written to {output_dir}.')
+        _build_tree = False
+    else:
+        _build_tree = 'PS'
     snv.generate_tree( \
         calls_for_tree_all.transpose(), \
         treesampleNamesLong_all, \
@@ -404,7 +416,7 @@ try:
         ref_genome_name, \
         output_dir, \
         "snv_tree_" + ref_genome_name, \
-        buildTree='PS' \
+        buildTree=_build_tree \
         )
 except Exception as e:
     print('#### error skip #####: something wrong in snv.generate_tree... skip...')
