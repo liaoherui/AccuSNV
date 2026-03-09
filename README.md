@@ -9,234 +9,208 @@ The workflow of AccuSNV:
 # <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/method_fix.jpg" width = "800" height = "500" >  
 
 -------------------------------------------------
-
-### Version: V1.0.0.5 (Last update on 2025-08-18)
+### Version: V1.0.0.6 (Last update on 2026-Mar)
+- Log: if you are looking for v1.0.0.5 (the original version, main branch), you can find it [here](https://github.com/liaoherui/AccuSNV/tree/main)!
 -------------------------------------------------
 
 
 Note: This tool is powered by Lieberman and Key Lab SNV calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
+
+
+## Contents
+
+- [Install](#install)
+- [Quick Test](#quick-test)
+- [Usage](#usage)
+- [Output](#output)
+- [Full command-line options](#full-command-line-options)
+- [Contact](#-contact-)
+- [Cite](#references)
+
+
+-------------------------------------------------
 
 ## Install
 
 Git clone:<BR/>
 `git clone https://github.com/liaoherui/AccuSNV.git`<BR/>
 
-### Option-1 (via Bioconda)
 
+Change the permission of the file:<BR/>
+`cd AccuSNV`<BR/>
+`chmod 777 slurm_status_script.py`<BR/>
+
+Install via bioconda:<BR/>
 `mamba create -n accusnv -c conda-forge -c bioconda accusnv` or <BR/>
 `conda create -n accusnv -c conda-forge -c bioconda accusnv`<BR/>
 
 then, `conda activate accusnv`
 
-⚠️ It should be noted that some commands have been replaced if you install AccuSNV using bioconda. (See below)
+If this installation method doesn’t work for your case, there are several other options you can try. See here.
 
-Command (Not bioconda)    |	Command (bioconda)
------------- | ------------- 
-python new_snv_script.py -h | accusnv -h
-python accusnv_snakemake.py -h | accusnv_snakemake -h
-python accusnv_downstream.py -h | accusnv_downstream -h
+## Quick Test 
 
-The user must only change the initial python line. (See below) 
+Quick test with the provided test data.
 
-`accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
+1. Test the tool on your Laptop (Support Linux or Ubuntu systems only):
 
+```
+# Step-1: Snakemake pipeline
+python accusnv_snakemake.py -f 1 -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
 
-⚠️ : please ensure that your working directory **does not contain** any files or folders with the same names as those listed below (or if they are present, ensure they are identical files to those in this GitHub repository): <BR/> 
+# Snakemake dry-run step: simulates the execution of a workflow without actually running any jobs or creating output files
+sh scripts/dru-run.sh
 
-Files: `config.yaml`,`experiment_info.yaml`,`Snakefile` <BR/>
-Folders: `scripts` (and all files under `snake_pipeline/scripts` on Github repo)<BR/>
+# Run the pipeline locally
+sh scripts/run_snakemake_local.sh
 
+# Step-2: Downstream analysis
+python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 
-If you install the tool via bioconda, you can test the tool with the command lines below :<BR/>
+# (or: python accusnv_downstream.py -i  Test_data_local/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_ds_pe_downstream)
 
-`cd conda_test_dir`<BR/>
-`sh test_run.sh`<BR/>
-`sh scripts/dry_run.sh`<BR/>
-`sbatch scripts/run_snakemake.slurm`<BR/>
+----------------------------------------------------------------------------------------------------------------------------------
+# Note: Running the tool locally is convenient, but it may not fully utilize the capabilities of the Snakemake framework,
+# which can execute many jobs in parallel by submitting them to different nodes or partitions on an HPC cluster.
+# To improve efficiency (especially for large-scale datasets),
+# it is recommended to run the Snakemake pipeline on an HPC system with Slurm (see the example below).
+----------------------------------------------------------------------------------------------------------------------------------
+```
 
-⚠️ : if you still want to run Snakemake directly from the `snake_pipeline` folder within the conda or bioconda environment, please run:
 
-`cd snake_pipeline`<BR/>
-`cp Snakefiles_diff_options/Snakefile_conda_env.txt  ./Snakefile`
 
-### Option-2 (via .yaml file)
+2. Test the tool on the Linux HPC system with [Slurm](https://slurm.schedmd.com/overview.html) system:
 
-`cd AccuSNV/snake_pipeline`<BR/>
+```
+# Step-1: Snakemake pipeline
+python accusnv_snakemake.py -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
 
-Build the conda environment:<BR/>
-`conda env create -n accusnv_env --file accusnv.yaml` or <BR/>`mamba env create -n accusnv_env --file accusnv.yaml` <BR/>
+# Snakemake dry-run step
+sh scripts/dru-run.sh
 
-Activate the conda environment:<BR/>
-`conda activate accusnv_env`<BR/>
+# Run the pipeline on HPC compute nodes; the jobs will be automatically submitted through the Slurm system.
+sbatch scripts/run_snakemake.slurm
+# (This Slurm script starts the entire pipeline. You can modify it as needed (e.g., change the partition for job submission).)
 
-Copy conda-env-based Snakefile:<BR/>
-`cp Snakefiles_diff_options/Snakefile_conda_env.txt  ./Snakefile`<BR/>
+# Step-2: Downstream analysis (as this step requires minimal computational resources, it can still be run locally.You can also test this step directly using the provided test data, see the “or” option below.)
+python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
 
-Change the permission of the file:<BR/>
-`chmod 777 slurm_status_script.py`<BR/>
+# (or: python accusnv_downstream.py -i  Test_data_local/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_ds_pe_downstream)
 
+----------------------------------------------------------------------------------------------------------------------------------
+# Note: If you got error like "ValueError: The binary mode of fromstring is removed, use frombuffer instead",
+# This is likely because: On some clusters, activating your conda environment on compute nodes may require additional steps.
+# To solve it, in your scripts/run_snakemake.slurm file, you may need something like the following:
 
-### Option-3 (via pre-built conda env - Linux only)
+# conda activate accusnv
+----------------------------------------------------------------------------------------------------------------------------------
+```
 
-`cd AccuSNV/snake_pipeline`<BR/>
+To adjust the Slurm configuration (e.g., the partitions to submit to, CPU and memory requirements for specific tasks, or the maximum number of submitted jobs), you can modify the config.yaml file in the output folder generated in Step 1 (in this example: `cae_pe_test_snakemake/conf/config.yaml`). Some notes on how to modify this file can be found here.
 
-If you don't have `gdown`, pleae install it first:<BR/>
-`pip install gdown`
 
-Download pre-built environments:<BR/>
-`sh download_install_env.sh`<BR/><BR/>
-Note: Please ignore the error message: `tar: Exiting with failure status due to previous errors`. You can still use the environment despite receiving this error message.
+3. For either Test (1) or Test (2), if the jobs finish successfully, the output folders should look like [this](readme_files/readme_test_output.md).
+4. For more example command lines for the Step 1 Snakemake pipeline (e.g., using `samclip` or replacing `bwa` with `bowtie2`), please check the file `test_run.sh`.
 
-Activate the pre-built environment<BR/>
-`source accusnv_env/bin/activate`
 
-Change the permission of the file:<BR/>
-`chmod 777 slurm_status_script.py`<BR/>
+## Usage
 
-------------------------------------------------------------------------------------
-Once you finish the install (via **Option-2** or **Option-3**), you can test the tool with the command lines below :<BR/>
+Key point: Ensure that all of your input files follow the same format as the tested files used in the **Quick Test** above.
 
-Test snakemake pipeline - Under `snake_pipeline` folder:<BR/>
-`sh test_run.sh`<BR/>
-`sh scripts/dry_run.sh`<BR/>
-`sbatch scripts/run_snakemake.slurm`<BR/>
+To run the tool, you will need to:
 
-Test downstream analysis - Under `local_analysis` folder:<BR/>
-`sh test_local.sh`<BR/>
+### (1) Prepare inputs
 
-<!--- ### Interactive exploration via Spyder:<BR/>
+- A sample sheet CSV (same format as the **Quick Test** CSV files). Details about this file can be found [here](readme_files/readme_input_csv.md). Examples can be found in the folder [test_data_csv](test_data_csv/).
 
-Open `local_analysis/accusnv_downstream.ipynb` in Jupyter.<BR/>
+- A reference genome directory (each reference should have `genome.fasta`; annotations such as `genome.gff` (generated by [Prokka](https://github.com/tseemann/prokka) or [Bakta](https://github.com/oschwengers/bakta)) are recommended for richer outputs). Examples can be found in the folder [reference_genomes](reference_genomes/).
 
-modify the `ref_dir`, `input_mat`, and any optional filtering parameters (e.g. `fn_min_cov`, `fn_min_qual`, `fn_min_freq`, `max_indel`, `min_freq`, `min_med_cov`, `exclude_recomb`), and run the script to inspect results in Spyder.<BR/> -->
+An example of the input directory structure and corresponding input files can be found [here](readme_files/readme_input_csv.md).
 
-### Quick Tests for the downstream analysis module on your own PC:
+### (2)  Run the Snakemake pipeline
 
-(Note: if you prefer Linux/HPC, ignore this!)
+```
+# from AccuSNV root
+python accusnv_snakemake.py -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
+```
 
-Refers to [2.2. Local downstream analysis](#custom-anchor)
+<!---
+# or Bioconda command (equivalent to the above)
+# accusnv_snakemake -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
+-->
 
-- [macOS commands (run using command lines)](readme_files/test_run_mac.md)
-- [Run accusnv_downstream in IDE (Spyder)](readme_files/test_run_spyder.md)
+Then check workflow plan with Snakemake dry run:
 
-<!--- - [Windows commands](readme_files/test_run_windows.md)
-- [Linux without Slurm](readme_files/test_run_linux_local.md)
-- [Linux with Slurm](readme_files/test_run_linux_slurm.md)
+`sh scripts/dry_run.sh`
 
-These step-by-step guidelines demonstrate running the snakemake pipeline (for Linux system only) along with the downstream analysis commands (`accusnv_snakemake` and `accusnv_downstream`). -->
+Submit with Slurm:
 
-## Overview
+`sbatch scripts/run_snakemake.slurm`
 
-This pipeline and toolkit is used to detect and analyze single nucleotide differences between bacterial isolates from WGS data. 
+If you do not use Slurm (single node/local-style run), set:
 
-* Noteable features
-	* Avoids false negatives from low coverage and false positives through a deep learning method, while also enabling visualization of raw data.
-	* Enables easy evolutionary analysis, including phylogenetic construction, nonsynonmous vs synonymous mutation counting, and parallel evolution, etc.
+`python accusnv_snakemake.py -f 1 -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>`
 
+(`-f 1` disables automatic Slurm submission mode).
 
-* Inputs (to Snakemake cluster step): 
-	* short-read sequencing data of bacterial isolates
-	* an annotated reference genome
-* Outputs (of downstream analysis step): 
-	* table of high-quality SNVs that differentiate isolates from each other
-	* parsimony tree of how the isolates are related to each other
-   	* More details can be found in [here](#output)
+and `sh scripts/run_snakemake_local.sh`
 
-The pipeline is split into two main components, as described below. 
+### (3) Run downstream analysis (optional but recommended for dN/dS and re-analysis)
 
-### 1. Snakemake pipeline
+Use the final NPZ from:
+`<output_dir>/3-AccuSNV/group_<group_id>/candidate_mutation_table_final.npz`
 
-The first portion of AccuSNV aligns raw sequencing data from bacterial isolates to a reference genome, identifies candidate SNV positions, and creates useful data structure for model classification. This step is implemented in a workflow management system called [Snakemake](http://snakemake.readthedocs.io) and is executed on a [SLURM cluster](https://slurm.schedmd.com/documentation.html). More information is available [here](readme_files/readme_snake_main.md).
+```
+python accusnv_downstream.py \
+  -i <output_dir>/3-AccuSNV/group_<group_id>/candidate_mutation_table_final.npz \
+  -r <reference_genomes_dir>/<reference_name> \
+  -o <downstream_output_dir>
+```
+Note: NPZ files under `2-Case/candidate_mutation_table` are for the local AccuSNV script (`new_snv_script.py`), not for `accusnv_downstream`
 
-<!--- #### 1.1 Update - 2025-02-21: A user-friendly Python script is now available to help users run the pipeline more easily. Instructions are provided below:
+<!---
+# Bioconda command (equivalent to the above):
+# accusnv_downstream -i <final_cmt_npz> -r <reference_dir> -o <downstream_output_dir>
+-->
 
+### (4) Main output files to look at
 
-Make sure to configure your `config.yaml` file and `scripts/run_snakemake.slurm` before starting the steps below.. -->
+(Core output are in the `<output_dir>/3-AccuSNV/<folder_name>` from (2). E.g., for **Quick Test**, this is `cae_pe_test_snakemake/3-AccuSNV/group_pe_test/` folder.)
 
-⚠️: **Please ensure the right permission of the file `slurm_status_script.py`**:
+Final SNV table: `snv_table_merge_all_mut_annotations_final.tsv`
 
-`chmod 777 slurm_status_script.py`<BR/>
+Interactive report: `snv_table_with_charts_final.html` (keep `bar_charts/` beside it).
 
-⚠️ : If you installed the tool via **Bioconda** and want to run Snakemake directly from the snake_pipeline folder (instead of from an empty directory as described in Option-1 of the installation section), please run the following command before doing anything else:
+Downstream input/output anchor: `candidate_mutation_table_final.npz`.
 
-`cd snake_pipeline`<BR/>
-`cp Snakefiles_diff_options/Snakefile_conda_env.txt  ./Snakefile`
+You can find examples to these four output files in the [demo_output](demo_output) folder.
 
-✅ Step-1: run the python script: <BR/>
 
-`python accusnv_snakemake.py -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
+## Output
 
-or use (if you install the tool via **bioconda**):
+The main output files  are in the `<output_folder>/3-AccuSNV/<folder_name>` (e.g., for **Quick Test**, this is `cae_pe_test_snakemake/3-AccuSNV/group_pe_test/`) folder. 
+### Core files:
 
-`accusnv_snakemake -i <input_sample_info_csv> -r <ref_dir> -o <output_dir>`
+| File or Folder |  Description |
+| ---  | --- | 
+| `snv_table_merge_all_mut_annotations_final.tsv`  | Final merged SNV report table (recommended primary text result for interpretation). More details, including explanations of the columns in this file, can be found [here](readme_files/readme_annotation_table.md).
+| `snv_table_cnn_plus_filter.txt` | Per-position prediction/filter summary table (CNN output + rule-based filters (from WideVariant)). Note that this file does not include annotation information for each SNV.
+| `snv_table_with_charts_final.html`  | Interactive final HTML report for the final merged table (recommended to view). Keep `bar_charts/` in the same output folder so image links work.
+| `candidate_mutation_table_final.npz`  | Final machine-readable SNV matrix for downstream analysis. Contains arrays such as sample names, genomic positions, counts, quality values, prediction labels/probabilities, and recombination flags. This is the main input for `accusnv_downstream`.
 
-(⚠️ For bioconda installation, we strongly recommend running the command line above in a clean, empty folder. You can use `mkdir work_dir` to build such folder.)
+You can find examples to these four core output files in the [demo_output](demo_output) folder.
 
-✅ Step-2: check the pipeline using "dry-run"<BR/>
+For final SNV calling results, please use:
 
-`sh scripts/dry-run.sh`<BR/>
+`snv_table_merge_all_mut_annotations_final.tsv` as the primary human-readable SNV result table (final filtered/merged report).
 
-✅ Step-3: submit your slurm job.<BR/>
+`candidate_mutation_table_final.npz` as the machine-readable final result for any downstream analysis or re-analysis.
 
-`sbatch scripts/run_snakemake.slurm`<BR/>
+For full documentation of all output files, please see [here](readme_files/readme_test_output.md).
 
-⚠️: If you need to modify any slurm job configuration, you can edit the config.yaml file generated in your output folder: `<output_dir>/conf/config.yaml`
+A demo output HTML report of AccuSNV can be found at https://heruiliao.github.io/
 
-⚠️: Job Interruption Warning: If your job stops before completing, you can check whether any tasks are still pending by running: `sh scripts/dry-run.sh`. If there are unfinished jobs, you can re-submit them using: `sbatch scripts/run_snakemake.slurm`.
-
-⚠️⚠️⚠️: Job interruptions may be caused by issues with specific compute nodes or limitations of the cluster being used (e.g. Timelimit or QOSMaxSubmitJobPerUserLimit). To avoid such interruptions, consider: 
-
-[1]. Use only one partion (modify `- partition="A,B,C"` to `- partition="A"` in `config.yaml`) and set maximum job in `run_snakemake.slurm` or `config.yaml` (see [2] and [3]). 
-	
-[2]. modifying your `scripts/run_snakemake.slurm` file (e.g. `snakemake --jobs <maxSubmitJob> --max-jobs-per-second 0.5  --max-status-checks-per-second 0.2 xxx`) or 
-
-[3]. modifying your config.yaml file (`<output_dir>/conf/config.yaml`, e.g. change `jobs: 400` to `jobs: <maxSubmitJob>`, and add `max-jobs-per-second: 0.5`, and `max-status-checks-per-second: 0.2`). 
-	
-If still interruption, please reach out via herui728@mit.edu.
-
-----------------------------------
-Notes for Step-1: 
-
-One example (This example uses commands like `python accusnv_snakemake.py xxx`. If you installed the tool via Bioconda, please replace those with: `accusnv_snakemake xxx`)  with test data can be found in `snake_pipeline/test_run.sh`
-
-If you cloned the repository (e.g. a new download) and have already downloaded the pre-built Conda environment (e.g., /path/snake_pipeline/accusnv_sub), there's no need to download it again. Just try:
-
-`python accusnv_snakemake.py -i <input_sample_info_csv> -c /path/snake_pipeline/accusnv_sub -r <ref_dir> -o <output_dir>`
-
-One example file for `<input_sample_info_csv>` can be found at `snake_pipeline/samples.csv`. More information about the input csv and the reference genome file can be found at [here](https://github.com/liaoherui/AccuSNV/blob/main/readme_files/readme_snake_run.md#modify-files-for-your-project)
-
-----------------------------------
-
-
-### 2.1. Local python analysis
-
-⚠️: This step has been incorporated into the Snakemake pipeline and will be executed automatically by default. However, you can still use this local Python script to rerun the analysis with different parameters if needed.
-
-`python new_snv_script.py -i <input_mutation_table> -c <input_raw_coverage_matrix> -r <ref_dir> -o <output_dir>`
-
-or use (if you install the tool via bioconda):
-
-`accusnv -i <input_mutation_table> -c <input_raw_coverage_matrix> -r <ref_dir> -o <output_dir>`
-
-One example with test data can be found in `local_analysis/test_local.sh`
-
-The second portion of AccuSNV filters candidate SNVs based on data arrays generated in the first portion and generates a high-quality SNV table and a parsimony tree. This step utilizes deep learning and is implemented with a custom Python script. More information can be found [here](readme_files/readme_local_main.md).
-
-<a id="custom-anchor"></a>
-### 2.2. Local downstream analysis
-
-Based on the identified SNVs and **the output final mutation table (in .npz format, e.g. candidate_mutation_table_final.npz under the folder 3-AccuSNV) from Snakemake pipeline**, AccuSNV offers a set of downstream analysis modules (e.g. dN/dS calculation). You can run these modules using the command below.
-
-(Note, .npz file under the folder **2-Case** can by only used as input to Local python analysis - `new_snv_script.py`)
-
-`python accusnv_downstream.py -i  test_data/candidate_mutation_table_final.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_ds_pe`
-
-or use (if you install the tool via bioconda):
-
-`accusnv_downstream -i  test_data/candidate_mutation_table_final.npz -r ../snake_pipeline/reference_genomes/Cae_ref -o cae_accusnv_ds_pe`
-
-
-### Full command-line options
+## Full command-line options
 
 Snakemake pipeline - accusnv_snakemake.py 
 ```
@@ -246,10 +220,16 @@ options:
   -h, --help            show this help message and exit
   -i INPUT_SP, --input_sample_info INPUT_SP
                         The dir of input sample info file --- Required
-  -t TF_SLURM, --turn_off_slurm TF_SLURM
-                        If set to 1, the SLURM system will not be used for automatic job
-                        submission. Instead, all jobs will run locally or on a single
-                        node. (Default: 0)
+  -a ALIGNER, --aligner ALIGNER
+                        The aligner used for read mapping, can be either BWA or Bowtie2. E.g. You can set "-a bowtie2" to use bowtie2. (Default: -a bwa)
+  -p SAMCLIP, --samclip SAMCLIP
+                        If set to 1, samclip will be used when the aligner is BWA. Note that this parameter is not applicable when Bowtie2 is used as the
+                        aligner. (Default: 0)
+  -t ALIGNER_THREADS, --aligner_threads ALIGNER_THREADS
+                        The threads for the aligner - bwa or bowtie2 (Default: 4)
+  -f TF_SLURM, --turn_off_slurm TF_SLURM
+                        If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node.
+                        (Default: 0)
   -c CP_ENV, --conda_prebuilt_env CP_ENV
                         The absolute dir of your pre-built conda env. e.g.
                         /path/snake_pipeline/accusnv_sub
@@ -311,36 +291,11 @@ options:
                         The output dir
 ```
 
-
-## Output
-
-
-<img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/output_downstream_new_single.jpg" width = "700" height = "650" >  
-
-The main output folder structure of Snakemake pipeline is shown below:
-
-```
-1-Mapping - Alignment temporary files
-2-Case - candidate mutation tables for 3-AccuSNV
-3-AccuSNV - Main output of Snakemake pipeline
-```
-
-
-Important and major output files:
-Header    |Description	
------------- | ------------- 
-candidate_mutation_table_final.npz | NPZ table used for downstream analysis modules.
-snv_table_merge_all_mut_annotations_final.tsv | Text report - contain identified SNVs and related information.
-snv_qc_heatmap_*.png | QC figures
-snv_table_with_charts_final.html | Html report - display the comprehensive information about identified SNVs. Note, if you want to see the bar charts in the html file, make sure you have the folder "bar_charts" under the same folder with the html file.
-
-A demo output HTML report of AccuSNV can be found at https://heruiliao.github.io/
-
- ## -Contact-
+## -Contact-
   
  If you have any questions, please post an issue on GitHub or email us: herui728@mit.edu
 
- ## References:
+## References:
 
 how to cite this tool:
 ```
@@ -348,26 +303,5 @@ Liao, H., Conwill, A., & Light-Maka, Ian., et al. High-accuracy SNV calling for 
 ```
 
 
-<!--- ## Tutorial Table of Contents
-
-[Main WideVariant pipeline README](README.md)
-* [Snakemake pipeline](readme_files/readme_snake_main.md)
-	* [Overview and how to run the snakemake pipeline](readme_files/readme_snake_run.md)
-	* [Technical details about the snakemake pipeline](readme_files/readme_snake_rules.md)
-	* [Wishlist for snakemake pipeline upgrades](readme_files/readme_snake_wishlist.md)
-	* [Helpful hints for using the command line](readme_files/readme_snake_basics.md)
-* [Local analysis](readme_files/readme_local_main.md)
-	* [How to run the local analysis script](readme_files/readme_local_run.md)
-	* [Wishlist for local analysis upgrades](readme_files/readme_local_wishlist.md)
-	* [Python best practices](readme_files/readme_local_best.md)
-
-
-
-## Example use cases
-
-Previous iterations of this pipeline have been used to study:
-* [_C. acnes_ biogeography in the human skin microbiome](https://www.sciencedirect.com/science/article/pii/S1931312821005783)
-* [Adaptive evolution of _S. aureus_ on patients with atopic dermatitis](https://www.biorxiv.org/content/10.1101/2021.03.24.436824v3)
-* [Adaptive evolution of _B. fragilis_ on healthy people](https://www.sciencedirect.com/science/article/pii/S1931312819301593) -->
 
 

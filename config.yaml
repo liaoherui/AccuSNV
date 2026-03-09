@@ -1,0 +1,100 @@
+#change configfile to point to experiment_config.yaml for this experiment
+#change mkdir, --output and --error to point to log folder for this experiment
+#change mail-user, mail-type to point to your email
+#can change default resources or set-resources as needed
+
+
+snakefile: Snakefile
+use-conda: True
+conda-frontend: mamba
+rerun-incomplete: True
+restart-times: 1
+jobs: 400
+latency-wait: 30
+keep-going: True
+configfile: ./experiment_info.yaml
+conda-prefix: ~/miniconda3/envs/accusnv
+cluster-status: ./slurm_status_script.py
+reason: True
+# dryrun: True
+# unlock: True
+
+cluster:
+  mkdir -p ./logs/ &&
+  sbatch
+    --partition={resources.partition}
+    --ntasks={resources.ntasks}
+    --cpus-per-task={resources.cpus_per_task}
+    --mem={resources.mem}
+    --time={resources.time}
+    --job-name="SM.{rule}"
+    --output="./logs/%j_{rule}.err.txt"
+    --error="./logs/%j_{rule}.err.txt"
+    --mail-user="UPDATE_EMAIL_ADDRESS"
+    --mail-type="FAIL"
+
+#note that resource names should use underscore _ instead of dash -
+
+default-resources:
+   - partition="sched_mit_tami,mit_normal,newnodes,sched_mit_chisholm,sched_mit_hill"
+   - time="1:00:00"
+   - ntasks=1
+   - cpus_per_task=1
+   - mem=100000
+
+set-resources:
+   # make_data_links
+   #- make_data_links:partition="sched_mit_hill"
+   # cutadapt
+   - cutadapt:ntasks=1
+   - cutadapt:cpus_per_task=1
+   - cutadapt:time="04:00:00"
+   # sickle
+   - sickle:ntasks=1
+   - sickle:cpus_per_task=1
+   - sickle:time="04:00:00"
+   # bowtie2
+   - bowtie2:mem=64000
+   - bowtie2:cpus_per_task=8
+   - bowtie2:time="02:00:00"
+   # sam2bam
+   - sam2bam:mem=64000
+   - sam2bam:cpus_per_task=1
+   - sam2bam:time="12:00:00"
+   # mpileup2vcf
+   - mpileup2vcf:mem=60000
+   - mpileup2vcf:cpus_per_task=1
+   - mpileup2vcf:time="12:00:00"
+   # pileup2diversity_matrix
+   - pileup2diversity_matrix:mem=60000
+   - pileup2diversity_matrix:cpus_per_task=1
+   - pileup2diversity_matrix:time="12:00:00"
+   # variants2positions
+   - variants2positions:mem=60000
+   - variants2positions:mem_per_cpu=60000
+   - variants2positions:cpus_per_task=1
+   - variants2positions:time="02:00:00"
+   # combine_positions
+   - combine_positions:mem=60000
+   - combine_positions:mem_per_cpu=60000
+   - combine_positions:cpus_per_task=1
+   - combine_positions:time="02:00:00"
+   # build_data_links
+   - build_data_links:mem=24000
+   - build_data_links:mem_per_cpu=24000
+   - build_data_links:cpus_per_task=10
+   - build_data_links:time="12:00:00"
+   # kraken2
+   - kraken2:mem_per_cpu=10000
+   - kraken2:cpus_per_task=20
+   - kraken2:time="05:00:00"
+   # spades
+   - spades:mem=500G
+   - spades:cpus_per_task=16
+   - spades:time="12:00:00"
+   # sumstats
+   - sumstats:mem=10000
+   # prokka
+   - prokka:mem=100G
+   - prokka:cpus_per_task=16
+   - prokka:time="04:00:00"

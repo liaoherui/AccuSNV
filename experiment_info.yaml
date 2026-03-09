@@ -1,0 +1,10 @@
+experiment_name: "test"
+sample_table: cae_pe_test_new/temp/samples_cae_test_pe_rebuild_0fdc5554181411f1bfea724fea577d33_tem.csv
+myscripts_directory: ./scripts
+ref_genome_directory: /orcd/data/tami/003/projects/herui/accusnv_new_version_update_2026/herui_rebuild_02112026/reference_genomes
+min_cov_samp: "45"
+min_cov_filt: "5"
+greport: "1"
+aligner_threads: "4"
+exclude_samp: "null"
+outdir: cae_pe_test_new
