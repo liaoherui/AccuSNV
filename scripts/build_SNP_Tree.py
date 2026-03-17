@@ -17,6 +17,9 @@ from datetime import datetime, date, time
 from matplotlib import rc
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
+import functools
+# Make all print() calls flush immediately so progress is visible in real time
+print = functools.partial(print, flush=True)
 
 
 
@@ -129,7 +132,14 @@ def convert_csv(chart_raw,mode,out):
 		
 
 
-def mutationtypes(tree, chart_raw,mode,out):
+def mutationtypes(tree, chart_raw, mode, out, max_positions=None):
+	'''
+	Generate per-position SNP tree files.
+
+	max_positions: if provided, only process the first max_positions SNV positions
+	               (consistent with bar_chart generation which also uses a chart_limit).
+	               If None, process all positions.
+	'''
 
 	chart,raw_pos=convert_csv(chart_raw,mode,out)
 	#print(chart,raw_pos)
@@ -139,19 +149,26 @@ def mutationtypes(tree, chart_raw,mode,out):
 	tout=out+'/snp_trees'
 	if not os.path.exists(tout):
 		os.makedirs(tout)
-		
+
 
 	ATCG=['A','C','T','G']
 
 
-		
+
 	f=open(chart,'r').readlines()
+	all_rows = f[1:]  # skip header
+	# Apply the same positional limit as bar_chart generation
+	if max_positions is not None and len(all_rows) > max_positions:
+		print(f'  [mutationtypes] Limiting SNP tree generation to first {max_positions}/{len(all_rows)} positions (same as bar_chart limit).')
+		all_rows = all_rows[:max_positions]
+	else:
+		print(f'  [mutationtypes] Generating SNP trees for all {len(all_rows)} positions.')
 	#chromosomes=load_chr(chart)
 
-	
+
 	pidx=0
-	for i, line in enumerate(f[1:]):
-	
+	for i, line in enumerate(all_rows):
+
 		l=line.strip().split(',')
 		if len(l) < 5:
 			print(l)
@@ -161,7 +178,7 @@ def mutationtypes(tree, chart_raw,mode,out):
 		#print(chromosome)
 		#exit()
 		pos=l[1]
-		
+
 		#use first strain as lca
 		lca=l[4]
 
@@ -172,7 +189,7 @@ def mutationtypes(tree, chart_raw,mode,out):
 		a, mutlist= mutation_count(newtree, lca)
 		#print(a,mutlist)
 		#exit()
-		
+
 		if a==0:
 			print('NO MUTS:')
 			#pass
@@ -195,10 +212,10 @@ def annotateSNP(tree, dict, chromosome,pos):
 
 	f=open(dict).readlines()
 	fo=open('temptree.txt','w')
-	
+
 	header=f[0].strip().split(',')
 	locations=[]
-	
+
 	for n,i in enumerate(header):
 		if not re.search('pos',i) and not re.search('chr',i) :
 			locations.append(n)
@@ -240,24 +257,24 @@ def nameswap(tree, dictionary):
 	dict={}
 	annotation={}
 	newname={}
-	
+
 	#print header for tempnexus
 	fo=open('tempnexus.txt','w')
-	fo.write('#NEXUS\nbegin taxa;\n\tdimensions ntax='+str(numStrains)+';\n\ttaxlabels\n')			
+	fo.write('#NEXUS\nbegin taxa;\n\tdimensions ntax='+str(numStrains)+';\n\ttaxlabels\n')
 	colors={'A':'[&!color=#-16776961]', 'C':'[&!color=#-16725916]','G':'[&!color=#-3670016]','T':'[&!color=#-3618816]','?':'[&!color=#-16777216]','N':'[&!color=#-16777216]'}
 	ambiguous=['R','Y','M','K','S','W']
 	for each in ambiguous:
 		colors[each]='[&!color=#-16777216]'
-				
+
 	#get annotations
 	f=open(dictionary, 'r').readlines()
 	for line in f:
 		if not line.startswith('#'):
 			l=line.split()
 			annotation[l[0]]=l[1]
-	
-	
-	#combine names and annotations	
+
+
+	#combine names and annotations
 	for i in annotation.keys():
 		newname[i]=i+ '--*'+ annotation[i]
 		#print(newname)
@@ -273,9 +290,9 @@ def nameswap(tree, dictionary):
 	#make new tree
 	f=open(tree,'r').readlines()
 	#print(tree)
-	
+
 	newtree=''
-	
+
 	for line in f:
 		line=line.strip()
 		#print(line)
@@ -359,7 +376,7 @@ def nameswap(tree, dictionary):
 	fo.write('end;')
 	fo.close()
 	#exit()
-	return newtree	
+	return newtree
 
 
 
@@ -376,6 +393,5 @@ def nameswap(tree, dictionary):
 # 		print('Done.')
 
 
-		
-		
 
+		
