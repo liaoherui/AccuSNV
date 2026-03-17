@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import copy
+import functools
 import torch
 import random
 import numpy as np
@@ -11,6 +12,8 @@ from scipy import stats
 from scipy.stats import norm
 from statsmodels.stats.power import TTestPower
 from torch.utils.data import Dataset, DataLoader
+# Make all print() calls flush immediately so progress is visible in real time
+print = functools.partial(print, flush=True)
 #from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score,roc_auc_score,confusion_matrix, classification_report
 script_dir = os.path.dirname(os.path.abspath(__file__))
 dir_py_scripts = script_dir+"/scripts"
