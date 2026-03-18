@@ -19,7 +19,7 @@ This pipeline and toolkit is used to detect and analyze single nucleotide differ
 * Inputs (to Snakemake cluster step): 
 	* short-read sequencing data of bacterial isolates
 	* an annotated reference genome
-  * More details can be found in [here](#readme_files/readme_input_csv.md)
+  * More details can be found in [here](readme_files/readme_input_csv.md).
   
 * Outputs (of downstream analysis step): 
 	* table of high-quality SNVs that differentiate isolates from each other
