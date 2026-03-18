@@ -16,12 +16,12 @@ This pipeline and toolkit is used to detect and analyze single nucleotide differ
 	* Avoids false SNV calling through a deep learning method, while also enabling visualization of raw data.
 	* Enables evolutionary analysis, including phylogenetic construction, nonsynonmous vs synonymous mutation counting, and parallel evolution, etc.
 
-* Inputs (to Snakemake cluster step): 
+* Inputs: 
 	* short-read sequencing data of bacterial isolates
 	* an annotated reference genome
   * More details can be found in [here](readme_files/readme_input_csv.md).
   
-* Outputs (of downstream analysis step): 
+* Outputs: 
 	* table of high-quality SNVs that differentiate isolates from each other
 	* parsimony tree of how the isolates are related to each other
   * More details can be found in [here](#output)
