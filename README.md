@@ -8,6 +8,24 @@ The workflow of AccuSNV:
 
 # <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/method_fix.jpg" width = "800" height = "500" >  
 
+## Overview
+
+This pipeline and toolkit is used to detect and analyze single nucleotide differences between bacterial isolates from WGS data. 
+
+* Noteable features
+	* Avoids false SNV calling through a deep learning method, while also enabling visualization of raw data.
+	* Enables evolutionary analysis, including phylogenetic construction, nonsynonmous vs synonymous mutation counting, and parallel evolution, etc.
+
+* Inputs (to Snakemake cluster step): 
+	* short-read sequencing data of bacterial isolates
+	* an annotated reference genome
+  * More details can be found in [here](#readme_files/readme_input_csv.md)
+  
+* Outputs (of downstream analysis step): 
+	* table of high-quality SNVs that differentiate isolates from each other
+	* parsimony tree of how the isolates are related to each other
+  * More details can be found in [here](#output)
+
 -------------------------------------------------
 ### Version: V1.0.0.6 (Last update on 2026-Mar)
 - Log: if you are looking for v1.0.0.5 (the original version, main branch), you can find it [here](https://github.com/liaoherui/AccuSNV/tree/main)!
