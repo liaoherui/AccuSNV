@@ -77,7 +77,7 @@ Quick test with the provided test data.
 python accusnv_snakemake.py -f 1 -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
 
 # Snakemake dry-run step: simulates the execution of a workflow without actually running any jobs or creating output files
-sh scripts/dru-run.sh
+sh scripts/dru_run.sh
 
 # Run the pipeline locally
 sh scripts/run_snakemake_local.sh
@@ -104,7 +104,7 @@ python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/ca
 python accusnv_snakemake.py -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
 
 # Snakemake dry-run step
-sh scripts/dru-run.sh
+sh scripts/dru_run.sh
 
 # Run the pipeline on HPC compute nodes; the jobs will be automatically submitted through the Slurm system.
 sbatch scripts/run_snakemake.slurm
