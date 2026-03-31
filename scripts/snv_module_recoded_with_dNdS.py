@@ -2420,7 +2420,7 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
 
         # Get info on annotations at this SNV position
         contig_idx = contigpos_gp[i][0]
-        if mut_cds_indices[i] == int(mut_cds_indices[i]): # Intragenic
+        if mut_cds_indices[i] > 0 and mut_cds_indices[i] == int(mut_cds_indices[i]): # Intragenic
         
             # Get annotations from row in dataframe 
             p_anno = annotation_genes[contig_idx-1].iloc[int(mut_cds_indices[i])-1] # first -1 bcs contigs indexed starting at 1; second -1 bcs cds_indices indexed at 1 but dataframe rows indexed at zero

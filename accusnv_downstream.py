@@ -18,7 +18,7 @@ import traceback
 script_dir = os.path.dirname(os.path.abspath(__file__))
 dir_py_scripts = script_dir+"/scripts"
 sys.path.insert(0, dir_py_scripts)
-import snv_module_recoded_with_dNdS_test as snv
+import snv_module_recoded_with_dNdS as snv
 import build_SNP_Tree as bst
 
 parser=argparse.ArgumentParser(prog='Downstream analysis module of AccuSNV',description='SNV calling tool for bacterial isolates using deep learning.')
