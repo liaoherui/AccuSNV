@@ -306,15 +306,16 @@ calls_goodpos_ingroup_all = calls_goodpos_all[ np.logical_not( my_calls.in_outgr
 #calls_all = my_calls.calls
 #calls_ingroup_all = calls_all[ np.logical_not( my_calls.in_outgroup ),: ]
 
-
 # Filters
 filter_SNVs_not_N = ( calls_ingroup != snv.nts2ints('N') ) # mutations must have a basecall (not N)
 filter_SNVs_not_ancestral_allele = ( calls_ingroup != np.tile( calls_ancestral, (num_samples_ingroup,1) ) ) # mutations must differ from the ancestral allele
+filter_SNVs_quals_not_NaN = ( np.tile( mut_qual, (num_samples_ingroup,1) ) >= 1 ) # alleles must have strong support (same threshold as new_snv_script.py)
 
 # Fixed mutations per sample per position
 fixedmutation = \
     filter_SNVs_not_N \
-    & filter_SNVs_not_ancestral_allele 
+    & filter_SNVs_not_ancestral_allele \
+    & filter_SNVs_quals_not_NaN
 
 goodpos_bool = np.any( fixedmutation, axis=0 )
 goodpos_idx = np.where( goodpos_bool )[0]
