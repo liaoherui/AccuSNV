@@ -347,14 +347,20 @@ goodpos_idx = np.where( goodpos_bool )[0]
 p_goodpos_all = my_calls.p
 goodpos_idx_all = np.where( goodpos_bool)[0]
 
+# Recompute ingroup calls from already-filtered my_calls, and create ingroup-only CMT
+# (calls_goodpos_ingroup_all computed before filtering is stale and has wrong column count)
+calls_goodpos_ingroup_all = my_calls.calls[ np.logical_not( my_calls.in_outgroup ),: ]
+my_cmt_ingroup = my_cmt.copy()
+my_cmt_ingroup.filter_samples( np.logical_not( my_cmt.in_outgroup ) )
+
 # Parameters
 promotersize = 250; # how far upstream of the nearest gene to annotate something a promoter mutation (not used if no annotation)
 mutations_annotated = snv.annotate_mutations( \
     my_rg, \
     p_goodpos_all, \
-    np.tile( calls_ancestral[goodpos_idx], (my_cmt.num_samples,1) ), \
+    np.tile( calls_ancestral[goodpos_idx], (my_cmt_ingroup.num_samples,1) ), \
     calls_goodpos_ingroup_all, \
-    my_cmt, \
+    my_cmt_ingroup, \
     fixedmutation[:,goodpos_idx_all], \
     mut_qual[:,goodpos_bool].flatten(), \
     promotersize \
