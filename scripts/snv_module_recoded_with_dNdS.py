@@ -2420,7 +2420,7 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
 
         # Get info on annotations at this SNV position
         contig_idx = contigpos_gp[i][0]
-        if mut_cds_indices[i] > 0 and mut_cds_indices[i] == int(mut_cds_indices[i]): # Intragenic
+        if mut_cds_indices[i] > 0 and mut_cds_indices[i] == int(mut_cds_indices[i]) and contig_idx-1 < len(annotation_genes): # Intragenic
         
             # Get annotations from row in dataframe 
             p_anno = annotation_genes[contig_idx-1].iloc[int(mut_cds_indices[i])-1] # first -1 bcs contigs indexed starting at 1; second -1 bcs cds_indices indexed at 1 but dataframe rows indexed at zero
@@ -2514,7 +2514,7 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
         else: # Intergenic
         
             # Get info for gene prior to SNP (if any)
-            if int(mut_cds_indices[i])>0: 
+            if int(mut_cds_indices[i])>0 and contig_idx-1 < len(annotation_genes):
                 p_anno = annotation_genes[contig_idx-1].iloc[int(mut_cds_indices[i])-1] # first -1 bcs contigs indexed starting at 1; second -1 bcs cds_indices indexed at 1 but dataframe rows indexed at zero
                 mut_annotations['gene1'] = p_anno.loc['gene']
                 mut_annotations['locustag1'] = p_anno.loc['locustag']
@@ -2522,9 +2522,9 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
                 mut_annotations['distance1'] = mut_annotations['contig_pos'] - p_anno.loc['loc2'] # how far back the previous gene is
                 if p_anno.loc['strand'] == -1:
                     mut_annotations['distance1'] = mut_annotations['distance1'] * -1
-            
+
             # Get info for gene after SNP (if any)
-            if int(mut_cds_indices[i]+0.5) <= annotation_genes[contig_idx-1].shape[0] and annotation_genes[contig_idx-1].shape[1] != 0: 
+            if contig_idx-1 < len(annotation_genes) and int(mut_cds_indices[i]+0.5) <= annotation_genes[contig_idx-1].shape[0] and annotation_genes[contig_idx-1].shape[1] != 0:
                 p_anno = annotation_genes[contig_idx-1].iloc[int(mut_cds_indices[i])] # first -1 bcs contigs indexed starting at 1; second -1 bcs cds_indices indexed at 1 but dataframe rows indexed at zero
                 mut_annotations['gene2'] = p_anno.loc['gene']
                 mut_annotations['locustag2'] = p_anno.loc['locustag']
