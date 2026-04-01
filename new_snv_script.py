@@ -1023,15 +1023,73 @@ calls_ancestral_goodpos_all = calls_ancestral[ goodpos_bool_all ]
 # Parameters
 promotersize = 250; # how far upstream of the nearest gene to annotate something a promoter mutation (not used if no annotation)
 
+# For annotation only, rebuild calls using downstream-style looser thresholds
+# so Mutation/type are annotated consistently with accusnv_downstream.py.
+# Keep the same p_goodpos_all positions selected by step1; only the annotation
+# inputs (calls / ancestral / fixedmutation / mut_qual) are rebuilt here.
+my_cmt_annot_all = my_cmt.copy()
+my_cmt_annot_all.filter_positions( goodpos_bool_all )
+
+my_calls_annot_all = snv.calls_object( my_cmt_annot_all )
+
+# downstream-style fill-N filters
+my_calls_annot_all.filter_calls_by_element(
+    my_cmt_annot_all.coverage < 1
+    )
+my_calls_annot_all.filter_calls_by_element(
+    my_cmt_annot_all.quals < 30
+    )
+my_calls_annot_all.filter_calls_by_element(
+    my_cmt_annot_all.major_nt_freq < 0.75
+    )
+my_calls_annot_all.filter_calls_by_element(
+    my_cmt_annot_all.fwd_cov < 1
+    )
+my_calls_annot_all.filter_calls_by_element(
+    my_cmt_annot_all.rev_cov < 1
+    )
+
+# infer ancestral alleles from the looser call set
+calls_outgroup_annot = my_calls_annot_all.get_calls_in_outgroup_only()
+calls_outgroup_annot_nan = calls_outgroup_annot.astype('float')
+calls_outgroup_annot_nan[ calls_outgroup_annot_nan==0 ] = np.nan
+
+calls_ancestral_annot = np.zeros( my_calls_annot_all.num_pos, dtype='int')
+outgroup_pos_with_calls_annot = np.any(calls_outgroup_annot,axis=0)
+calls_ancestral_annot[outgroup_pos_with_calls_annot] = stats.mode(
+    calls_outgroup_annot_nan[:,outgroup_pos_with_calls_annot],
+    axis=0,
+    nan_policy='omit'
+    ).mode.squeeze()
+
+calls_reference_annot = my_rg.get_ref_NTs_as_ints( my_cmt_annot_all.p )
+pos_to_update_annot = ( calls_ancestral_annot==0 )
+calls_ancestral_annot[ pos_to_update_annot ] = calls_reference_annot[ pos_to_update_annot ]
+
+# mutation quality and fixedmutation using the same looser annotation calls
+calls_ingroup_annot = my_calls_annot_all.get_calls_in_sample_subset( np.logical_not( my_calls_annot_all.in_outgroup ) )
+quals_ingroup_annot = my_cmt_annot_all.quals[ np.logical_not( my_calls_annot_all.in_outgroup ),: ]
+num_samples_ingroup_annot = sum( np.logical_not( my_calls_annot_all.in_outgroup ) )
+[ mut_qual_annot, mut_qual_samples_annot ] = snv.compute_mutation_quality( calls_ingroup_annot, quals_ingroup_annot )
+
+filter_SNVs_not_N_annot = ( calls_ingroup_annot != snv.nts2ints('N') )
+filter_SNVs_not_ancestral_allele_annot = ( calls_ingroup_annot != np.tile( calls_ancestral_annot, (num_samples_ingroup_annot,1) ) )
+fixedmutation_annot = filter_SNVs_not_N_annot & filter_SNVs_not_ancestral_allele_annot
+
+my_cmt_annot_ingroup_all = my_cmt_annot_all.copy()
+my_cmt_annot_ingroup_all.filter_samples( np.logical_not( my_cmt_annot_ingroup_all.in_outgroup ) )
+
+calls_goodpos_ingroup_all_annot = calls_ingroup_annot
+
 # Make a table (pandas dataframe) of SNV positions and relevant annotations
 mutations_annotated = snv.annotate_mutations( \
     my_rg, \
     p_goodpos_all, \
-    np.tile( calls_ancestral[goodpos_idx_all], (my_cmt_goodpos_ingroup_all.num_samples,1) ), \
-    calls_goodpos_ingroup_all, \
-    my_cmt_goodpos_ingroup_all, \
-    fixedmutation[:,goodpos_idx_all], \
-    mut_qual[:,goodpos_bool_all].flatten(), \
+    np.tile( calls_ancestral_annot, (my_cmt_annot_ingroup_all.num_samples,1) ), \
+    calls_goodpos_ingroup_all_annot, \
+    my_cmt_annot_ingroup_all, \
+    fixedmutation_annot, \
+    mut_qual_annot.flatten(), \
     promotersize \
     ) 
 
