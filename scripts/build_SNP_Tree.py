@@ -129,7 +129,7 @@ def convert_csv(chart_raw,mode,out):
 		
 
 
-def mutationtypes(tree, chart_raw,mode,out):
+def mutationtypes(tree, chart_raw,mode,out,max_trees=None):
 
 	chart,raw_pos=convert_csv(chart_raw,mode,out)
 	#print(chart,raw_pos)
@@ -151,7 +151,9 @@ def mutationtypes(tree, chart_raw,mode,out):
 	
 	pidx=0
 	for i, line in enumerate(f[1:]):
-	
+		if max_trees is not None and i >= max_trees:
+			break
+
 		l=line.strip().split(',')
 		if len(l) < 5:
 			print(l)
