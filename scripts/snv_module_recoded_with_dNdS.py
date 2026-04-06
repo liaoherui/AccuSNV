@@ -112,6 +112,7 @@ Felix Key, Arolyn Conwill, A. Delphine Tripp, Evan Qu, Laura Markey
 import os
 import re
 import glob
+import functools
 import pickle
 import copy as cp # https://docs.python.org/3/library/copy.html
 import gzip
@@ -144,6 +145,13 @@ import matplotlib.pyplot as plt
 # import matplotlib.mlab as mlab
 # from matplotlib.font_manager import FontProperties
 import pylab as pl
+
+# Make all print() calls flush immediately so progress is visible in real time
+print = functools.partial(print, flush=True)
+
+# Use a font guaranteed to be present; avoids "findfont: Arial not found" warnings
+mpl.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Liberation Sans', 'Bitstream Vera Sans', 'sans-serif']
+mpl.rcParams['font.family'] = 'sans-serif'
 
 
 
@@ -2928,160 +2936,112 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
     '''
     Writes a TSV file given an annotated SNV table.
     '''
-    
-    with open( tsv_filename, 'w') as f:
-        # header
-        f.write('genome_pos')
-        f.write('\t')
-        f.write('contig_idx')
-        f.write('\t')
-        f.write('contig_pos')
-        f.write('\t')
-        f.write('gene_num')
-        f.write('\t')
-        f.write('gene_num_global')
-        f.write('\t')
-        f.write('quality')
-        f.write('\t')
-        f.write('product')
-        f.write('\t')
-        f.write('protein_id')
-        f.write('\t')
-        f.write('ontology')
-        f.write('\t')
-        f.write('locustag')
-        f.write('\t')
-        f.write('strand')
-        f.write('\t')
-        f.write('loc1')
-        f.write('\t')
-        f.write('loc2')
-        f.write('\t')
-        # f.write('sequence')
-        # f.write('\t')
-        # f.write('translation')
-        # f.write('\t')
-        f.write('nt_pos')
-        f.write('\t')
-        f.write('aa_pos')
-        f.write('\t')
-        f.write('codons')
-        f.write('\t')
-        f.write('AA')
-        f.write('\t')
-        f.write('anc')
-        f.write('\t')
-        f.write('nts')
-        f.write('\t')
-        f.write('muts')
-        f.write('\t')
-        f.write('type')
-        for name in names_for_tree:
-            f.write('\t')
-            f.write(name)
-        f.write('\t')
-        f.write('sequence')
-        f.write('\t')
-        f.write('translation')
-        #f.write('\t')
-        f.write('\t\n')
-        # one line for each position
-        for i,pos in enumerate(mut_positions):
-            #print(i)
-            f.write( str(pos) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'contig_idx')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'contig_pos')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'gene_num_global')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'gene_num')) )
-            f.write('\t')
-            f.write( str(mut_quality[i]) )
-            f.write('\t')
-            next_product = annotation_mutations._get_value(i,'product')
-            if type(next_product)!=float:
-                f.write( next_product )
-            else:
-                f.write( str(next_product) )
-            f.write('\t')
-            next_protein_id = annotation_mutations._get_value(i,'protein_id')
-            if type(next_protein_id)==list:
-                next_protein_id=next_protein_id[0]
-            if type(next_protein_id)!=float:
-                f.write( next_protein_id )
-            else:
-                f.write( str(next_protein_id) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'ontology')) )
-            f.write('\t')
-            next_locustag= annotation_mutations._get_value(i,'locustag')
-            if type(next_locustag)!=float:
-                f.write( next_locustag )
-            else:
-                f.write( str(next_locustag) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'strand')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'loc1')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'loc2')) )
-            f.write('\t')
-            # next_seq = annotation_mutations._get_value(i, 'sequence')
-            # if type(next_seq) != float:  # value is nan if sequence does not exist
-            #     f.write(str(next_seq))
-            # f.write('\t')
-            # next_translation = annotation_mutations._get_value(i, 'translation')
-            # if type(next_translation) != float:
-            #     f.write(str(next_translation))
-            # f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'nt_pos')) )
-            f.write('\t')
-            f.write( str(annotation_mutations._get_value(i,'aa_pos')) )
-            f.write('\t')
-            next_codons = annotation_mutations._get_value(i,'codons')
-            if type(next_codons)!=float:
-                for codon in next_codons:
-                    f.write( str(codon)+' ' )
-            f.write('\t')
-            next_AA = annotation_mutations._get_value(i,'AA')
-            if type(next_AA)!=float:
-                for AA in next_AA:
-                    f.write( AA+' ' )
-            f.write('\t')
-            f.write( annotation_mutations._get_value(i,'anc') )
-            f.write('\t')
-            #f.write( annotation_mutations._get_value(i,'nts') )
-            unique_nts = ''.join(
-                nt for nt in sorted(set(calls_for_tree[:, i]))
-                if nt != 'N'
-            ) or 'N'
-            f.write(unique_nts)
-            f.write('\t')
-            next_muts = annotation_mutations._get_value(i,'muts')
-            if type(next_muts)==list:
-                for mut in next_muts:
-                    f.write( mut + ',')
-            else:
-                f.write( '.' )
-            f.write('\t')
-            f.write( annotation_mutations._get_value(i,'type') )
-            # Add basecalls for all samples
-            for j,name in enumerate(names_for_tree):
-                f.write('\t')
-                f.write(calls_for_tree[j,i])
-            f.write('\t')
-            next_seq = annotation_mutations._get_value(i, 'sequence')
-            if type(next_seq) != float:  # value is nan if sequence does not exist
-                f.write(str(next_seq))
-            f.write('\t')
-            next_translation = annotation_mutations._get_value(i, 'translation')
-            if type(next_translation) != float:
-                f.write(str(next_translation))
-            #f.write('\t')
-            f.write('\t\n')
-    
+    am = annotation_mutations  # short alias
+    n_pos = len(mut_positions)
+
+    # Pre-extract annotation columns as lists for O(1) indexed access
+    def _vals(col):
+        return list(am[col]) if col in am.columns else [None] * n_pos
+
+    contig_idx_v  = _vals('contig_idx')
+    contig_pos_v  = _vals('contig_pos')
+    gene_num_g_v  = _vals('gene_num_global')
+    gene_num_v    = _vals('gene_num')
+    product_v     = _vals('product')
+    protein_id_v  = _vals('protein_id')
+    ontology_v    = _vals('ontology')
+    locustag_v    = _vals('locustag')
+    strand_v      = _vals('strand')
+    loc1_v        = _vals('loc1')
+    loc2_v        = _vals('loc2')
+    nt_pos_v      = _vals('nt_pos')
+    aa_pos_v      = _vals('aa_pos')
+    codons_v      = _vals('codons')
+    AA_v          = _vals('AA')
+    anc_v         = _vals('anc')
+    muts_v        = _vals('muts')
+    type_v        = _vals('type')
+    seq_v         = _vals('sequence')
+    transl_v      = _vals('translation')
+
+    # Pre-transpose calls for column-wise access: shape (n_pos, n_samples)
+    calls_T = calls_for_tree.T  # (n_pos, n_samples)
+    # Pre-join sample names header
+    sample_header = '\t'.join(names_for_tree)
+
+    header = '\t'.join([
+        'genome_pos', 'contig_idx', 'contig_pos', 'gene_num', 'gene_num_global',
+        'quality', 'product', 'protein_id', 'ontology', 'locustag', 'strand',
+        'loc1', 'loc2', 'nt_pos', 'aa_pos', 'codons', 'AA', 'anc', 'nts',
+        'muts', 'type', sample_header, 'sequence', 'translation'
+    ]) + '\t\n'
+
+    lines = [header]
+
+    _report_every = max(1, n_pos // 20)  # ~5% intervals
+    print(f"[TSV] Writing {n_pos} positions...", flush=True)
+    for i, pos in enumerate(mut_positions):
+        if i % _report_every == 0:
+            print(f"  [TSV] {100 * i // n_pos:3d}% ({i}/{n_pos})", flush=True)
+        # Product / protein / locustag: preserve string, stringify NaN
+        product    = product_v[i]
+        protein_id = protein_id_v[i]
+        if isinstance(protein_id, list):
+            protein_id = protein_id[0]
+        locustag   = locustag_v[i]
+
+        # Codons / AA: lists joined with space
+        codons_raw = codons_v[i]
+        codons_str = (' '.join(str(c) for c in codons_raw) + ' ') if not isinstance(codons_raw, float) else ''
+        AA_raw     = AA_v[i]
+        AA_str     = (' '.join(str(a) for a in AA_raw) + ' ')     if not isinstance(AA_raw, float)     else ''
+
+        # Unique non-N basecalls
+        unique_nts = ''.join(sorted(set(calls_T[i]) - {'N'})) or 'N'
+
+        # Mutations list
+        muts_raw = muts_v[i]
+        muts_str = (','.join(muts_raw) + ',') if isinstance(muts_raw, list) else '.'
+
+        # Per-sample basecalls: one join instead of 334 writes
+        sample_calls = '\t'.join(calls_T[i])
+
+        # Sequence / translation
+        seq   = str(seq_v[i])   if not isinstance(seq_v[i],   float) else ''
+        transl = str(transl_v[i]) if not isinstance(transl_v[i], float) else ''
+
+        line = '\t'.join([
+            str(pos),
+            str(contig_idx_v[i]),
+            str(contig_pos_v[i]),
+            str(gene_num_g_v[i]),
+            str(gene_num_v[i]),
+            str(mut_quality[i]),
+            str(product)  if not isinstance(product,   float) else str(product),
+            str(protein_id) if not isinstance(protein_id, float) else str(protein_id),
+            str(ontology_v[i]),
+            str(locustag)  if not isinstance(locustag,  float) else str(locustag),
+            str(strand_v[i]),
+            str(loc1_v[i]),
+            str(loc2_v[i]),
+            str(nt_pos_v[i]),
+            str(aa_pos_v[i]),
+            codons_str,
+            AA_str,
+            str(anc_v[i]),
+            unique_nts,
+            muts_str,
+            str(type_v[i]),
+            sample_calls,
+            seq,
+            transl,
+        ]) + '\t\n'
+        lines.append(line)
+
+    with open(tsv_filename, 'w') as f:
+        f.writelines(lines)
+    print(f"  [TSV] 100% ({n_pos}/{n_pos}) — done.", flush=True)
+
 def token_generate(inmatrix_raw, inmatrix_new,pre):
     unique_counts_raw = np.apply_along_axis(lambda row: len(np.unique(row[row != 0])), axis=1, arr=inmatrix_raw)
     unique_counts_raw[unique_counts_raw ==1]=0
@@ -3314,275 +3274,237 @@ def merge_two_tables(in_cnn_table,output_tsv_filename,out_merge_tsv):
         else:
             o.write('\n')
 
-def generate_html_with_thumbnails(input_file, output_file, chart_dir):
+def generate_html_with_thumbnails(input_file, output_file, chart_dir, max_rows=2000):
     df = pd.read_csv(input_file, sep='\t')
     placeholder_chart = "placeholder.png"
+
+    # Pre-build chart lookup dict once
     d = {}
     for fn in os.listdir(chart_dir):
         if not re.search('chart', fn): continue
         pre = re.split('_', fn)[1]
         d[pre] = fn
-    color_code = {'A': '#1f77b4', 'T': 'ff7f0e', 'C': '#2ca02c', 'G': '#d62728'}
-    with open(output_file, 'w') as f:
-        # Step 3: Start HTML structure
-        f.write('<html>\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1.0">\n<title>SNP Table with Charts</title>\n')
-        f.write('<style>\n')
-        f.write('table {width: 100%; border-collapse: collapse;}\n')
-        f.write('th, td {border: 1px solid black; padding: 8px; text-align: left;}\n')
-        f.write('th {background-color: #c8d4dc;}\n') # default color is #f2f2f2, now change to #c8d4dc
-        f.write('.snp{ background-color: #dae9f8;}\n')
-        f.write('.pred{ background-color: #fbe2d5;}\n')
-        f.write('.rotate{writing-mode: vertical-lr; white-space: nowrap;}\n')
-        pop_style = '''
 
-                .popup {
-                    display: none;
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    width: 400px;
-                    max-width: 90%; 
-                    padding: 20px;
-                    background-color: white;
-                    border: 1px solid #333;
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-                    z-index: 1000;
-                }
-                .popup h2 {
-                    margin-top: 0;
-                }
-                .overlay {
-                    display: none;
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background-color: rgba(0, 0, 0, 0.5);
-                    z-index: 999;
-                }
-                .close-btn {
-                    cursor: pointer;
-                    color: #333;
-                    text-align: right;
-                    font-weight: bold;
-                }
-                
-                .sequence-container {
-                    overflow-x: auto; 
-                    white-space: nowrap; 
-                    border-top: 1px solid #ddd;
-                    padding-top: 10px;
-                    margin-top: 10px;
-                    font-family: monospace; 
-                    height: 100px;
-                }
-                .copy-btn {
-                    display: inline-block;
-                    margin-top: 10px;
-                    padding: 6px 12px;
-                    background-color: #4CAF50;
-                    color: white;
-                    border: none;
-                    cursor: pointer;
-                    font-size: 14px;
-                }
-                .copy-btn:hover {
-                    background-color: #45a049;
-                }
+    color_code = {'A': '#1f77b4', 'T': '#ff7f0e', 'C': '#2ca02c', 'G': '#d62728'}
 
-                .rotate {
-                writing-mode: vertical-rl;
-                transform: rotate(180deg); 
-                transform-origin: center;
-                white-space: nowrap;
-                }
+    total_snvs = len(df)
+    truncated = total_snvs > max_rows
+    if truncated:
+        df = df.iloc[:max_rows].copy()
 
+    # Pre-compute which columns to render (index >= 36, not 'sequence'/'transl')
+    col_names = list(df.columns)
+    render_col_idx = [i for i, col in enumerate(col_names)
+                      if i >= 36 and 'sequence' not in col and 'transl' not in col]
+    render_cols = [col_names[i] for i in render_col_idx]
 
-                '''
-        f.write(pop_style + '\n')
-        # f.write('img {width: 300px; height: auto;}')
-        f.write('</style>\n</head>\n<body>\n')
-        f.write('<h2>SNP Table with Bar Charts</h2>\n')
+    # Pre-extract all needed columns as string arrays for O(1) row access
+    def _col(c):
+        return df[c].astype(str).values if c in df.columns else [''] * len(df)
 
-        # Step 4: Start the table
-        f.write('<table>\n<tr>\n')
-        # Add header for the new thumbnail column
-        f.write('<th>ID</th>\n')
-        f.write('<th>Bar charts</th>\n')
-        f.write('<th colspan="3">SNP information</th>\n')
-        f.write('<th colspan="5">Prediction information</th>')
-        c=0
-        # Add column headers from dataframe
-        for col in df.columns:
-            #print(col,c)
-            if c<36:
-                c+=1
-                continue
-            if re.search('sequence',col):continue
-            if re.search('transl',col):continue
-            f.write(f'<th ><div class="rotate">{col}</div></th>\n')
+    gpos_arr       = _col('genome_pos')
+    contig_idx_arr = _col('contig_idx')
+    contig_pos_arr = _col('contig_pos')
+    pred_arr       = _col('Pred_label')
+    cnn_pred_arr   = _col('CNN_pred')
+    cnn_prob_arr   = _col('CNN_prob')
+    qual_arr       = _col('Qual_filter (<30)')
+    cov_arr        = _col('Cov_filter (<5)')
+    nt_pos_arr     = _col('nt_pos')
+    aa_pos_arr     = _col('aa_pos')
+    muts_arr       = _col('muts')
+    type_arr       = _col('type')
+    maf_arr        = _col('MAF_filter (>0.85)')
+    indel_arr      = _col('Indel_filter (<0.33)')
+    mfas_arr       = _col('MFAS_filter (1)')
+    mmcp_arr       = _col('MMCP_filter (5)')
+    cpn_arr        = _col('CPN_filter (4,7)')
+    product_arr    = _col('product')
+    protein_arr    = _col('protein_id')
+    transl_arr     = _col('translation')
+    locus_arr      = _col('locustag')
+    fix_arr        = _col('Fix_filter')
+    recomb_arr     = _col('Whether_recomb')
+    freq_arr       = _col('Fraction_ambigious_samples')
+    gap_arr        = _col('Gap_filter')
+    wd_arr         = _col('WideVariant_pred')
 
-        f.write('</tr>\n')
-        #exit()
-        # Step 5: Populate the table rows
-        for idx, row in df.iterrows():
-            # print(row['genome_pos'])
-            #print(idx)
-            #print(row)
-            #exit()
-            # exit()
-            if str(row['protein_id'])=='nan':
-                link='nan'
-            elif str(row['protein_id'])=='.':
-                link = '.'
-            else:
-                link=f'''<a href="javascript:void(0);" onclick="showPopup(\'{row['protein_id']}\', \'{row['translation']}\')" style="text-decoration: none;  cursor: pointer;">{row['protein_id']}</a>'''
-            #exit()
-            f.write('<tr>\n')
-            # Add the thumbnail column (assuming a chart image exists for each row)
-            # chart_filename = f"{chart_dir}/chart_{idx + 1}.png"
-            f.write(f'<td rowspan="6"> {idx+1}</td>')
-            #f.write('<td rowspan="6"><a href="bar_charts/' + d[str(row['genome_pos'])] + '"><img src="bar_charts/' + d[str(row['genome_pos'])] + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
-            genome_pos_key = str(row['genome_pos'])
-            chart_name = d.get(genome_pos_key, placeholder_chart)
-            f.write('<td rowspan="6"><a href="bar_charts/' + chart_name + '"><img src="bar_charts/' + chart_name + f'" alt="Chart {idx + 1}" width="300" height="auto"></a></td>\n')
-            html_p1='''
-            <th class="snp">genome_pos</th>
-            <th class="snp">contig_idx</th>
-            <th class="snp">contig_pos</th>
-            <th class="pred">Pred_Label</th>
-            <th class="pred">CNN_pred</th>
-            <th class="pred">CNN_prob</th>
-            <th class="pred">Qual_filter (<30)</th>
-            <th class="pred">Cov_filter (<5)</th>
-            '''
-            f.write(html_p1+'\n')
-            # Write each cell value
-            c=0
-            for value in row:
-                #print(value)
-                if c<36:
-                    c+=1
-                    continue
-                #print(df.columns[c])
-                if re.search('sequence', df.columns[c]): continue
-                if re.search('transl', df.columns[c]): continue
-                if value in color_code:
-                    f.write(f'<td rowspan="6"><b><font color="{color_code[value]}">{value}</font></b></td>\n')
-                else:
-                    f.write(f'<td rowspan="6"><b><font color="#808080">{value}</font></b></td>\n')
-                #f.write(f'<td rowspan="6">{value}</td>\n')
-                #print(value)
-                c+=1
-            #exit()
-            f.write('</tr>\n')
-            html_p2=f'''
-            <tr>
-            <td><b><font color="#9900FF"> {row['genome_pos']}</font></b></td>
-            <td>{row['contig_idx']}</td>
-            <td>{row['contig_pos']}</td>
-            <td>{row['Pred_label']}</td>
-            <td>{row['CNN_pred']}</td>
-            <td>{row['CNN_prob']}</td>
-            <td>{row['Qual_filter (<30)']}</td>
-            <td>{row['Cov_filter (<5)']}</td>
-            </tr>
-            <tr>
-            <th class="snp">nt_pos</th>
-            <th class="snp">aa_pos</th>
-            <th class="snp">muts / type</th>
-            <th class="pred">MAF_filter (>0.85)</th>
-            <th class="pred">Indel_filter (<0.33)</th>
-            <th class="pred">MFAS_filter (1)</th>
-            <th class="pred">MMCP_filter (5)</th>
-            <th class="pred">CPN_filter (4,7)</th>
-        </tr>
-        <tr>
- 
-            <td>{row['nt_pos']}</td>
-            <td>{row['aa_pos']}</td>
-            <td>{re.sub(',','',str(row['muts']))} / {row['type']}</td>
-            <td>{row['MAF_filter (>0.85)']}</td>
-            <td>{row['Indel_filter (<0.33)']}</td>
-            <td>{row['MFAS_filter (1)']}</td>
-            <td>{row['MMCP_filter (5)']}</td>
-            <td>{row['CPN_filter (4,7)']}</td>
-        </tr>
-        <tr>            
-            <th class="snp">product</th>
-            <th class="snp">protein_id</th>
-            <th class="snp">locustag</th>
-            <th class="pred">Fix_filter</th>
-            <th class="pred">Whether_recomb</th>
-            <th class="pred">Freq_ambigious</th>
-            <th class="pred">Gap_filter</th>
-            <th class="pred">WD_pred</th>
-        </tr>
-        <tr>
-            
-            <td>{row['product']}</td>
-            <td>{link}</td>
-            <td>{row['locustag']}</td>
-            <td>{row['Fix_filter']}</td>
-            <td>{row['Whether_recomb']}</td>
-            <td>{row['Fraction_ambigious_samples']}</td>
-            <td>{row['Gap_filter']}</td>
-            <td>{row['WideVariant_pred']}</td>
-        </tr>
-        <tr><th rowspan="2" colspan="100%"></th><tr>
-            '''
-            f.write(html_p2)
-            #exit()
-        f.write('</table>\n')
-        pop_script = '''
+    # Pre-extract render-column data as list of arrays
+    render_data = [df.iloc[:, i].astype(str).values for i in render_col_idx]
 
-            <div class="overlay" id="overlay" onclick="closePopup()"></div>
+    # Build entire HTML in memory (list join >> repeated f.write)
+    parts = []
+    parts.append(
+        '<html>\n<head>\n<meta charset="UTF-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+        '<title>SNP Table with Charts</title>\n'
+        '<style>\n'
+        'table {width: 100%; border-collapse: collapse;}\n'
+        'th, td {border: 1px solid black; padding: 8px; text-align: left;}\n'
+        'th {background-color: #c8d4dc;}\n'
+        '.snp{ background-color: #dae9f8;}\n'
+        '.pred{ background-color: #fbe2d5;}\n'
+        '.rotate{writing-mode: vertical-lr; white-space: nowrap;}\n'
+    )
+    pop_style = '''
+        .popup {
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); width: 400px; max-width: 90%;
+            padding: 20px; background-color: white; border: 1px solid #333;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 1000;
+        }
+        .popup h2 { margin-top: 0; }
+        .overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); z-index: 999;
+        }
+        .close-btn { cursor: pointer; color: #333; text-align: right; font-weight: bold; }
+        .sequence-container {
+            overflow-x: auto; white-space: nowrap; border-top: 1px solid #ddd;
+            padding-top: 10px; margin-top: 10px; font-family: monospace; height: 100px;
+        }
+        .copy-btn {
+            display: inline-block; margin-top: 10px; padding: 6px 12px;
+            background-color: #4CAF50; color: white; border: none;
+            cursor: pointer; font-size: 14px;
+        }
+        .copy-btn:hover { background-color: #45a049; }
+        .rotate { writing-mode: vertical-rl; transform: rotate(180deg);
+                  transform-origin: center; white-space: nowrap; }
+    '''
+    parts.append(pop_style + '\n</style>\n</head>\n<body>\n')
+    parts.append('<h2>SNP Table with Bar Charts</h2>\n')
+    if truncated:
+        parts.append(f'<p><b>Note:</b> Showing first {max_rows} of {total_snvs} SNVs. See TSV file for complete data.</p>\n')
 
+    parts.append('<table>\n<tr>\n<th>ID</th>\n<th>Bar charts</th>\n')
+    parts.append('<th colspan="3">SNP information</th>\n<th colspan="5">Prediction information</th>')
+    for col in render_cols:
+        parts.append(f'<th><div class="rotate">{col}</div></th>\n')
+    parts.append('</tr>\n')
 
-            <div class="popup" id="popup">
-                <div class="close-btn" onclick="closePopup()">x</div>
-                <h2>Protein ID: <span id="popup-protein-id"></span></h2>
-                <div class="sequence-container" id="sequence-container">
-                    Sequence: <span id="popup-sequence"></span>
-                </div>
-                <button class="copy-btn" onclick="copySequence()">Copy</button>
+    html_p1 = (
+        '<th class="snp">genome_pos</th>'
+        '<th class="snp">contig_idx</th>'
+        '<th class="snp">contig_pos</th>'
+        '<th class="pred">Pred_Label</th>'
+        '<th class="pred">CNN_pred</th>'
+        '<th class="pred">CNN_prob</th>'
+        '<th class="pred">Qual_filter (&lt;30)</th>'
+        '<th class="pred">Cov_filter (&lt;5)</th>'
+    )
+
+    _n_html = len(df)
+    _report_every_html = max(1, _n_html // 10)  # ~10% intervals
+    print(f"[HTML] Rendering {_n_html} rows...", flush=True)
+    for idx in range(_n_html):
+        if idx % _report_every_html == 0:
+            print(f"  [HTML] {100 * idx // _n_html:3d}% ({idx}/{_n_html})", flush=True)
+        gpos = gpos_arr[idx]
+        chart_name = d.get(gpos, placeholder_chart)
+        pid = protein_arr[idx]
+        trans = transl_arr[idx]
+        if pid == 'nan' or pid == '.':
+            link = pid
+        else:
+            link = f'<a href="javascript:void(0);" onclick="showPopup(\'{pid}\', \'{trans}\')" style="text-decoration:none;cursor:pointer;">{pid}</a>'
+
+        parts.append(f'<tr>\n<td rowspan="6"> {idx+1}</td>')
+        parts.append(
+            f'<td rowspan="6"><a href="bar_charts/{chart_name}">'
+            f'<img src="bar_charts/{chart_name}" alt="Chart {idx+1}" width="300" height="auto"></a></td>\n'
+        )
+        parts.append(html_p1 + '\n')
+
+        # Render-columns (per-sample basecalls at the end)
+        for i, col_data in enumerate(render_data):
+            val = col_data[idx]
+            clr = color_code.get(val, '#808080')
+            parts.append(f'<td rowspan="6"><b><font color="{clr}">{val}</font></b></td>\n')
+
+        muts_clean = re.sub(',', '', muts_arr[idx])
+        parts.append(
+            f'</tr>\n'
+            f'<tr>'
+            f'<td><b><font color="#9900FF">{gpos}</font></b></td>'
+            f'<td>{contig_idx_arr[idx]}</td>'
+            f'<td>{contig_pos_arr[idx]}</td>'
+            f'<td>{pred_arr[idx]}</td>'
+            f'<td>{cnn_pred_arr[idx]}</td>'
+            f'<td>{cnn_prob_arr[idx]}</td>'
+            f'<td>{qual_arr[idx]}</td>'
+            f'<td>{cov_arr[idx]}</td>'
+            f'</tr>\n'
+            f'<tr>'
+            f'<th class="snp">nt_pos</th><th class="snp">aa_pos</th><th class="snp">muts / type</th>'
+            f'<th class="pred">MAF_filter (&gt;0.85)</th><th class="pred">Indel_filter (&lt;0.33)</th>'
+            f'<th class="pred">MFAS_filter (1)</th><th class="pred">MMCP_filter (5)</th>'
+            f'<th class="pred">CPN_filter (4,7)</th>'
+            f'</tr>\n'
+            f'<tr>'
+            f'<td>{nt_pos_arr[idx]}</td>'
+            f'<td>{aa_pos_arr[idx]}</td>'
+            f'<td>{muts_clean} / {type_arr[idx]}</td>'
+            f'<td>{maf_arr[idx]}</td>'
+            f'<td>{indel_arr[idx]}</td>'
+            f'<td>{mfas_arr[idx]}</td>'
+            f'<td>{mmcp_arr[idx]}</td>'
+            f'<td>{cpn_arr[idx]}</td>'
+            f'</tr>\n'
+            f'<tr>'
+            f'<th class="snp">product</th><th class="snp">protein_id</th><th class="snp">locustag</th>'
+            f'<th class="pred">Fix_filter</th><th class="pred">Whether_recomb</th>'
+            f'<th class="pred">Freq_ambigious</th><th class="pred">Gap_filter</th>'
+            f'<th class="pred">WD_pred</th>'
+            f'</tr>\n'
+            f'<tr>'
+            f'<td>{product_arr[idx]}</td>'
+            f'<td>{link}</td>'
+            f'<td>{locus_arr[idx]}</td>'
+            f'<td>{fix_arr[idx]}</td>'
+            f'<td>{recomb_arr[idx]}</td>'
+            f'<td>{freq_arr[idx]}</td>'
+            f'<td>{gap_arr[idx]}</td>'
+            f'<td>{wd_arr[idx]}</td>'
+            f'</tr>\n'
+            f'<tr><th rowspan="2" colspan="100%"></th><tr>\n'
+        )
+
+    print(f"  [HTML] 100% ({_n_html}/{_n_html}) — done.", flush=True)
+    parts.append('</table>\n')
+    pop_script = '''
+        <div class="overlay" id="overlay" onclick="closePopup()"></div>
+        <div class="popup" id="popup">
+            <div class="close-btn" onclick="closePopup()">x</div>
+            <h2>Protein ID: <span id="popup-protein-id"></span></h2>
+            <div class="sequence-container" id="sequence-container">
+                Sequence: <span id="popup-sequence"></span>
             </div>
+            <button class="copy-btn" onclick="copySequence()">Copy</button>
+        </div>
+        <script>
+            function showPopup(proteinId, sequence) {
+                document.getElementById("popup-protein-id").innerText = proteinId;
+                document.getElementById("popup-sequence").innerText = sequence;
+                document.getElementById("popup").style.display = "block";
+                document.getElementById("overlay").style.display = "block";
+            }
+            function closePopup() {
+                document.getElementById("popup").style.display = "none";
+                document.getElementById("overlay").style.display = "none";
+            }
+            function copySequence() {
+                const sequenceText = document.getElementById("popup-sequence").innerText;
+                navigator.clipboard.writeText(sequenceText).then(() => {
+                    alert("Sequence copied to clipboard!");
+                }).catch(err => { console.error("Could not copy text: ", err); });
+            }
+        </script>
+    '''
+    parts.append(pop_script + '\n</body>\n</html>\n')
 
-            <script>
-                function showPopup(proteinId, sequence) {
-
-                    document.getElementById("popup-protein-id").innerText = proteinId;
-                    document.getElementById("popup-sequence").innerText = sequence;
-
-
-                    document.getElementById("popup").style.display = "block";
-                    document.getElementById("overlay").style.display = "block";
-                }
-
-                function closePopup() {
-
-                    document.getElementById("popup").style.display = "none";
-                    document.getElementById("overlay").style.display = "none";
-                }
-
-                function copySequence() {
-
-                    const sequenceText = document.getElementById("popup-sequence").innerText;
-
-
-                    navigator.clipboard.writeText(sequenceText).then(() => {
-                        alert("Sequence copied to clipboard!");
-                    }).catch(err => {
-                        console.error("Could not copy text: ", err);
-                    });
-                }
-            </script>
-        '''
-        f.write(pop_script + '\n')
-        # Step 6: Close the table and HTML tags
-
-        f.write('</body>\n</html>\n')
+    with open(output_file, 'w') as f:
+        f.write(''.join(parts))
 
 

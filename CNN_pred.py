@@ -2,7 +2,11 @@ import os
 import re
 import sys
 import copy
+import functools
 import torch
+
+# Make all print() calls flush immediately so progress is visible in real time
+print = functools.partial(print, flush=True)
 import random
 import numpy as np
 import torch.nn as nn
@@ -502,45 +506,19 @@ def process_arrays(arr1, arr2, sample_num):
     return result/scount
 
 def cal_freq_amb_samples(all_p,my_cmt):
-    #print(len(all_p))
-    #print(len(my_cmt.p))
-    #exit()
-    keep_col=[]
-    for p in my_cmt.p:
-        if p in all_p:
-            keep_col.append(True)
-        else:
-            keep_col.append(False)
-    keep_col=np.array(keep_col)
-    #print(len(my_cmt.p))
-    #print(len(keep_col))
-    #print(keep_col)
-    #exit()
+    keep_col = np.isin(my_cmt.p, all_p)
     my_cmt.filter_positions(keep_col)
-    #exit()
     freq_arr=process_arrays(my_cmt.major_nt,my_cmt.major_nt_freq,my_cmt.major_nt.shape[0])
-    ##exit()
-    freq_d={}
-    c=0
-    for p in my_cmt.p:
-        freq_d[p]=freq_arr[c]
-        c+=1
+    freq_d = dict(zip(my_cmt.p, freq_arr))
     return freq_d,freq_arr
 
 def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     raw_p=len(inp)
     rawp=inp
-    #print(inp.shape,combined_array[40])
-    #exit()
+    print(f"[remove_lp] Start: {raw_p} candidate positions, {my_calls.calls.shape[0]} samples", flush=True)
     ######### Further Scan bad pos, eg: potential FPs caused by Low-Depth samples
-    #print(my_cmt.p)
-    keep_col = []
-    for pos in my_cmt.p:
-        if pos not in inp:
-            keep_col.append(False)
-        else:
-            keep_col.append(True)
-    keep_col = np.array(keep_col)
+    print("[remove_lp] Stage 1/4: Coverage/strand quality filtering...", flush=True)
+    keep_col = np.isin(my_cmt.p, inp)
     #print(keep_col.shape)
     #print(my_cmt.p.shape)
     #print(my_calls.p.shape)
@@ -557,14 +535,12 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     my_calls.filter_calls_by_element(
         my_cmt.rev_cov < 1
     )
-    my_calls_check=copy.deepcopy(my_calls)
-    scount_before,b=cal_major_freq_in_call(my_calls_check.calls)
+    calls_check = my_calls.calls.copy()
+    scount_before,b=cal_major_freq_in_call(calls_check)
     #print(scount_before[:100])
     #exit()
-    my_calls_check.filter_calls_by_element(
-            (my_cmt.fwd_cov < 11) & (my_cmt.rev_cov < 11)
-    )
-    scount_after,b=cal_major_freq_in_call(my_calls_check.calls)
+    calls_check[(my_cmt.fwd_cov < 11) & (my_cmt.rev_cov < 11)] = 0
+    scount_after,b=cal_major_freq_in_call(calls_check)
     #print(scount_after[:100])
     fratio=scount_after/scount_before
     #print(fratio)
@@ -573,7 +549,7 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     stat=count/len(fratio)
     #print(stat)
     #exit()
-    my_cmt_tem=copy.deepcopy(my_cmt)
+    my_cmt_tem=my_cmt.copy()
     freq_p,freq_arr=cal_freq_amb_samples(my_calls.p,my_cmt_tem)
     freq_check=np.repeat([freq_arr>0],my_calls.calls.shape[0],axis=0) 
     if count>10:
@@ -669,19 +645,12 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     my_cmt.filter_positions(keep_col)
     my_calls.filter_positions(keep_col)
 
-    keep_col_arr=[]
-    for s in inp:
-        if s in my_calls.p:
-            keep_col_arr.append(True)
-        else:
-            keep_col_arr.append(False)
-    keep_col_arr=np.array(keep_col_arr)
+    keep_col_arr = np.isin(inp, my_calls.p)
     inp=inp[keep_col_arr]
     combined_array=combined_array[keep_col_arr]
-    #print(my_cmt.p)
-    #exit()
+    print(f"[remove_lp] Stage 1/4 done: {len(inp)} positions remain after quality filters", flush=True)
     #### Filter low gap pos
-    #print('before-filt-gap:',my_cmt.p)
+    print("[remove_lp] Stage 2/4: Gap filter — computing coverage ratios...", flush=True)
     rawp=my_cmt.p # used to check positions removed by gap filter
     #exit()
     '''
@@ -789,142 +758,95 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
 
 
     # Add gap rule: if all minor sample <=10 and one part must <=5, >=85% major sample not satisfy this rule and >=20, then should be gap fp
-    my_calls_tem=copy.deepcopy(my_calls)
-    #print(1899148 in my_calls_tem.p)
-    rawp_tem=my_calls_tem.p
-    scount_before,b=cal_major_freq_in_call(my_calls_tem.calls)
-    #count_combine=my_cmt.counts_major
+    rawp_tem=my_calls.p
+    _scount_before,b=cal_major_freq_in_call(my_calls.calls)
     count_combine_ratio=my_cmt.counts_major/median_cov[:, np.newaxis]
-    #print(my_cmt.counts_major,my_cmt.counts_major[:,temp])
-    #print(temp)
-    #exit()
-    #print(temp,my_cmt.counts_major,my_cmt.counts_major.shape,b.shape,mbool.shape)
-    #exit()
-    #c2=copy.deepcopy(count_combine)
-    c3=copy.deepcopy(count_combine_ratio)
-    #count_combine[~b]=0
+    c3=count_combine_ratio.copy()
     count_combine_ratio[~b]=0
-    #c2[~mbool]=0
     c3[~mbool]=0
-    p_arr=[]
-    p_arr_ratio=[]
-    p_arr_ratio_cdf=[]
-    #normc=[]
-    tem=[]
-    tem2=[]
-    #p_non=[]
-    for i in range(count_combine_ratio.shape[1]):
-        #a_arr=count_combine[:,i]
-        #b_arr=c2[:,i]
-        c_arr=count_combine_ratio[:,i]
-        d_arr=c3[:,i]
-        #a1=[x for x in a_arr if x != 0]
-        #b1=[x for x in b_arr if x != 0]
-        c1=[x for x in c_arr if x != 0]
-        d1=[x for x in d_arr if x != 0]
-        tem.append([c1,d1])
-        #tem2.append([a1,b1])
-        #p2=compare_arrays_ttest(a_arr,b_arr) # Count
-        p,p_cdf=compare_arrays_ttest(c_arr,d_arr) # Ratio
-        #p,effect_size, power=compare_groups(c_arr, d_arr)
-        #p2=compare_arrays_nonparametric(c_arr,d_arr) # Ratio
-        #p_non.append(p2)
-        #p2=compare_arrays_nonparametric(a_arr,b_arr) # Count
-        #p_arr.append(p2)
-        p_arr_ratio.append(p)
-        #tem2.append([effect_size,power])
-        p_arr_ratio_cdf.append(p_cdf)
-        #normc.append(norm_check)
-    #print(p_arr,p_arr_ratio)
-    gap_candidate=[]
-    tem_p=[]
-    #tpos=[3950318,2403312,78143,960515,1011874,624313,4129099]
-    #label=[0,0,0,1,1,1,1]
-    #dtl=dict(zip(tpos,label))
-    #o=open('position_vector_to_Tami/p11.txt','w+')
-    #for p in range(len(p_arr_ratio))
-    ct=0
-    for i in range(len(p_arr_ratio)):
-        '''
-        if my_cmt.p[i] in tpos:
-            o.write('positions\tnorm_depth_major_isolates\tnorm_depth_minor_isolates\tlabel\n')
-            o.write(str(my_cmt.p[i])+'\t'+','.join(map(str, tem[i][0]))+'\t'+','.join(map(str, tem[i][1]))+'\t'+str(dtl[my_cmt.p[i]])+'\n')
-        '''   
 
-        if p_arr_ratio_cdf[i] <0.01:
-            tem[i][0]=np.array(tem[i][0])
-            if max(tem[i][1])<min(tem[i][0]) and max(tem[i][1])<0.05:
-                #raw: if max(tem[i][0])>0.1 and len(tem[i][0][tem[i][0]<0.2])/len(tem[i][0])<0.5:
-                if max(tem[i][0])>0.2:
-                    gap_candidate.append(my_cmt.p[i])
-                '''
-                # old rule
-                if normc[i]==1:
-                    #if len(tem[i][0][tem[i][0]<0.1])/len(tem[i][0])<0.5:
-                    if max(tem[i][0])>0.1:
-                        gap_candidate.append(my_cmt.p[i])
-                else:
-                    #print('')
-                    #if len(tem[i][0][tem[i][0]<0.1])/len(tem[i][0])<0.3:
-                    #print(tem[i][0])
-                    if len(tem[i][0][tem[i][0]>0.1])/len(tem[i][0])>=0.7:
-                        gap_candidate.append(my_cmt.p[i])
-                '''
-            '''
-            elif min(tem[i][1])>max(tem[i][0]) and min(tem[i][1])>0.05 and max(tem[i][0])<0.05:
-                gap_candidate.append(my_cmt.p[i])
-            '''
-        if p_arr_ratio_cdf[i] <0.01 or p_arr_ratio[i] <0.05:
-            if np.max(tem[i][1])<0.1 and len(tem[i][1])<=3 and max(tem[i][0])>0.2:
-                tem_p.append(my_cmt.p[i])
-            tem[i][0]=np.array(tem[i][0])
-            #print('pos:',my_cmt.p[i],'\n','p-value:',p_arr_ratio[i],'\np-value-z-score:',p_arr_ratio_cdf[i],'\nnorm_major_mean:',np.mean(tem[i][0]),'\nnorm_major_median:',np.median(tem[i][0]),'\n# of major <0.2',np.sum(tem[i][0]<0.2),'\nthese elements are:',tem[i][0][tem[i][0]<0.2],'\nnorm_minor_arr:',tem[i][1])
-        #print(my_cmt.p[i],tem[i][1])
-        '''
-        if p_arr_ratio[i]<0.05 and np.max(tem[i][1])<0.1 :
-            p=1
-            #print(my_cmt.p[i],p_arr_ratio[i],p_arr[i],tem[i][0],tem[i][1])
-            gap_candidate.append(my_cmt.p[i])
-            #gap_pos.append()
-            tem[i][0]=np.array(tem[i][0])
-            # old one with # '\nnorm_major_arr:',tem[i][0]
-            print('pos:',my_cmt.p[i],'\n','p-value:',p_arr_ratio[i],'\nnorm_major_mean:',np.mean(tem[i][0]),'\nnorm_major_median:',np.median(tem[i][0]),'\n# of major <0.1',np.sum(tem[i][0]<0.1),'\nthese elements are:',tem[i][0][tem[i][0]<0.1],'\nnorm_minor_arr:',tem[i][1])
-            if np.sum(tem[i][0]<0.1)>1:
-                if np.min(tem[i][0])<np.max(tem[i][1]) or np.min(tem[i][0])-np.max(tem[i][1])<0.01 or np.sum(tem[i][0]<0.1)>0.2*len(tem[i][0]):
-                    print('\n')
-                else:
-                    p=compare_arrays_ttest(tem[i][0][tem[i][0]<0.1],tem[i][1]) 
-                    print('\np-value-major-s0.1-minor:',p)
-                    print('\nnorm_major_s0.1_median:',np.median(tem[i][0][tem[i][0]<0.1]))
-                    if p<0.05:
-                        tem_p.append(my_cmt.p[i])
-            else:
-                if np.sum(tem[i][0]<0.1)==1:
-                    #print(tem[i][0][tem[i][0]<0.1][0])
-                    if  np.min(tem[i][1])>0.05:
-                        print('\n')
-                    elif not tem[i][0][tem[i][0]<0.1][0]<0.09:
-                        tem_p.append(my_cmt.p[i])
-                    elif np.max(tem[i][1])<0.02 and np.min(tem[i][0])-np.max(tem[i][1])>0.05:
-                        tem_p.append(my_cmt.p[i])
-                else:
-                    if np.min(tem[i][1])<0.05:
-                        tem_p.append(my_cmt.p[i])
-            #if np.sum(tem[i][0]<0.1)==0 or (np.sum(tem[i][0]<0.1)==1 and tem[i][0][0]>0.05) or (p<0.05 and np.median(tem[i][1])<np.median(tem[i][0][tem[i][0]<0.1])):
-                #tem_p.append(my_cmt.p[i])
-        
-            #print(p_arr[i],tem2[i][0],tem2[i][1])
-        '''
-    #print(gap_candidate)
-    #exit()
+    print(f"[remove_lp] Stage 3/4: Vectorized Welch t-test over {my_cmt.p.shape[0]} positions...", flush=True)
+    # ----- Vectorized gap filter (replaces Python t-test loop) -----
+    mask_large = count_combine_ratio != 0   # (n_samples, n_pos)
+    mask_small = c3 != 0                    # (n_samples, n_pos)
+    n_large = np.sum(mask_large, axis=0).astype(float)
+    n_small_v = np.sum(mask_small, axis=0).astype(float)
+
+    sum_large = np.sum(count_combine_ratio, axis=0)
+    sum_small = np.sum(c3, axis=0)
+    mean_large = np.where(n_large > 0, sum_large / np.maximum(n_large, 1), 0.0)
+    mean_small = np.where(n_small_v > 0, sum_small / np.maximum(n_small_v, 1), 0.0)
+
+    dev_large = np.where(mask_large, (count_combine_ratio - mean_large[np.newaxis, :]) ** 2, 0.0)
+    var_large = np.sum(dev_large, axis=0) / np.maximum(n_large - 1, 1)
+    dev_small = np.where(mask_small, (c3 - mean_small[np.newaxis, :]) ** 2, 0.0)
+    var_small = np.sum(dev_small, axis=0) / np.maximum(n_small_v - 1, 1)
+
+    # t-test: one-sample (n_small==1) and Welch two-sample (n_small>=2)
+    se_1samp = np.sqrt(var_large / np.maximum(n_large, 1))
+    df_1samp = np.maximum(n_large - 1, 1)
+    v1 = var_large / np.maximum(n_large, 1)
+    v2 = var_small / np.maximum(n_small_v, 1)
+    se_2samp = np.sqrt(v1 + v2)
+    df_num = (v1 + v2) ** 2
+    df_den = v1 ** 2 / np.maximum(n_large - 1, 1) + v2 ** 2 / np.maximum(n_small_v - 1, 1)
+    df_2samp = np.where(df_den > 0, df_num / df_den, 1.0)
+    se = np.where(n_small_v == 1, se_1samp, se_2samp)
+    df_v = np.where(n_small_v == 1, df_1samp, df_2samp)
+    mean_diff = mean_large - mean_small
+    t_stat = np.where(se > 0, mean_diff / se, 0.0)
+    p_arr_ratio = np.where(n_small_v == 0, 1.0, 2 * stats.t.sf(np.abs(t_stat), df_v))
+    # Original code: np.std([x], ddof=1) = NaN when n_large==1, so t-test returns NaN,
+    # and NaN < threshold is always False. Match that behaviour by setting p=1.0 here.
+    p_arr_ratio = np.where(n_large < 2, 1.0, p_arr_ratio)
+
+    # z-score based p-value (p_arr_ratio_cdf)
+    std_large = np.sqrt(var_large)
+    z_scores = np.where(std_large > 0, mean_diff / std_large, 0.0)
+    p_arr_ratio_cdf = np.where(
+        (n_small_v == 0) | (std_large == 0), 1.0,
+        1.0 - norm.cdf(np.abs(z_scores))
+    )
+    p_arr_ratio_cdf = np.where(np.isnan(p_arr_ratio_cdf), 1.0, p_arr_ratio_cdf)
+
+    # Per-column stats for gap detection (replaces tem list)
+    max_small = np.where(
+        n_small_v > 0, np.max(np.where(mask_small, c3, -np.inf), axis=0), 0.0
+    )
+    min_large = np.where(
+        n_large > 0, np.min(np.where(mask_large, count_combine_ratio, np.inf), axis=0), 0.0
+    )
+    max_large = np.where(
+        n_large > 0, np.max(np.where(mask_large, count_combine_ratio, -np.inf), axis=0), 0.0
+    )
+
+    # Vectorized gap_candidate detection
+    gap_candidate_mask = (
+        (p_arr_ratio_cdf < 0.01) &
+        (max_small < min_large) &
+        (max_small < 0.05) &
+        (max_large > 0.2)
+    )
+    gap_candidate = list(my_cmt.p[gap_candidate_mask])
+
+    # Vectorized tem_p detection
+    tem_p_mask = (
+        ((p_arr_ratio_cdf < 0.01) | (p_arr_ratio < 0.05)) &
+        (max_small < 0.1) &
+        (n_small_v <= 3) &
+        (max_large > 0.2)
+    )
+    tem_p = list(my_cmt.p[tem_p_mask])
     gap_pos_add=scan_continue_gap_revise(tem_p)
     #gap_pos_add=[]
-    gap_pos=gap_candidate
-    
+    gap_pos=list(gap_candidate)
+    gap_pos_set = set(gap_pos)
     for p in gap_pos_add:
-        if p not in gap_pos:
+        if p not in gap_pos_set:
             gap_pos.append(p)
-    
+            gap_pos_set.add(p)
+    print(f"[remove_lp] Stage 3/4 done: {len(gap_pos)} gap positions identified (gap_candidate={len(gap_candidate)}, tem_p={len(tem_p)})", flush=True)
+    print(f"[remove_lp] Stage 4/4: Final position filtering...", flush=True)
     print('gap_pos:\n',gap_pos)
     #print(p_arr[36],p_arr_ratio[36])
     #exit()
@@ -975,35 +897,18 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     '''
     #print(my_calls.p, len(my_calls.p))
     keep_col_raw = remove_same(my_calls)
-    keep_col=[]
-    c=0
-    for k in keep_col_raw:
-        if my_calls.p[c] in gap_pos:
-            keep_col.append(False)
-        else:
-            keep_col.append(k)
-        c+=1
-    keep_col=np.array(keep_col)
+    in_gap = np.isin(my_calls.p, list(gap_pos_set))
+    keep_col = keep_col_raw & ~in_gap
     my_cmt.filter_positions(keep_col)
     my_calls.filter_positions(keep_col)
-    #print('after-filt-gap:',my_cmt.p)
-    pfgap=[p for p in rawp if p not in my_cmt.p] # position filterd due to gap
-    #print(len(pfgap))
-    #exit()
-    #print(my_calls.p, len(my_calls.p))
-    #print(pfgap)
-    keep_col_arr = []
-    for s in inp:
-        if s in my_calls.p:
-            keep_col_arr.append(True)
-        else:
-            keep_col_arr.append(False)
-    keep_col_arr = np.array(keep_col_arr)
+    pfgap = rawp[~np.isin(rawp, my_cmt.p)]  # positions filtered due to gap
+    keep_col_arr = np.isin(inp, my_calls.p)
     inp = inp[keep_col_arr]
     combined_array = combined_array[keep_col_arr]
 
+    print(f"[remove_lp] Stage 4/4 done.", flush=True)
     print('There are ',raw_p-len(inp),' pos filtered. Keep ',len(inp),' positions.')
-    print([p for p in rawp if p not in inp])
+    print(rawp[~np.isin(rawp, inp)])
     #exit()
     return combined_array,inp,pfgap,rawp
 
@@ -1122,16 +1027,15 @@ def trans_shape(indata):
     return np.transpose(indata, (1, 0, 2, 3))
 
 def remove_same(my_calls_in):
-	keep_col = []
-	for i in range(my_calls_in.calls.shape[1]):
-		unique_nonzero_elements = np.unique(my_calls_in.calls[:, i][my_calls_in.calls[:, i] != 0])
-		if len(unique_nonzero_elements) < 2:
-			my_calls_in.calls[:, i] = 0
-			keep_col.append(False)
-		else:
-			keep_col.append(True)
-	keep_col = np.array(keep_col)
-	return keep_col
+    calls = my_calls_in.calls  # (n_samples, n_pos)
+    # Per column: detect if >= 2 distinct non-zero values exist.
+    # Use sentinel=999 (calls are 0-4) to find min-of-nonzero without float conversion.
+    has_nonzero = np.any(calls != 0, axis=0)
+    col_min_nonzero = np.min(np.where(calls != 0, calls, 999), axis=0)
+    col_max_nonzero = np.max(calls, axis=0)
+    keep_col = has_nonzero & (col_min_nonzero != col_max_nonzero)
+    my_calls_in.calls[:, ~keep_col] = 0
+    return keep_col
 
 def load_p(infile):
     f=open(infile,'r')
@@ -1280,20 +1184,16 @@ def data_transform(infile,incov,fig_odir,samples_to_exclude,min_cov_samp):
     '''
     
 
+    print(f"[data_transform] Reordering and normalising array ({combined_array.shape[0]} positions)...", flush=True)
     combined_array = reorder_norm(combined_array, my_cmt)
+    print(f"[data_transform] Reorder/norm done.", flush=True)
     #### Remove low quality samples
-    #print(combined_array.shape,len(p))
-    #print(p,len(p))
-    #exit()
     if not min_cov_samp==100:
+        print(f"[data_transform] Removing low-quality samples (threshold={min_cov_samp}%)...", flush=True)
         combined_array,p=remove_low_quality_samples(combined_array, min_cov_samp,p)
-    #print(np.where(p==864972))
-    #exit()
     #### Remove bad positions
-    #pfgap=[]
     combined_array,p,pfgap,praw=remove_lp(combined_array,p,my_cmt,my_calls,median_cov )
     dgap={}
-    #praw=p
     for s in praw:
         if s not in pfgap:
             dgap[s]='0'
@@ -1376,10 +1276,9 @@ def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp)
     #exit()
     #print(odata[5])
     #exit()
-    print('Transformed data shape:',odata.shape)
-    #test_datasets.append((data['x'][:,:,8:].astype(np.float64), data['label']))
-    nlab=np.zeros(odata.shape[0])
-    #test_datasets.append((odata))
+    n_cnn_pos = odata.shape[0]
+    print(f'Transformed data shape: {odata.shape}  ({n_cnn_pos} positions to score)')
+    nlab=np.zeros(n_cnn_pos)
     test_datasets.append((odata,nlab))
     #odata[2][5][2][1]=1
     #print(odata.shape)
@@ -1452,21 +1351,24 @@ def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp)
     #print('Train')
     model.eval()
 
+    _total_batches = sum(len(loader) for loader in test_loader)
+    _report_every_cnn = max(1, _total_batches // 20)  # ~5% intervals
+    print(f"[CNN] Scoring {n_cnn_pos} positions ({_total_batches} batches, batch_size=512)...", flush=True)
+
     predictions = []
     y_test=[]
+    _cnn_batch = 0
     with torch.no_grad():
         for loader in test_loader:
             for inputs,label in loader:
-                #print(inputs)
-                #exit()
+                if _cnn_batch % _report_every_cnn == 0:
+                    _pos_done = min(_cnn_batch * 512, n_cnn_pos)
+                    print(f"  [CNN] {100 * _cnn_batch // _total_batches:3d}%  ({_pos_done}/{n_cnn_pos} positions)", flush=True)
+                _cnn_batch += 1
                 inputs=inputs.to(device)
-                #inputs = torch.from_numpy(np.float32(inputs)).to(device)
-                # print(inputs[20])
-                # exit()
                 outputs = model(inputs)
-                # print(model(inputs))
-                # exit()
                 predictions.extend(outputs.cpu().numpy().flatten())
+    print(f"  [CNN] 100%  ({n_cnn_pos}/{n_cnn_pos} positions) — done.", flush=True)
     #loss = criterion(outputs, y_test)
     # Convert predictions to binary labels
     prob=np.array(predictions)
