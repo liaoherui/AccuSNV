@@ -2499,8 +2499,8 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
                     if calls_gp[j,i] != NTs_to_int_dict['N']:
                         mut_annotations['nts'] = mut_annotations['nts'] + int_to_NTs_dict[calls_gp[j,i]]
                         if len(mut_annotations['AA']) == 4:
-                            ma_nt = int_to_NTs_dict[maNT_gp[j,i]]
-                            aa_lookup_nt = nts_for_aa_idx_dict[ma_nt]
+                            called_nt = int_to_NTs_dict[calls_gp[j,i]]
+                            aa_lookup_nt = nts_for_aa_idx_dict[called_nt]
                             mut_annotations['AA_gt'] = mut_annotations['AA_gt'] + mut_annotations['AA'][ NTs_list_without_N_to_idx_dict[aa_lookup_nt] ]
                     elif calls_gp[j,i] == -1: # if diverse (calls not a mutation), add minor and major call
                         ma_nt = int_to_NTs_dict[maNT_gp[j,i]]
@@ -3600,4 +3600,3 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         # Step 6: Close the table and HTML tags
 
         f.write('</body>\n</html>\n')
-
