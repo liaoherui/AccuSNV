@@ -2470,6 +2470,14 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
             mut_annotations['AA'] = [aa[0] for aa in aa_ls] # turn amino acids into string
             mut_annotations['NonSyn'] = len(set(mut_annotations['AA']))>1 # indicates if a nonsynonymous mutation is *possible*, not necessarily if it happened
             
+            # Map genome-space NT calls to codon-index NTs for AA lookup.
+            # For reverse-strand genes, codon variants were generated using
+            # complements, so AA indexing must also use complemented NTs.
+            if p_anno.loc['strand'] == -1:
+                nts_for_aa_idx_dict = NTs_complement_dict
+            else:
+                nts_for_aa_idx_dict = {nt: nt for nt in NTs_list_without_N}
+
             # Determine if any observed mutations *did* change the codon
             mut_annotations['AA_gt'] = '' # init # for filling in amino acids corresponding to observed mutations relative to the ancestor
             if len(mut_annotations['AA']) < 4:
@@ -2479,7 +2487,9 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
                 mut_annotations['anc'] = int_to_NTs_dict[np.unique(ancnti_gp[:,i])[0]]
                 mut_annotations['nts'] = mut_annotations['anc'] # add ancestral allele to observed NTs; will add other NTs later
                 if len(mut_annotations['AA']) == 4:
-                    mut_annotations['AA_gt'] = mut_annotations['AA_gt'] + mut_annotations['AA'][ NTs_list_without_N_to_idx_dict[int_to_NTs_dict[np.unique(ancnti_gp[:,i])[0]]] ] # the AA list order corresponds to NTs list! 
+                    anc_nt = int_to_NTs_dict[np.unique(ancnti_gp[:,i])[0]]
+                    aa_lookup_nt = nts_for_aa_idx_dict[anc_nt]
+                    mut_annotations['AA_gt'] = mut_annotations['AA_gt'] + mut_annotations['AA'][ NTs_list_without_N_to_idx_dict[aa_lookup_nt] ] # the AA list order corresponds to NTs list after strand-aware mapping
             else: # ancestral allele not known, so cannot evaluate if mutations changed the codon
                 mut_annotations['nts'] = "."
                 mut_annotations['anc'] = "."
@@ -2489,10 +2499,16 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
                     if calls_gp[j,i] != NTs_to_int_dict['N']:
                         mut_annotations['nts'] = mut_annotations['nts'] + int_to_NTs_dict[calls_gp[j,i]]
                         if len(mut_annotations['AA']) == 4:
-                            mut_annotations['AA_gt'] = mut_annotations['AA_gt'] + mut_annotations['AA'][ NTs_list_without_N_to_idx_dict[int_to_NTs_dict[maNT_gp[j,i]]] ]
+                            called_nt = int_to_NTs_dict[calls_gp[j,i]]
+                            aa_lookup_nt = nts_for_aa_idx_dict[called_nt]
+                            mut_annotations['AA_gt'] = mut_annotations['AA_gt'] + mut_annotations['AA'][ NTs_list_without_N_to_idx_dict[aa_lookup_nt] ]
                     elif calls_gp[j,i] == -1: # if diverse (calls not a mutation), add minor and major call
-                        mut_annotations['AA_gt'] = mut_annotations['AA_gt'] + mut_annotations['AA'][ NTs_list_without_N_to_idx_dict[int_to_NTs_dict[maNT_gp[j,i]]] ]
-                        mut_annotations['AA_gt'] = mut_annotations['AA_gt'] + mut_annotations['AA'][ NTs_list_without_N_to_idx_dict[int_to_NTs_dict[minorNT_gp[j,i]]] ]
+                        ma_nt = int_to_NTs_dict[maNT_gp[j,i]]
+                        minor_nt = int_to_NTs_dict[minorNT_gp[j,i]]
+                        ma_aa_lookup_nt = nts_for_aa_idx_dict[ma_nt]
+                        minor_aa_lookup_nt = nts_for_aa_idx_dict[minor_nt]
+                        mut_annotations['AA_gt'] = mut_annotations['AA_gt'] + mut_annotations['AA'][ NTs_list_without_N_to_idx_dict[ma_aa_lookup_nt] ]
+                        mut_annotations['AA_gt'] = mut_annotations['AA_gt'] + mut_annotations['AA'][ NTs_list_without_N_to_idx_dict[minor_aa_lookup_nt] ]
             if len(mut_annotations['AA']) == 4:
                 mut_annotations['type'] = 'S' # initialize as S; eventually overwritten below if N
             # Remove duplicates
@@ -3584,5 +3600,3 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         # Step 6: Close the table and HTML tags
 
         f.write('</body>\n</html>\n')
-
-
