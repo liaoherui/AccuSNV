@@ -72,6 +72,8 @@ Quick test with the provided test data.
 
 1. Test the tool on your Laptop (Support Linux or Ubuntu systems only):
 
+Note: If you plan to use the Slurm system on the Linux HPC cluster, please do not use `-f`, since it disables automatic Slurm job submission.
+
 ```
 # Step-1: Snakemake pipeline
 python accusnv_snakemake.py -f 1 -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
