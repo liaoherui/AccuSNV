@@ -72,7 +72,7 @@ Quick test with the provided test data.
 
 1. Test the tool on your Laptop (Support Linux or Ubuntu systems only):
 
-Note: If you plan to use the Slurm system on the Linux HPC cluster, please do not use `-f`, since it disables automatic Slurm job submission.
+Note: If you plan to use the Slurm system on the Linux HPC cluster (then you should check '2. Test...with Slurm system'), please do not use `-f`, since it disables automatic Slurm job submission.
 
 ```
 # Step-1: Snakemake pipeline
