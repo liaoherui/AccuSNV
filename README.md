@@ -70,7 +70,7 @@ If this installation method doesn’t work for your case, there are several othe
 
 Quick test with the provided test data.
 
-1. Test the tool on your Laptop (Support Linux or Ubuntu systems only):
+1. Test the tool on your **Laptop** (Support Linux or Ubuntu systems only):
 
 Note: If you plan to use the Slurm system on the Linux HPC cluster (then you should check '2. Test...with Slurm system'), please do not use `-f`, since it disables automatic Slurm job submission.
 
@@ -99,7 +99,7 @@ python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/ca
 
 
 
-2. Test the tool on the Linux HPC system with [Slurm](https://slurm.schedmd.com/overview.html) system:
+2. Test the tool on the **Linux HPC system (cluster)** with [Slurm](https://slurm.schedmd.com/overview.html) system:
 
 ```
 # Step-1: Snakemake pipeline
