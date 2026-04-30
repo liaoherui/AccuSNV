@@ -114,13 +114,13 @@ def findfastqfile(dr, smple, filename):
     file_R = []
     if os.path.isdir(f"{dr}/{filename}"):
         target_f = []
-        for f in glob.glob(f"{dr}/{filename}/*"):
-            if not os.path.islink(f):
+        for f in glob.glob(f"{dr}/*"):
+            if os.path.isfile(f):   # only real files
                 target_f.append(f)
-            else:
+            elif os.path.islink(f):
                 link_abs_path = os.path.abspath(f)
-                link_name = os.path.basename(f)
-                target_f.append(link_abs_path+'/'+link_name)
+                if os.path.isfile(link_abs_path):  # only keep if it points to a file
+                    target_f.append(link_abs_path)
                 
         files_F = files_F + [f"{filename}/{f}" for f in target_f
                              if re.search(f"{filename}/.*_?.*?R1({'|'.join(file_suffixs)})", f)]
