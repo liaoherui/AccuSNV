@@ -129,7 +129,14 @@ def convert_csv(chart_raw,mode,out):
 		
 
 
-def mutationtypes(tree, chart_raw,mode,out):
+def mutationtypes(tree, chart_raw, mode, out, max_positions=None):
+	'''
+	Generate per-position SNP tree files.
+
+	max_positions: if provided, only process the first max_positions SNV positions
+	               (consistent with bar_chart generation which also uses a chart_limit).
+	               If None, process all positions.
+	'''
 
 	chart,raw_pos=convert_csv(chart_raw,mode,out)
 	#print(chart,raw_pos)
@@ -139,18 +146,25 @@ def mutationtypes(tree, chart_raw,mode,out):
 	tout=out+'/snp_trees'
 	if not os.path.exists(tout):
 		os.makedirs(tout)
-		
+
 
 	ATCG=['A','C','T','G']
 
 
-		
+
 	f=open(chart,'r').readlines()
+	all_rows = f[1:]  # skip header
+	# Apply the same positional limit as bar_chart generation
+	if max_positions is not None and len(all_rows) > max_positions:
+		print(f'  [mutationtypes] Limiting SNP tree generation to first {max_positions}/{len(all_rows)} positions (same as bar_chart limit).')
+		all_rows = all_rows[:max_positions]
+	else:
+		print(f'  [mutationtypes] Generating SNP trees for all {len(all_rows)} positions.')
 	#chromosomes=load_chr(chart)
 
-	
+
 	pidx=0
-	for i, line in enumerate(f[1:]):
+	for i, line in enumerate(all_rows):
 	
 		l=line.strip().split(',')
 		if len(l) < 5:
