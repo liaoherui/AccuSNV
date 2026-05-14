@@ -3030,23 +3030,17 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
             f.write( str(mut_quality[i]) )
             f.write('\t')
             next_product = annotation_mutations._get_value(i,'product')
-            if type(next_product)!=float:
-                f.write( next_product )
-            else:
-                f.write( str(next_product) )
+            f.write( next_product if isinstance(next_product, str) else str(next_product) )
             f.write('\t')
             next_protein_id = annotation_mutations._get_value(i,'protein_id')
-            if type(next_protein_id)==list:
+            if isinstance(next_protein_id, list):
                 next_protein_id=next_protein_id[0]
-            if type(next_protein_id)!=float:
-                f.write( next_protein_id )
-            else:
-                f.write( str(next_protein_id) )
+            f.write( next_protein_id if isinstance(next_protein_id, str) else str(next_protein_id) )
             f.write('\t')
             f.write( str(annotation_mutations._get_value(i,'ontology')) )
             f.write('\t')
             next_locustag= annotation_mutations._get_value(i,'locustag')
-            if type(next_locustag)!=float:
+            if isinstance(next_locustag, str):
                 f.write( next_locustag )
             else:
                 f.write( str(next_locustag) )
