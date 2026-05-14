@@ -2579,7 +2579,15 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
     
     # Turn list of dictionaries into a pandas dataframe
     dataframe_mut = pd.DataFrame(lod_mutAnno)
-    
+
+    # If all mutations are intergenic, intragenic-specific columns will be
+    # absent entirely (not just NaN) because no dict in lod_mutAnno ever set
+    # them. Ensure they exist so downstream writers can access them safely.
+    for col in ['product', 'protein_id', 'locustag', 'ontology', 'strand', 'loc1', 'loc2',
+                'nt_pos', 'aa_pos', 'codons', 'AA', 'muts']:
+        if col not in dataframe_mut.columns:
+            dataframe_mut[col] = float('nan')
+
     return dataframe_mut
 
 
