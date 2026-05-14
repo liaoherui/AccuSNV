@@ -2950,6 +2950,34 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
     Writes a TSV file given an annotated SNV table.
     '''
     
+    required_annotation_defaults = {
+        'contig_idx': '.',
+        'contig_pos': '.',
+        'gene_num_global': '.',
+        'gene_num': '.',
+        'product': '.',
+        'protein_id': '.',
+        'ontology': '.',
+        'locustag': '.',
+        'strand': '.',
+        'loc1': '.',
+        'loc2': '.',
+        'nt_pos': '.',
+        'aa_pos': '.',
+        'codons': np.nan,
+        'AA': np.nan,
+        'anc': '.',
+        'nts': '.',
+        'muts': '.',
+        'type': 'U',
+        'sequence': '.',
+        'translation': '.',
+    }
+    annotation_mutations = annotation_mutations.copy()
+    for col, default_value in required_annotation_defaults.items():
+        if col not in annotation_mutations.columns:
+            annotation_mutations[col] = default_value
+    
     with open( tsv_filename, 'w') as f:
         # header
         f.write('genome_pos')
@@ -3062,18 +3090,18 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
             f.write( str(annotation_mutations._get_value(i,'aa_pos')) )
             f.write('\t')
             next_codons = annotation_mutations._get_value(i,'codons')
-            if type(next_codons)!=float:
+            if type(next_codons)==list:
                 for codon in next_codons:
                     f.write( str(codon)+' ' )
             f.write('\t')
             next_AA = annotation_mutations._get_value(i,'AA')
-            if type(next_AA)!=float:
+            if type(next_AA)==list:
                 for AA in next_AA:
                     f.write( AA+' ' )
             f.write('\t')
-            f.write( annotation_mutations._get_value(i,'anc') )
+            f.write( str(annotation_mutations._get_value(i,'anc')) )
             f.write('\t')
-            f.write( annotation_mutations._get_value(i,'nts') )
+            f.write( str(annotation_mutations._get_value(i,'nts')) )
             f.write('\t')
             next_muts = annotation_mutations._get_value(i,'muts')
             if type(next_muts)==list:
@@ -3082,7 +3110,7 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
             else:
                 f.write( '.' )
             f.write('\t')
-            f.write( annotation_mutations._get_value(i,'type') )
+            f.write( str(annotation_mutations._get_value(i,'type')) )
             # Add basecalls for all samples
             for j,name in enumerate(names_for_tree):
                 f.write('\t')
