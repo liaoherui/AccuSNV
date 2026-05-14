@@ -315,9 +315,10 @@ def infer_ancestral_calls_from_raw_overlap(calls_for_ancestor, reference_genome,
     """Infer ancestral nucleotides from raw ingroup/outgroup overlap.
 
     Unique ingroup/outgroup allele overlaps are accepted as known ancestors.
-    Ambiguous/no-overlap sites are filled from the outgroup sample that best
-    matches the uniquely inferred ancestral sites. Remaining missing sites fall
-    back to the reference genome.
+    Sites with no overlap use the unique major ingroup allele when available.
+    Ambiguous sites are filled from the outgroup sample that best matches the
+    uniquely inferred overlap sites. Remaining missing sites fall back to the
+    reference genome.
     """
     if positions is None:
         positions = calls_for_ancestor.p
@@ -351,9 +352,26 @@ def infer_ancestral_calls_from_raw_overlap(calls_for_ancestor, reference_genome,
         elif len(overlap) > 1:
             ancestor_source[pos_idx] = 'overlap_ambiguous'
         else:
-            ancestor_source[pos_idx] = 'no_overlap'
+            ingroup_valid_calls = [
+                int(nt) for nt in ingroup_calls[:, pos_idx]
+                if int(nt) in valid_nts
+            ]
+            if len(ingroup_valid_calls) == 0:
+                ancestor_source[pos_idx] = 'no_overlap_no_ingroup_call'
+            else:
+                ingroup_nts, ingroup_nt_counts = np.unique(
+                    ingroup_valid_calls,
+                    return_counts=True
+                )
+                max_ingroup_nt_count = np.max(ingroup_nt_counts)
+                ingroup_major_nts = ingroup_nts[ingroup_nt_counts == max_ingroup_nt_count]
+                if len(ingroup_major_nts) == 1:
+                    calls_ancestral[pos_idx] = int(ingroup_major_nts[0])
+                    ancestor_source[pos_idx] = 'ingroup_major_no_overlap'
+                else:
+                    ancestor_source[pos_idx] = 'no_overlap_ingroup_tie'
 
-    known_ancestor_bool = calls_ancestral != idx_for_N
+    known_ancestor_bool = ancestor_source == 'overlap_unique'
     if outgroup_calls.shape[0] > 0 and np.any(known_ancestor_bool):
         known_ancestors = calls_ancestral[known_ancestor_bool]
         outgroup_known_calls = outgroup_calls[:, known_ancestor_bool]
@@ -385,6 +403,7 @@ def infer_ancestral_calls_from_raw_overlap(calls_for_ancestor, reference_genome,
         ancestor_source[unresolved_bool] = 'reference'
 
     print('Number of ancestral alleles inferred from unique ingroup/outgroup overlap: ' + str(np.sum(ancestor_source == 'overlap_unique')) + '.')
+    print('Number of ancestral alleles inferred from ingroup major allele at no-overlap sites: ' + str(np.sum(ancestor_source == 'ingroup_major_no_overlap')) + '.')
     print('Best ancestral-like outgroup sample: ' + str(best_outgroup_name) + '.')
     print('Number of ancestral alleles filled from best outgroup sample: ' + str(np.sum(ancestor_source == 'best_outgroup_sample')) + '.')
     print('Number of ancestral alleles filled from reference: ' + str(np.sum(ancestor_source == 'reference')) + '.')
