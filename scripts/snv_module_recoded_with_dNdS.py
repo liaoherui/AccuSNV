@@ -3064,18 +3064,17 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
             f.write( str(annotation_mutations._get_value(i,'aa_pos')) )
             f.write('\t')
             next_codons = annotation_mutations._get_value(i,'codons')
-            if type(next_codons)!=float:
+            if isinstance(next_codons, list):
                 for codon in next_codons:
                     f.write( str(codon)+' ' )
             f.write('\t')
             next_AA = annotation_mutations._get_value(i,'AA')
-            if type(next_AA)!=float:
+            if isinstance(next_AA, list):
                 for AA in next_AA:
-                    f.write( AA+' ' )
+                    f.write( str(AA)+' ' )
             f.write('\t')
-            f.write( annotation_mutations._get_value(i,'anc') )
+            f.write( str(annotation_mutations._get_value(i,'anc')) )
             f.write('\t')
-            #f.write( annotation_mutations._get_value(i,'nts') )
             unique_nts = ''.join(
                 nt for nt in sorted(set(calls_for_tree[:, i]))
                 if nt != 'N'
@@ -3083,25 +3082,25 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
             f.write(unique_nts)
             f.write('\t')
             next_muts = annotation_mutations._get_value(i,'muts')
-            if type(next_muts)==list:
+            if isinstance(next_muts, list):
                 for mut in next_muts:
                     f.write( mut + ',')
             else:
                 f.write( '.' )
             f.write('\t')
-            f.write( annotation_mutations._get_value(i,'type') )
+            f.write( str(annotation_mutations._get_value(i,'type')) )
             # Add basecalls for all samples
             for j,name in enumerate(names_for_tree):
                 f.write('\t')
                 f.write(calls_for_tree[j,i])
             f.write('\t')
             next_seq = annotation_mutations._get_value(i, 'sequence')
-            if type(next_seq) != float:  # value is nan if sequence does not exist
-                f.write(str(next_seq))
+            if isinstance(next_seq, str):
+                f.write(next_seq)
             f.write('\t')
             next_translation = annotation_mutations._get_value(i, 'translation')
-            if type(next_translation) != float:
-                f.write(str(next_translation))
+            if isinstance(next_translation, str):
+                f.write(next_translation)
             #f.write('\t')
             f.write('\t\n')
     
