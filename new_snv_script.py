@@ -310,6 +310,106 @@ import build_SNP_Tree as bst
 import CNN_pred as cnn
 
 
+
+def infer_ancestral_calls_from_raw_overlap(calls_for_ancestor, reference_genome, positions=None):
+    """Infer ancestral nucleotides from raw ingroup/outgroup overlap.
+
+    Unique ingroup/outgroup allele overlaps are accepted as known ancestors.
+    Sites with no overlap use the unique major ingroup allele when available.
+    Ambiguous sites are filled from the outgroup sample that best matches the
+    uniquely inferred overlap sites. Remaining missing sites fall back to the
+    reference genome.
+    """
+    if positions is None:
+        positions = calls_for_ancestor.p
+    positions = np.asarray(positions)
+    pos_to_idx = {int(pos): idx for idx, pos in enumerate(calls_for_ancestor.p)}
+    position_indices = np.asarray([pos_to_idx[int(pos)] for pos in positions])
+
+    calls = calls_for_ancestor.calls[:, position_indices]
+    ingroup_calls = calls[np.logical_not(calls_for_ancestor.in_outgroup), :]
+    outgroup_calls = calls[calls_for_ancestor.in_outgroup, :]
+    outgroup_names = calls_for_ancestor.sample_names[calls_for_ancestor.in_outgroup]
+
+    idx_for_N = snv.NTs_to_int_dict['N']
+    valid_nts = set(snv.NTs_to_int_dict[nt] for nt in snv.NTs_list_without_N)
+    calls_ancestral = np.zeros(len(positions), dtype='int')
+    ancestor_source = np.array(['unknown'] * len(positions), dtype=object)
+
+    for pos_idx in range(len(positions)):
+        ingroup_alleles = set(
+            int(nt) for nt in ingroup_calls[:, pos_idx]
+            if int(nt) in valid_nts
+        )
+        outgroup_alleles = set(
+            int(nt) for nt in outgroup_calls[:, pos_idx]
+            if int(nt) in valid_nts
+        )
+        overlap = ingroup_alleles & outgroup_alleles
+        if len(overlap) == 1:
+            calls_ancestral[pos_idx] = overlap.pop()
+            ancestor_source[pos_idx] = 'overlap_unique'
+        elif len(overlap) > 1:
+            ancestor_source[pos_idx] = 'overlap_ambiguous'
+        else:
+            ingroup_valid_calls = [
+                int(nt) for nt in ingroup_calls[:, pos_idx]
+                if int(nt) in valid_nts
+            ]
+            if len(ingroup_valid_calls) == 0:
+                ancestor_source[pos_idx] = 'no_overlap_no_ingroup_call'
+            else:
+                ingroup_nts, ingroup_nt_counts = np.unique(
+                    ingroup_valid_calls,
+                    return_counts=True
+                )
+                max_ingroup_nt_count = np.max(ingroup_nt_counts)
+                ingroup_major_nts = ingroup_nts[ingroup_nt_counts == max_ingroup_nt_count]
+                if len(ingroup_major_nts) == 1:
+                    calls_ancestral[pos_idx] = int(ingroup_major_nts[0])
+                    ancestor_source[pos_idx] = 'ingroup_major_no_overlap'
+                else:
+                    ancestor_source[pos_idx] = 'no_overlap_ingroup_tie'
+
+    known_ancestor_bool = ancestor_source == 'overlap_unique'
+    if outgroup_calls.shape[0] > 0 and np.any(known_ancestor_bool):
+        known_ancestors = calls_ancestral[known_ancestor_bool]
+        outgroup_known_calls = outgroup_calls[:, known_ancestor_bool]
+        outgroup_match_counts = np.sum(outgroup_known_calls == known_ancestors, axis=1)
+        outgroup_nonN_counts = np.sum(outgroup_known_calls != idx_for_N, axis=1)
+        outgroup_order = sorted(
+            range(outgroup_calls.shape[0]),
+            key=lambda idx: (-outgroup_match_counts[idx], -outgroup_nonN_counts[idx], idx)
+        )
+        best_outgroup_name = outgroup_names[outgroup_order[0]]
+    else:
+        outgroup_match_counts = np.array([], dtype=int)
+        outgroup_order = []
+        best_outgroup_name = 'none'
+
+    unresolved_bool = calls_ancestral == idx_for_N
+    for pos_idx in np.where(unresolved_bool)[0]:
+        for outgroup_idx in outgroup_order:
+            outgroup_nt = int(outgroup_calls[outgroup_idx, pos_idx])
+            if outgroup_nt in valid_nts:
+                calls_ancestral[pos_idx] = outgroup_nt
+                ancestor_source[pos_idx] = 'best_outgroup_sample'
+                break
+
+    unresolved_bool = calls_ancestral == idx_for_N
+    if np.any(unresolved_bool):
+        calls_reference = reference_genome.get_ref_NTs_as_ints(positions)
+        calls_ancestral[unresolved_bool] = calls_reference[unresolved_bool]
+        ancestor_source[unresolved_bool] = 'reference'
+
+    print('Number of ancestral alleles inferred from unique ingroup/outgroup overlap: ' + str(np.sum(ancestor_source == 'overlap_unique')) + '.')
+    print('Number of ancestral alleles inferred from ingroup major allele at no-overlap sites: ' + str(np.sum(ancestor_source == 'ingroup_major_no_overlap')) + '.')
+    print('Best ancestral-like outgroup sample: ' + str(best_outgroup_name) + '.')
+    print('Number of ancestral alleles filled from best outgroup sample: ' + str(np.sum(ancestor_source == 'best_outgroup_sample')) + '.')
+    print('Number of ancestral alleles filled from reference: ' + str(np.sum(ancestor_source == 'reference')) + '.')
+    return calls_ancestral, ancestor_source
+
+
 # Get timestamp
 ts = time.time() 
 timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S') # used in output files
@@ -658,6 +758,10 @@ my_cmt.filter_samples( goodsamples_coverage )
 my_cov.filter_samples( goodsamples_coverage )
 my_calls.filter_samples( goodsamples_coverage )
 
+# Keep unfiltered calls for ancestor inference and raw nucleotide output.
+# Downstream SNV filters continue to operate on my_calls.
+my_calls_raw_for_ancestor = my_calls.copy()
+
 
 #%% Filter calls per position per sample
 #print(my_cmt.p)
@@ -828,37 +932,15 @@ pos_to_consider = my_calls.p[ np.any(  my_calls.calls, axis=0 ) ] # mask positio
 #############################
 
 
-#%% Part 1: Get ancestral nucleotide from outgroup
+#%% Part 1: Get ancestral nucleotide from raw ingroup/outgroup overlap
 
-# Ancestral alleles should be inferred from an outgroup.
-
-# Filtered calls for outgroup samples only
-calls_outgroup = my_calls.get_calls_in_outgroup_only()
-# Switch N's (0's) to NaNs
-calls_outgroup_N_as_NaN = calls_outgroup.astype('float') # init ()
-calls_outgroup_N_as_NaN[ calls_outgroup_N_as_NaN==0 ] = np.nan
-
-# Infer ancestral allele as the most common allele among outgroup samples (could be N)
-calls_ancestral = np.zeros( my_calls.num_pos, dtype='int') # init as N's
-outgroup_pos_with_calls = np.any(calls_outgroup,axis=0) # positions where the outgroup has calls
-calls_ancestral[outgroup_pos_with_calls] = stats.mode( calls_outgroup_N_as_NaN[:,outgroup_pos_with_calls], axis=0, nan_policy='omit' ).mode.squeeze()
-
-# Report number of ancestral alleles inferred from outgroup
-print('Number of candidate SNVs with outgroup alleles: ' + str(sum(outgroup_pos_with_calls)) + '.')
-print('Number of candidate SNVs missing outgroup alleles: ' + str(sum(calls_ancestral==0)) + '.')
-
-
-#%% Part 2: Fill in any missing data with nucleotide from reference
-
-# WARNING! Rely on this method with caution especially if the reference genome 
-# was derived from one of your ingroup samples.
-
-# # Pull alleles from reference genome across p
-calls_reference = my_rg.get_ref_NTs_as_ints( p )
-
-# # Update ancestral alleles
-pos_to_update = ( calls_ancestral==0 )
-calls_ancestral[ pos_to_update ] = calls_reference[ pos_to_update ]
+# Ancestral alleles are inferred from unfiltered calls so that basecall filters
+# do not turn usable nucleotides into Ns for this inference step.
+calls_ancestral, ancestor_source = infer_ancestral_calls_from_raw_overlap(
+    my_calls_raw_for_ancestor,
+    my_rg,
+    my_calls.p
+    )
 
 
 
@@ -1049,22 +1131,12 @@ my_calls_annot_all.filter_calls_by_element(
     my_cmt_annot_all.rev_cov < 1
     )
 
-# infer ancestral alleles from the looser call set
-calls_outgroup_annot = my_calls_annot_all.get_calls_in_outgroup_only()
-calls_outgroup_annot_nan = calls_outgroup_annot.astype('float')
-calls_outgroup_annot_nan[ calls_outgroup_annot_nan==0 ] = np.nan
-
-calls_ancestral_annot = np.zeros( my_calls_annot_all.num_pos, dtype='int')
-outgroup_pos_with_calls_annot = np.any(calls_outgroup_annot,axis=0)
-calls_ancestral_annot[outgroup_pos_with_calls_annot] = stats.mode(
-    calls_outgroup_annot_nan[:,outgroup_pos_with_calls_annot],
-    axis=0,
-    nan_policy='omit'
-    ).mode.squeeze()
-
-calls_reference_annot = my_rg.get_ref_NTs_as_ints( my_cmt_annot_all.p )
-pos_to_update_annot = ( calls_ancestral_annot==0 )
-calls_ancestral_annot[ pos_to_update_annot ] = calls_reference_annot[ pos_to_update_annot ]
+# infer ancestral alleles with the same raw-overlap logic used upstream
+calls_ancestral_annot, ancestor_source_annot = infer_ancestral_calls_from_raw_overlap(
+    my_calls_raw_for_ancestor,
+    my_rg,
+    my_cmt_annot_all.p
+    )
 
 # mutation quality and fixedmutation using the same looser annotation calls
 calls_ingroup_annot = my_calls_annot_all.get_calls_in_sample_subset( np.logical_not( my_calls_annot_all.in_outgroup ) )
@@ -1189,6 +1261,12 @@ if num_goodpos_all > 0:
         np.ix_(samplestoplot, goodpos4tree)]  # numpy broadcasting of row_array and col_array requires np.ix_()
     calls_for_tree = snv.ints2nts(calls_for_treei)  # NATCG translation
 
+    my_calls_raw_goodpos_all = my_calls_raw_for_ancestor.copy()
+    my_calls_raw_goodpos_all.filter_positions(goodpos_bool_all)
+    calls_for_tree_rawi = my_calls_raw_goodpos_all.calls[
+        np.ix_(samplestoplot, goodpos4tree)]
+    calls_for_tree_raw = snv.ints2nts(calls_for_tree_rawi)
+
     # Sample names for tree
     treesampleNamesLong = my_cmt_goodpos_all.sample_names
     for i, samplename in enumerate(treesampleNamesLong):
@@ -1234,8 +1312,23 @@ if num_goodpos_all > 0:
 
 # Make table
 if num_goodpos>0:
-    # This is the raw mutation table - contain positions identified by both CNN and WD, and are not recombinations
+    # Raw output keeps unfiltered nucleotide calls in sample columns.
     output_tsv_filename = dir_output + '/' + 'snv_table_mutations_annotations_raw.tsv'
+    snv.write_mutation_table_as_tsv( \
+        p_goodpos_all, \
+        mut_qual[0,goodpos_idx_all], \
+        my_cmt_goodpos_all.sample_names, \
+        mutations_annotated, \
+        calls_for_tree_raw, \
+        treesampleNamesLong, \
+        output_tsv_filename \
+        
+        )
+    out_merge_tsv=dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv'
+    snv.merge_two_tables(dir_output+'/snv_table_cnn_plus_filter.txt',output_tsv_filename,out_merge_tsv)
+
+    # Filtered output is identical except sample columns use filtered calls.
+    output_tsv_filename_filtered = dir_output + '/' + 'snv_table_mutations_annotations_filtered.tsv'
     snv.write_mutation_table_as_tsv( \
         p_goodpos_all, \
         mut_qual[0,goodpos_idx_all], \
@@ -1243,11 +1336,11 @@ if num_goodpos>0:
         mutations_annotated, \
         calls_for_tree, \
         treesampleNamesLong, \
-        output_tsv_filename \
+        output_tsv_filename_filtered \
         
         )
-    out_merge_tsv=dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv'
-    snv.merge_two_tables(dir_output+'/snv_table_cnn_plus_filter.txt',output_tsv_filename,out_merge_tsv)
+    out_merge_tsv_filtered=dir_output+'/snv_table_merge_all_mut_annotations_filtered_draft.tsv'
+    snv.merge_two_tables(dir_output+'/snv_table_cnn_plus_filter.txt',output_tsv_filename_filtered,out_merge_tsv_filtered)
     #exit()
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_draft.tsv', dir_output+'/snv_table_with_charts_draft.html', dir_output+'/bar_charts')
     # Generate the tree for each identified SNPs
@@ -1303,11 +1396,36 @@ while True:
             dk[int(ele[0])]=float(ele[4])
     if int(ele[13])==1:
         dr[int(ele[0])]=int(ele[13])
+f.close()
 o.close()
 o2.close()
+
+f_filtered=open(dir_output+'/snv_table_merge_all_mut_annotations_filtered_draft.tsv','r')
+o_filtered=open(dir_output+'/snv_table_merge_all_mut_annotations_filtered_final.tsv','w+')
+o2_filtered=open(dir_output+'/snv_table_merge_all_mut_annotations_filtered_label0.tsv','w+')
+line=f_filtered.readline()
+o_filtered.write(line)
+o2_filtered.write(line)
+filtered_label0_count=0
+while True:
+    line=f_filtered.readline().strip()
+    if not line:break
+    ele=line.split('\t')
+    if int(ele[1])==0:
+        o2_filtered.write(line+'\n')
+        filtered_label0_count += 1
+    else:
+        o_filtered.write(line+'\n')
+f_filtered.close()
+o_filtered.close()
+o2_filtered.close()
+
 snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_final.tsv', dir_output+'/snv_table_with_charts_final.html', dir_output+'/bar_charts')
 if len(dl)>0:
     snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_label0.tsv', dir_output+'/snv_table_with_charts_label0.html', dir_output+'/bar_charts')
+snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_filtered_final.tsv', dir_output+'/snv_table_with_charts_filtered_final.html', dir_output+'/bar_charts')
+if filtered_label0_count>0:
+    snv.generate_html_with_thumbnails(dir_output+'/snv_table_merge_all_mut_annotations_filtered_label0.tsv', dir_output+'/snv_table_with_charts_filtered_label0.html', dir_output+'/bar_charts')
 keep_p=[]
 prob=[]
 label=[]
