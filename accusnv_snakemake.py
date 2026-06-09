@@ -5,6 +5,7 @@ import argparse
 import glob
 import uuid
 import subprocess
+import shutil
 ### Herui - 2024-09
 
 usage="AccuSNV - SNV calling tool for bacterial isolates using deep learning."
@@ -208,56 +209,55 @@ def process_input_sfile(infile,out_dir,uid,tem_dir):
 
 
 
+def resolve_from_cwd(path):
+	"""Return an absolute path while preserving relative-path cwd semantics."""
+	return os.path.abspath(path)
+
+
 def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm,tem_dir):
-	cond=odir+'/conf'
+	cond=resolve_from_cwd(os.path.join(odir, 'conf'))
 	build_dir(cond)
-	#os.system('cp config.yaml slurm_status_script.py '+cond)
-	nexp=tem_dir+'/experiment_info_'+uid+'_tem.yaml'
-	os.system('cp experiment_info.yaml ' + nexp)
-	o=open(cond+'/config.yaml','w+')
+	nexp=resolve_from_cwd(os.path.join(tem_dir, 'experiment_info_'+uid+'_tem.yaml'))
+	shutil.copyfile(os.path.join(script_dir, 'experiment_info.yaml'), nexp)
+
+	config_path=os.path.join(script_dir, 'config.yaml')
 	if tf_slurm == 1:
-		os.system('cp config_files/config_no_slurm.yaml ./config.yaml')
-	f=open('config.yaml','r')
-	while True:
-		line=f.readline()
-		if not line:break
-		if re.search('configfile',line):
-			line=re.sub('\./experiment_info.yaml','./'+nexp,line)
-		if re.search('partition=\"',line):
-			ele=re.split('\"',line)
-			if len(idle_p)<3:
-				line=ele[0]+"\""+','.join(all_p)+"\"\n"
-			else:
-				line = ele[0] + "\"" + ','.join(idle_p) + "\"\n"
-		o.write(line)
-	o.close()
-	o2=open(script_dir+'/scripts/dry_run.sh','w+')
-	o2.write('snakemake -np  --profile '+cond+'\n')
-	o3=open(script_dir+'/scripts/run_snakemake.slurm','w+')
-	o3.write('#!/bin/bash\n')
-	o3.write('#SBATCH --job-name widevariant.main\n')
-	if len(idle_p)<3:
-		o3.write('#SBATCH -n 1\n#SBATCH -p '+','.join(all_p)+'\n')
-	else:
-		o3.write('#SBATCH -n 1\n#SBATCH -p ' + ','.join(idle_p) + '\n')
-	o3.write('#SBATCH --time=10:00:00\n')
-	o3.write('#SBATCH --mem=50GB\n')
-	o3.write('#SBATCH -o mainout.txt\n')
-	o3.write('#SBATCH -e mainerr.txt\n')
-	o3.write('#SBATCH --mail-user=YOUR_EMAIL_HERE\n')
-	o3.write('#SBATCH --mail-type=ALL\n')
-	o3.write('# Activate conda environment (may need to change name of env)\n')
-	o3.write('#source activate snakemake\n')
-	o3.write('snakemake  --profile '+cond+'\n')
-	o3.write('# Print "Done!!!" at end of main log file\n')
-	o3.write('echo Done!!!\n')
-	o4 = open(script_dir + '/scripts/run_snakemake_local.sh', 'w+')
-	o4.write("snakemake  --profile "+cond)
-	o4.close()
+		shutil.copyfile(os.path.join(script_dir, 'config_files', 'config_no_slurm.yaml'), config_path)
+	with open(config_path, 'r') as f, open(os.path.join(cond, 'config.yaml'), 'w+') as o:
+		for line in f:
+			if re.search(r'^\s*configfile\s*:', line):
+				line='configfile: '+nexp+'\n'
+			if re.search('partition="',line):
+				ele=re.split('"',line)
+				if len(idle_p)<3:
+					line=ele[0]+'"'+','.join(all_p)+'"\n'
+				else:
+					line=ele[0]+'"'+','.join(idle_p)+'"\n'
+			o.write(line)
 
+	with open(os.path.join(script_dir, 'scripts', 'dry_run.sh'), 'w+') as o2:
+		o2.write('snakemake -np  --profile '+cond+'\n')
+	with open(os.path.join(script_dir, 'scripts', 'run_snakemake.slurm'), 'w+') as o3:
+		o3.write('#!/bin/bash\n')
+		o3.write('#SBATCH --job-name widevariant.main\n')
+		if len(idle_p)<3:
+			o3.write('#SBATCH -n 1\n#SBATCH -p '+','.join(all_p)+'\n')
+		else:
+			o3.write('#SBATCH -n 1\n#SBATCH -p '+','.join(idle_p)+'\n')
+		o3.write('#SBATCH --time=10:00:00\n')
+		o3.write('#SBATCH --mem=50GB\n')
+		o3.write('#SBATCH -o mainout.txt\n')
+		o3.write('#SBATCH -e mainerr.txt\n')
+		o3.write('#SBATCH --mail-user=YOUR_EMAIL_HERE\n')
+		o3.write('#SBATCH --mail-type=ALL\n')
+		o3.write('# Activate conda environment (may need to change name of env)\n')
+		o3.write('#source activate snakemake\n')
+		o3.write('snakemake  --profile '+cond+'\n')
+		o3.write('# Print "Done!!!" at end of main log file\n')
+		o3.write('echo Done!!!\n')
+	with open(os.path.join(script_dir, 'scripts', 'run_snakemake_local.sh'), 'w+') as o4:
+		o4.write('snakemake  --profile '+cond)
 
-	
-	
 
 def reset_exp_file(infile,outdir,uid,sfile,ref_dir,all_p,idle_p,tf_slurm,tem_dir,min_cov_filt,min_cov_samp,exclude_samp,greport,aligner_threads,aligner,samclip):
 	f=open(infile,'r')
