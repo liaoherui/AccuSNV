@@ -19,7 +19,7 @@ Output:
 # Output:
      path_candidate_mutation_table: where to write
      candidate_mutation_table.mat, ex. results/candidate_mutation_table.mat
-# Note: All paths should be relative to pwd!
+# Note: Input paths may be absolute or relative to the current working directory.
 ## Version history
      This is adapted from TDL's build_mutation_table_master_smaller_file_size_backup.m
   #   Arolyn, 2018.12.19: This script was written as part of the transition to snakemake.
@@ -94,8 +94,6 @@ args = parser.parse_args()
 def main(path_to_p_file, path_to_sample_names_file, path_to_outgroup_boolean_file, path_to_list_of_quals_files,
          path_to_list_of_diversity_files, path_to_candidate_mutation_table, path_to_cov_mat_raw, path_to_cov_mat_norm,
          flag_cov_raw, flag_cov_norm, dim):
-    pwd = os.getcwd()
-
     # p: positions on genome that are candidate SNPs
     print('Processing candidate SNP positions...')
     with open(path_to_p_file, 'rb') as f:
@@ -104,8 +102,7 @@ def main(path_to_p_file, path_to_sample_names_file, path_to_outgroup_boolean_fil
 
     # SampleNames: list of names of all samples
     print('Processing sample names...')
-    fname = pwd + '/' + path_to_sample_names_file
-    with open(fname, 'r') as f:
+    with open(path_to_sample_names_file, 'r') as f:
         SampleNames = f.read().splitlines()
     numSamples = len(SampleNames)  # save number of samples
     print('Total number of samples: ' + str(numSamples))
@@ -113,8 +110,7 @@ def main(path_to_p_file, path_to_sample_names_file, path_to_outgroup_boolean_fil
     ## in_outgroup: booleans for whether or not each sample is in the outgroup
     print('Processing outgroup booleans...')
 
-    fname = pwd + '/' + path_to_outgroup_boolean_file
-    with open(fname, 'r') as f:
+    with open(path_to_outgroup_boolean_file, 'r') as f:
         in_outgroup_str = f.read().splitlines()
     
     in_outgroup = np.asarray([s == '1' for s in in_outgroup_str], dtype=bool).reshape(1, len(in_outgroup_str))
@@ -122,8 +118,7 @@ def main(path_to_p_file, path_to_sample_names_file, path_to_outgroup_boolean_fil
     ## Quals: quality score (relating to sample purity) at each position for all samples
     print('Gathering quality scores at each candidate position...')
     # Import list of directories for where to quals for each sample
-    fname = pwd + '/' + path_to_list_of_quals_files
-    with open(fname, 'r') as f:
+    with open(path_to_list_of_quals_files, 'r') as f:
         paths_to_quals_files = f.read().splitlines()
     # Make Quals
     Quals = np.zeros((len(p), numSamples), dtype='int')  # initialize
@@ -139,8 +134,7 @@ def main(path_to_p_file, path_to_sample_names_file, path_to_outgroup_boolean_fil
     print('Gathering counts data at each candidate position...\n')
 
     # Import list of directories for where to diversity file for each sample
-    fname = pwd + '/' + path_to_list_of_diversity_files
-    with open(fname, 'r') as f:
+    with open(path_to_list_of_diversity_files, 'r') as f:
         paths_to_diversity_files = f.read().splitlines()
     # Load in first diversity to get some stats
     with gzip.open(paths_to_diversity_files[1], 'rb') as f:
