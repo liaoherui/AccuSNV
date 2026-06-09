@@ -20,6 +20,7 @@ dir_py_scripts = script_dir+"/scripts"
 sys.path.insert(0, dir_py_scripts)
 import snv_module_recoded_with_dNdS_test as snv
 import build_SNP_Tree as bst
+from sample_name_utils import tree_display_sample_names
 
 parser=argparse.ArgumentParser(prog='Downstream analysis module of AccuSNV',description='SNV calling tool for bacterial isolates using deep learning.')
 parser.add_argument('-i','--input_mat',dest='input_mat',type=str,required=True,help="The input mutation table in npz file")
@@ -367,15 +368,11 @@ Output new annotated text report and the SNV-based phylogenetic tree
 samplestoplot = np.arange(my_cmt.num_samples) # default is to use all samples
 num_goodpos_all = len(goodpos_idx_all)
 goodpos4tree = np.arange(num_goodpos_all) # default is to use all positions
-treesampleNamesLong = my_cmt.sample_names
+# Preserve the exact user-provided names in trees and output tables.
+# dnapars uses the separate fixed-width identifiers defined below.
+treesampleNamesLong = tree_display_sample_names(my_cmt.sample_names)
 calls_for_treei = my_calls.calls[np.ix_(samplestoplot, goodpos4tree)]  # numpy broadcasting of row_array and col_array requires np.ix_()
 calls_for_tree = snv.ints2nts(calls_for_treei)  # NATCG translation
-
-# Sample names for tree
-for i, samplename in enumerate(treesampleNamesLong):
-    if not samplename[0].isalpha():
-        treesampleNamesLong[i] = 'S' + treesampleNamesLong[
-            i]  # sample names are modified to make parsing easier downstream
 sampleNamesDnapars = ["{:010d}".format(i) for i in range(my_cmt.num_samples)]
 
 #print(calls_ancestral.shape,calls_ancestral)
