@@ -306,6 +306,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 dir_py_scripts = script_dir+"/scripts"
 sys.path.insert(0, dir_py_scripts)
 import snv_module_recoded_with_dNdS as snv # SNV calling module
+from sample_name_utils import tree_display_sample_names
 import build_SNP_Tree as bst
 import CNN_pred as cnn
 
@@ -1267,12 +1268,9 @@ if num_goodpos_all > 0:
         np.ix_(samplestoplot, goodpos4tree)]
     calls_for_tree_raw = snv.ints2nts(calls_for_tree_rawi)
 
-    # Sample names for tree
-    treesampleNamesLong = my_cmt_goodpos_all.sample_names
-    for i, samplename in enumerate(treesampleNamesLong):
-        if not samplename[0].isalpha():
-            treesampleNamesLong[i] = 'S' + treesampleNamesLong[
-                i]  # sample names are modified to make parsing easier downstream
+    # Preserve the exact user-provided names in trees and output tables.
+    # dnapars uses the separate fixed-width identifiers defined below.
+    treesampleNamesLong = tree_display_sample_names(my_cmt_goodpos_all.sample_names)
     sampleNamesDnapars = ["{:010d}".format(i) for i in range(my_cmt_goodpos_all.num_samples)]
 
     # Add inferred ancestor and reference

@@ -1425,12 +1425,15 @@ def parse_gff( dir_ref_genome, contig_names, ortholog_info_series=pd.Series(dtyp
     
     list_of_dataframes = [] # init # each element is a pandas dataframe with all annotations for the contig; contigs are ordered according to contig_names
     tagnumber_counter = 0 # init # unique numerical identifier for all features across all contigs
+    num_contigs_without_annotations = 0
    
     for contig in contig_names: # loop over contig annotations according to order in contig_names
+        annotation_found = False
         with open(gff_file[0]) as gff_handle:
             for rec in GFF.parse(gff_handle, limit_info=limits): # loop over every contig, but only grab attributes specified by [limits] to save memory
   
                 if rec.id == contig:
+                    annotation_found = True
                     #print(rec.id,contig,rec.feature)
                     # if contig has any feature build list of dicts and append to list_of_dataframes, else append empty dataframe
                     if len(rec.features) > 0:
@@ -1544,7 +1547,18 @@ def parse_gff( dir_ref_genome, contig_names, ortholog_info_series=pd.Series(dtyp
                         df_sort = df_sort.sort_values(by=['loc1']) # sort pandas dataframe (annotation not necessarily sorted)
                         list_of_dataframes.append(df_sort)
                     else:
-                        list_of_dataframes.append( pd.DataFrame([{}]) )
+                        list_of_dataframes.append(pd.DataFrame())
+                        num_contigs_without_annotations += 1
+                    break
+        if not annotation_found:
+            # Keep annotations aligned one-to-one with FASTA contigs, even when
+            # a contig has no feature records in the GFF.
+            list_of_dataframes.append(pd.DataFrame())
+            num_contigs_without_annotations += 1
+
+    if num_contigs_without_annotations > 0:
+        print('WARNING! No GFF annotations found for ' + str(num_contigs_without_annotations) + ' FASTA contigs; their SNVs will be annotated as intergenic.')
+
     # Save annotations file in dir_ref_genome
     afile = open(dir_ref_genome+"/annotation_genes.pandas.py.pk1", 'wb')
     pickle.dump(list_of_dataframes, afile)
