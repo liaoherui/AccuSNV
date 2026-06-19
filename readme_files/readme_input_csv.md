@@ -22,7 +22,7 @@ Path,Sample,FileName,Reference,Group,Outgroup,Type
 
 ### Column meaning
 
-- `Path`: Folder containing raw read files for this sample.
+- `Path`: Folder containing raw read files for this sample. Symlinked FASTQ files are supported; matching uses the symlink filename in this folder.
 - `Sample`: Unique sample ID (used in output filenames and plots).
 - `FileName`: Read file prefix (without `_1/_2`, `_R1/_R2`, and without extension). Example: if files are `strainA_1.fastq.gz` and `strainA_2.fastq.gz`, use `strainA`. The prefix is matched exactly, so `strainA_1` will not also match `strainA_10`.
 - `Reference`: Reference genome folder name (under your reference genome directory). Avoid names that start with `ref_` or contain `_ref_`, because AccuSNV uses `_ref_` as an internal filename delimiter; use names such as `clade1_ref` instead.

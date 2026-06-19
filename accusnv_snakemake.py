@@ -92,12 +92,11 @@ def findfastqfile(dr, smple, filename):
     # Given the input path and filename, will return the fastq file (include SE, PE, different suffixs) Will gzip the file automatically.
     file_suffixs = ['.fastq.gz', '.fq.gz', '.fastq', '.fq',
                     '_001.fastq.gz', '_001.fq.gz', '_001.fastq', '_001.fq']
-    # Check whether the file is the soft link
+    # Keep directory entries themselves, including symlinks. Matching should use
+    # the symlink basename when users stage reads as links in the input folder.
     target_f=[]
     for f in glob.glob(f"{dr}/*"):
-        #print(f,dr)
-        if not os.path.islink(f):
-            target_f.append(f)
+        target_f.append(f)
 
     #print('target...',target_f)
     #exit()
@@ -113,8 +112,7 @@ def findfastqfile(dr, smple, filename):
     if os.path.isdir(f"{dr}/{filename}"):
         target_f = []
         for f in glob.glob(f"{dr}/{filename}/*"):
-            if not os.path.islink(f):
-                target_f.append(f)
+            target_f.append(f)
         paired_matches = _find_fastq_matches(target_f, filename)
         files_F = files_F + [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '1']
         files_R = files_R + [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '2']

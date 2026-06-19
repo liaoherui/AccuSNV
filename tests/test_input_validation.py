@@ -20,6 +20,26 @@ class InputValidationTests(unittest.TestCase):
 
             self.assertEqual(found, [str(expected_r1), str(expected_r2)])
 
+    def test_findfastqfile_matches_symlinked_reads_by_link_name(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source_dir = root / "source_reads"
+            reads_dir = root / "linked_reads"
+            source_dir.mkdir()
+            reads_dir.mkdir()
+            source_r1 = source_dir / "lane_A_R1.fastq.gz"
+            source_r2 = source_dir / "lane_A_R2.fastq.gz"
+            source_r1.write_text("")
+            source_r2.write_text("")
+            link_r1 = reads_dir / "MOB_004_Vag_09_1.fastq.gz"
+            link_r2 = reads_dir / "MOB_004_Vag_09_2.fastq.gz"
+            link_r1.symlink_to(source_r1)
+            link_r2.symlink_to(source_r2)
+
+            found = cli.findfastqfile(str(reads_dir), "MOB_004_Vag_09", "MOB_004_Vag_09")
+
+            self.assertEqual(found, [str(link_r1), str(link_r2)])
+
     def test_reference_validation_rejects_reserved_ref_names(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
