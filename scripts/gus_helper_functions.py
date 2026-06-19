@@ -86,6 +86,24 @@ def split_samplesCSV(PATH_ls,SAMPLE_ls,FILENAME_ls,REF_Genome_ls,GROUP_ls,OUTGRO
                 for row in sample_info_csv:
                     writer.writerow(row)
 
+def _fastq_match_groups(path, filename, allow_unpaired=False):
+    """Return regex match groups for FASTQ files belonging to filename."""
+    basename = os.path.basename(path)
+    suffix_pattern = r"(?:_001)?\.(?:fastq|fq)(?:\.gz)?$"
+    prefix = re.escape(filename)
+    if allow_unpaired:
+        pattern = rf"^{prefix}{suffix_pattern}"
+    else:
+        pattern = rf"^{prefix}(?:[_\.-](?:R)?(?P<read>[12])){suffix_pattern}"
+    return re.match(pattern, basename)
+
+def _find_fastq_matches(target_f, filename, allow_unpaired=False):
+    matches = []
+    for f in target_f:
+        match = _fastq_match_groups(f, filename, allow_unpaired)
+        if match:
+            matches.append(f)
+    return matches
 
 
 def findfastqfile(dr, smple, filename):
@@ -105,9 +123,11 @@ def findfastqfile(dr, smple, filename):
             
     #print('target...',target_f)
     #exit()
-    # Search for filename as a prefix
-    files_F = [f for f in target_f if re.search(f"{filename}_?.*?R1({'|'.join(file_suffixs)})", f)]
-    files_R = [f for f in target_f if re.search(f"{filename}_?.*?R2({'|'.join(file_suffixs)})", f)]
+    # Search for exact filename/read-marker matches. The match is anchored to
+    # the basename to avoid sample_1 also matching sample_10.
+    paired_matches = _find_fastq_matches(target_f, filename)
+    files_F = [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '1']
+    files_R = [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '2']
     #print(dr,smple,filename,glob.glob(f"{dr}/*"))
     # Search for filename as a directory
     file_F = []
@@ -122,19 +142,17 @@ def findfastqfile(dr, smple, filename):
                 link_name = os.path.basename(f)
                 target_f.append(link_abs_path+'/'+link_name)
                 
-        files_F = files_F + [f"{filename}/{f}" for f in target_f
-                             if re.search(f"{filename}/.*_?.*?R1({'|'.join(file_suffixs)})", f)]
-        files_R = files_R + [f"{filename}/{f}" for f in target_f
-                             if re.search(f"{filename}/.*_?.*?R2({'|'.join(file_suffixs)})", f)]
+        paired_matches = _find_fastq_matches(target_f, filename)
+        files_F = files_F + [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '1']
+        files_R = files_R + [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '2']
     #print(files_F,files_R)
     if len(files_F) == 0 and len(files_R) == 0:
         # Can be single-end reads and no "1" or "2" ID in the filename
         #print(f'No file found in {dr} for sample {smple} with prefix {filename}! Go single-end checking!')
-        files_F = [f for f in target_f if re.search(f"{filename}.*_?.*({'|'.join(file_suffixs)})", f)]
+        files_F = _find_fastq_matches(target_f, filename, allow_unpaired=True)
 
         if os.path.isdir(f"{dr}/{filename}"):
-            files_F = files_F + [f"{filename}/{f}" for f in target_f if
-                                 re.search(f"{filename}/.*_?.*({'|'.join(file_suffixs)})", f)]
+            files_F = files_F + _find_fastq_matches(target_f, filename, allow_unpaired=True)
         if len(files_F) == 0:
             raise ValueError(f'No file found in {dr} for sample {smple} with prefix {filename}')
         else:

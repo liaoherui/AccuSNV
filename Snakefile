@@ -501,8 +501,11 @@ if flag == "mapping" or flag == "all":
         params:
             REF_GENOME_DIRECTORY + "/{reference}/genome_bwa",
         output:
-            bwaidx = REF_GENOME_DIRECTORY + \
-                "/{reference}/genome.fasta.bwt",
+            bwaidx = REF_GENOME_DIRECTORY + "/{reference}/genome.fasta.bwt",
+            amb = REF_GENOME_DIRECTORY + "/{reference}/genome.fasta.amb",
+            ann = REF_GENOME_DIRECTORY + "/{reference}/genome.fasta.ann",
+            pac = REF_GENOME_DIRECTORY + "/{reference}/genome.fasta.pac",
+            sa = REF_GENOME_DIRECTORY + "/{reference}/genome.fasta.sa",
         shell:
             "bwa index {input.fasta} ;"
 
