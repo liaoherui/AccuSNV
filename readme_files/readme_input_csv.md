@@ -24,8 +24,8 @@ Path,Sample,FileName,Reference,Group,Outgroup,Type
 
 - `Path`: Folder containing raw read files for this sample.
 - `Sample`: Unique sample ID (used in output filenames and plots).
-- `FileName`: Read file prefix (without `_1/_2` and without extension). Example: if files are `strainA_1.fastq.gz` and `strainA_2.fastq.gz`, use `strainA`.
-- `Reference`: Reference genome folder name (under your reference genome directory).
+- `FileName`: Read file prefix (without `_1/_2`, `_R1/_R2`, and without extension). Example: if files are `strainA_1.fastq.gz` and `strainA_2.fastq.gz`, use `strainA`. The prefix is matched exactly, so `strainA_1` will not also match `strainA_10`.
+- `Reference`: Reference genome folder name (under your reference genome directory). Avoid names that start with `ref_` or contain `_ref_`, because AccuSNV uses `_ref_` as an internal filename delimiter; use names such as `clade1_ref` instead.
 - `Group`: Samples with the same Group are analyzed together in one AccuSNV group output.
 - `Outgroup`: `0` = ingroup sample, `1` = outgroup sample.
 - `Type`: Sequencing type: `PE` or `SE`.
@@ -51,6 +51,8 @@ Suppose the input directory is like this:
 └── input_sample.csv
 ```
 Then, the `input_sample.csv` should look like this (if no outgroup sample):
+
+Each reference folder must contain a file named exactly `genome.fasta`. AccuSNV can generate BWA and samtools indexes during the Snakemake run (`genome.fasta.bwt`, `.amb`, `.ann`, `.pac`, `.sa`, and `.fai`); if the reference directory is not writable, pre-create them with `bwa index genome.fasta` and `samtools faidx genome.fasta`.
 
 ```
 Path,Sample,FileName,Reference,Group,Outgroup,Type

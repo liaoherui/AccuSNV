@@ -24,6 +24,69 @@ def del_same(arr1,arr2):
             if a in arr1:
                 arr2.remove(a)
 
+def _fastq_match_groups(path, filename, allow_unpaired=False):
+    """Return regex match groups for FASTQ files belonging to filename.
+
+    Matching is intentionally anchored to the basename so prefixes such as
+    sample_1 do not also match sample_10.
+    """
+    basename = os.path.basename(path)
+    suffix_pattern = r"(?:_001)?\.(?:fastq|fq)(?:\.gz)?$"
+    prefix = re.escape(filename)
+    if allow_unpaired:
+        pattern = rf"^{prefix}{suffix_pattern}"
+    else:
+        pattern = rf"^{prefix}(?:[_\.-](?:R)?(?P<read>[12])){suffix_pattern}"
+    return re.match(pattern, basename)
+
+def _find_fastq_matches(target_f, filename, allow_unpaired=False):
+    matches = []
+    for f in target_f:
+        match = _fastq_match_groups(f, filename, allow_unpaired)
+        if match:
+            matches.append(f)
+    return matches
+
+def _check_reference_inputs(infile, ref_dir):
+    """Validate reference names and required genome.fasta inputs up front."""
+    if not ref_dir:
+        return
+    ref_dir = os.path.abspath(ref_dir)
+    references = []
+    with open(infile, 'r') as f:
+        header = f.readline()
+        for line_num, line in enumerate(f, start=2):
+            line = line.strip()
+            if not line:
+                continue
+            ele = re.split(',', line)
+            if len(ele) < 4:
+                raise ValueError(f'Input CSV line {line_num} has fewer than 4 columns: {line}')
+            references.append(ele[3].strip())
+
+    missing = []
+    reserved = []
+    for reference in sorted(set(references)):
+        if reference.startswith('ref_') or '_ref_' in reference:
+            reserved.append(reference)
+        genome_fasta = os.path.join(ref_dir, reference, 'genome.fasta')
+        if not os.path.isfile(genome_fasta):
+            missing.append(genome_fasta)
+
+    if reserved:
+        raise ValueError(
+            'Reference folder names must not start with "ref_" or contain "_ref_" '
+            'because AccuSNV uses "_ref_" as an internal filename delimiter. '
+            'Please rename these references (for example, use "<clade>_ref" instead): '
+            + ', '.join(reserved)
+        )
+    if missing:
+        raise ValueError(
+            'Missing required reference genome file(s). Each reference folder listed '
+            'in the input CSV must contain a file named exactly "genome.fasta":\n'
+            + '\n'.join(missing)
+        )
+
 def findfastqfile(dr, smple, filename):
     ##### Add by Herui - 20240919 - Modified function based on the codes from Evan
     # Given the input path and filename, will return the fastq file (include SE, PE, different suffixs) Will gzip the file automatically.
@@ -38,9 +101,11 @@ def findfastqfile(dr, smple, filename):
 
     #print('target...',target_f)
     #exit()
-    # Search for filename as a prefix
-    files_F = [f for f in target_f if re.search(f"{filename}_?.*?R?1({'|'.join(file_suffixs)})", f)]
-    files_R = [f for f in target_f if re.search(f"{filename}_?.*?R?2({'|'.join(file_suffixs)})", f)]
+    # Search for exact filename/read-marker matches. The match is anchored to
+    # the basename to avoid sample_1 also matching sample_10.
+    paired_matches = _find_fastq_matches(target_f, filename)
+    files_F = [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '1']
+    files_R = [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '2']
     #print(files_F)
     # Search for filename as a directory
     file_F = []
@@ -50,21 +115,19 @@ def findfastqfile(dr, smple, filename):
         for f in glob.glob(f"{dr}/{filename}/*"):
             if not os.path.islink(f):
                 target_f.append(f)
-        files_F = files_F + [f"{filename}/{f}" for f in target_f
-                             if re.search(f"{filename}/.*_?.*?R?1({'|'.join(file_suffixs)})", f)]
-        files_R = files_R + [f"{filename}/{f}" for f in target_f
-                             if re.search(f"{filename}/.*_?.*?R?2({'|'.join(file_suffixs)})", f)]
+        paired_matches = _find_fastq_matches(target_f, filename)
+        files_F = files_F + [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '1']
+        files_R = files_R + [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '2']
 
     #print(files_F,files_R)
     del_same(files_F,files_R)
     if len(files_F) == 0 and len(files_R) == 0:
         # Can be single-end reads and no "1" or "2" ID in the filename
         print(f'No file found in {dr} for sample {smple} with prefix {filename}! Go single-end checking!')
-        files_F = [f for f in target_f if re.search(f"{filename}.*_?.*({'|'.join(file_suffixs)})", f)]
+        files_F = _find_fastq_matches(target_f, filename, allow_unpaired=True)
 
         if os.path.isdir(f"{dr}/{filename}"):
-            files_F = files_F + [f"{filename}/{f}" for f in target_f if
-                                 re.search(f"{filename}/.*_?.*({'|'.join(file_suffixs)})", f)]
+            files_F = files_F + _find_fastq_matches(target_f, filename, allow_unpaired=True)
         if len(files_F) == 0:
             raise ValueError(f'No file found in {dr} for sample {smple} with prefix {filename}')
         else:
@@ -454,6 +517,7 @@ def main():
 		out_dir = pwd+'/wd_out_'+uid
 	if not ref_dir:
 		ref_dir=''
+	_check_reference_inputs(input_file, ref_dir)
 	if not cp_env:
 		cp_env=''
 	if not tf_slurm:

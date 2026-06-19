@@ -2451,14 +2451,19 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
             mut_annotations['loc2'] = p_anno.loc['loc2'] # last position of gene (inclusive)
             mut_annotations['sequence'] = p_anno.loc['sequence']
             mut_annotations['translation'] = p_anno.loc['translation']
+            mut_annotations['sequence_orientation'] = 'forward' if p_anno.loc['strand'] == 1 else 'reverse_complement' if p_anno.loc['strand'] == -1 else '.'
             
             # Compute position within gene, taking into account strandedness
             if p_anno.loc['strand'] == 1: # fwd
-                mut_annotations['nt_pos'] = mut_annotations['contig_pos'] - mut_annotations['loc1'] + 1 # positions on genome indexed at 1 (pos, loc1)
+                mut_annotations['nt_pos_forward'] = mut_annotations['contig_pos'] - mut_annotations['loc1'] + 1 # positions on genome indexed at 1 (pos, loc1)
+                mut_annotations['nt_pos_sequence'] = mut_annotations['nt_pos_forward']
             elif p_anno.loc['strand'] == -1: # rev
-                mut_annotations['nt_pos'] = mut_annotations['loc2'] - mut_annotations['contig_pos'] + 1 # positions on genome indexed at 1 (pos, loc2)
+                mut_annotations['nt_pos_forward'] = mut_annotations['contig_pos'] - mut_annotations['loc1'] + 1 # reference-forward gene coordinate
+                mut_annotations['nt_pos_sequence'] = mut_annotations['loc2'] - mut_annotations['contig_pos'] + 1 # coordinate in reported reverse-complement sequence
             else: # no strandedness
-                mut_annotations['nt_pos'] = "." # can happen eg. Crispr
+                mut_annotations['nt_pos_forward'] = "."
+                mut_annotations['nt_pos_sequence'] = "." # can happen eg. Crispr
+            mut_annotations['nt_pos'] = mut_annotations['nt_pos_sequence'] # legacy alias retained for backward compatibility
             if mut_annotations['nt_pos'] == ".": # observed with special 'type's like crispr annotated (rare!); leads to no AA inference
                 aan = 9999999
             else:
@@ -2977,6 +2982,9 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
         'loc1': '.',
         'loc2': '.',
         'nt_pos': '.',
+        'nt_pos_forward': '.',
+        'nt_pos_sequence': '.',
+        'sequence_orientation': '.',
         'aa_pos': '.',
         'codons': np.nan,
         'AA': np.nan,
@@ -3025,6 +3033,12 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
         # f.write('translation')
         # f.write('\t')
         f.write('nt_pos')
+        f.write('\t')
+        f.write('nt_pos_forward')
+        f.write('\t')
+        f.write('nt_pos_sequence')
+        f.write('\t')
+        f.write('sequence_orientation')
         f.write('\t')
         f.write('aa_pos')
         f.write('\t')
@@ -3100,6 +3114,12 @@ def write_mutation_table_as_tsv( mut_positions, mut_quality, sampleNames, annota
             #     f.write(str(next_translation))
             # f.write('\t')
             f.write( str(annotation_mutations._get_value(i,'nt_pos')) )
+            f.write('\t')
+            f.write( str(annotation_mutations._get_value(i,'nt_pos_forward')) )
+            f.write('\t')
+            f.write( str(annotation_mutations._get_value(i,'nt_pos_sequence')) )
+            f.write('\t')
+            f.write( str(annotation_mutations._get_value(i,'sequence_orientation')) )
             f.write('\t')
             f.write( str(annotation_mutations._get_value(i,'aa_pos')) )
             f.write('\t')
@@ -3549,6 +3569,8 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
             </tr>
             <tr>
             <th class="snp">nt_pos</th>
+            <th class="snp">nt_pos_sequence</th>
+            <th class="snp">nt_pos_forward</th>
             <th class="snp">aa_pos</th>
             <th class="snp">muts / type</th>
             <th class="pred">MAF_filter (>0.85)</th>
@@ -3560,6 +3582,8 @@ def generate_html_with_thumbnails(input_file, output_file, chart_dir):
         <tr>
  
             <td>{row['nt_pos']}</td>
+            <td>{row.get('nt_pos_sequence', '.')}</td>
+            <td>{row.get('nt_pos_forward', '.')}</td>
             <td>{row['aa_pos']}</td>
             <td>{re.sub(',','',str(row['muts']))} / {row['type']}</td>
             <td>{row['MAF_filter (>0.85)']}</td>
