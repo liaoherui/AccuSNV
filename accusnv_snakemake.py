@@ -296,9 +296,9 @@ def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm,tem_dir):
 					line=ele[0]+'"'+','.join(idle_p)+'"\n'
 			o.write(line)
 
-	with open(os.path.join(script_dir, 'scripts', 'dry_run.sh'), 'w+') as o2:
+	with open(os.path.join(odir, 'dry_run.sh'), 'w+') as o2:
 		o2.write('snakemake -np  --profile '+cond+'\n')
-	with open(os.path.join(script_dir, 'scripts', 'run_snakemake.slurm'), 'w+') as o3:
+	with open(os.path.join(odir, 'run_snakemake.slurm'), 'w+') as o3:
 		o3.write('#!/bin/bash\n')
 		o3.write('#SBATCH --job-name widevariant.main\n')
 		if len(idle_p)<3:
@@ -316,7 +316,7 @@ def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm,tem_dir):
 		o3.write('snakemake  --profile '+cond+'\n')
 		o3.write('# Print "Done!!!" at end of main log file\n')
 		o3.write('echo Done!!!\n')
-	with open(os.path.join(script_dir, 'scripts', 'run_snakemake_local.sh'), 'w+') as o4:
+	with open(os.path.join(odir, 'run_snakemake_local.sh'), 'w+') as o4:
 		o4.write('snakemake  --profile '+cond)
 
 
@@ -479,7 +479,7 @@ def main():
 	parser.add_argument('-a','--aligner', dest='aligner', type=str, help="The aligner used for read mapping, can be either BWA or Bowtie2. E.g. You can set \"-a bowtie2\" to use bowtie2. (Default: -a bwa)")
 	parser.add_argument('-p','--samclip', dest='samclip', type=str,help="If set to 1, samclip will be used when the aligner is BWA. Note that this parameter is not applicable when Bowtie2 is used as the aligner. (Default: 0)")
 	parser.add_argument('-t','--aligner_threads',dest='aligner_threads',type=str,help="The threads for the aligner - bwa or bowtie2 (Default: 4)")
-	parser.add_argument('-f','--turn_off_slurm',dest='tf_slurm',type=int,help="If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node. (Default: 0)")
+	parser.add_argument('-f','--mode',dest='tf_slurm',choices=['local','slurm'],default='slurm',help="Execution mode: 'local' runs all jobs on a single node; 'slurm' submits jobs via the SLURM system. (Default: slurm)")
 	parser.add_argument('-c','--config_prebuilt_env',dest='cp_env',type=str,help="The absolute dir of your pre-built env. e.g. /path/snake_pipeline/accusnv_sub")
 	parser.add_argument('-r','--ref_dir',dest='ref_dir',type=str,help="The dir of your reference genomes")
 	#### AccuSNV - CNN-filter part params
@@ -497,7 +497,7 @@ def main():
 	aligner_threads=args.aligner_threads
 	out_dir=args.out_dir
 	ref_dir=args.ref_dir
-	tf_slurm = args.tf_slurm
+	tf_slurm = 1 if args.tf_slurm == 'local' else 0
 	cp_env=args.cp_env
 	# CNN-filter params
 	min_cov_samp = args.min_cov_samp
@@ -518,8 +518,6 @@ def main():
 	_check_reference_inputs(input_file, ref_dir)
 	if not cp_env:
 		cp_env=''
-	if not tf_slurm:
-		tf_slurm=0
 	if not min_cov_filt:
 		min_cov_filt = 5
 	else:
@@ -588,19 +586,19 @@ def main():
 	data_dir = out_dir + '/link'
 	build_dir(tem_dir)
 	build_dir(data_dir)
-	all_p_raw = subprocess.check_output("sinfo -h -o '%P' | sort -u", shell=True, text=True).split()
+	# Only probe Slurm partitions in Slurm mode; a local run does not need them.
 	all_p=[]
-	for s in all_p_raw:
-		if is_partition_valid(s) and is_partition_time_limit_exceed(s):
-			all_p.append(s)
-	#all_p=','.join(all_p)
-
-	idle_p_raw = subprocess.check_output("sinfo -h -o '%P %T' | awk '$2 == \"idle\" {print $1}'", shell=True, text=True).split()
 	idle_p=[]
-	for s in idle_p_raw:
-		if s in all_p:
-			idle_p.append(s)
-	#idle_p = ','.join(idle_p)
+	if tf_slurm != 1:
+		all_p_raw = subprocess.check_output("sinfo -h -o '%P' | sort -u", shell=True, text=True).split()
+		for s in all_p_raw:
+			if is_partition_valid(s) and is_partition_time_limit_exceed(s):
+				all_p.append(s)
+
+		idle_p_raw = subprocess.check_output("sinfo -h -o '%P %T' | awk '$2 == \"idle\" {print $1}'", shell=True, text=True).split()
+		for s in idle_p_raw:
+			if s in all_p:
+				idle_p.append(s)
 	#out_dir=os.path.abspath(out_dir)
 	#print(all_p,idle_p)
 	#exit()
