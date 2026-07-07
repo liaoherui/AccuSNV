@@ -2,184 +2,177 @@
 
 # <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/logo.png" width = "100" height = "100" >  High-accuracy SNV calling for bacterial isolates using AccuSNV 
 
-AccuSNV is a computational tool designed to identify single nucleotide variants (SNVs) in short-read whole genome sequencing (WGS) data from bacterial isolates. By leveraging deep learning, it classifies SNVs as either true or false, improving the accuracy of variant detection. The tool takes WGS data and a reference genome as input, and outputs a high-quality mutation table along with text and HTML reports. Additionally, it facilitates detailed downstream analysis, including phylogenetic tree construction and evolutionary analysis, among other features.
+### Version: V1.0.1.0 (Last update on 2026-July)
 
-The workflow of AccuSNV:
+AccuSNV is a computational tool designed to identify single nucleotide variants (SNVs) in short-read whole genome sequencing (WGS) data from bacterial isolates. By leveraging deep learning, it classifies SNVs as either true or false, improving the accuracy of variant detection. AccuSNV takes WGS data and a reference genome as input, and outputs a high-quality mutation table along with text and HTML reports. Additionally, it facilitates detailed downstream analysis, including phylogenetic tree construction and evolutionary analysis, among other features.
+
+
+
+The architecture of the AccuSNV convolutional neural network:
 
 # <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/method_fix.jpg" width = "800" height = "500" >  
 
+
 ## Overview
 
-This pipeline and toolkit is used to detect and analyze single nucleotide differences between bacterial isolates from WGS data. 
+This pipeline and toolkit is used to identify and analyze single nucleotide differences between bacterial isolates from short read WGS data. 
 
-* Noteable features
-	* Avoids false SNV calling through a deep learning method, while also enabling visualization of raw data.
-	* Enables evolutionary analysis, including phylogenetic construction, nonsynonmous vs synonymous mutation counting, and parallel evolution, etc.
+* Key features
+	* Excludes false SNVs through deep learning classification, and enables visualization of raw data behind each SNV call.
+	* Enables downstream evolutionary analyses, including phylogenetic tree construction, nonsynonmous vs synonymous mutation counting, and detection of parallel evolution.
 
-* Inputs: 
-	* short-read sequencing data of bacterial isolates
-	* an annotated reference genome
-  * More details can be found in [here](#Usage).
+* Inputs
+	* Short-read sequencing FASTQ data from multiple (>=3) bacterial isolates.
+  * A sample sheet describing the reference genome, grouping, and outgroup to use for each sample.
+	* Reference genome FASTA file(s), with optional annotations (gff). 
+  * More details can be found under [Usage](#full-usage).
   
-* Outputs: 
-	* table of high-quality SNVs that differentiate isolates from each other
-	* parsimony tree of how the isolates are related to each other
-  * More details can be found in [here](#output)
-
--------------------------------------------------
-### Version: V1.0.0.6 (Last update on 2026-Mar)
-- Log: if you are looking for v1.0.0.5 (the original version, main branch), you can find it [here](https://github.com/liaoherui/AccuSNV/tree/main)!
--------------------------------------------------
+* Outputs 
+	* Table of high-quality SNVs differentiating the isolates in the dataset.
+  * Mutation types and their associated gene annotations.
+  * dN/dS and dMRCA calculations.
+  * Parsimony tree of isolates.
+  * More details can be found under [Output](#output).
 
 
-Note: This tool is powered by Lieberman and Key Lab SNV calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant).
+Note: This tool is based on the Lieberman and Key Lab SNV calling pipeline - [WideVariant](https://github.com/liebermanlab/WideVariant). We are maintaining an updated version of that pipeline in this repository for preprocessing data for input to the AccuSNV CNN.
 
 
 ## Contents
 
 - [Install](#install)
-- [Quick Test](#quick-test)
-- [Usage](#usage)
+- [Quick Test](#quick-test-local)
+- [Usage](#full-usage)
 - [Output](#output)
 - [Full command-line options](#full-command-line-options)
-- [Contact](#-contact-)
-- [Cite](#references)
+- [Contact](#contact)
+- [Cite](#citation)
 
 
 -------------------------------------------------
 
 ## Install
 
+To install AccuSNV, you must both clone the GitHub repository and also install the required dependencies by installing the conda/mamba package.
+
 Git clone:<BR/>
 `git clone https://github.com/liaoherui/AccuSNV.git`<BR/>
 
 
-Change the permission of the file:<BR/>
+Change the permission of the SLURM status script file:<BR/>
 `cd AccuSNV`<BR/>
-`chmod 777 slurm_status_script.py`<BR/>
+`chmod +x slurm_status_script.py`<BR/>
 
-Install via bioconda:<BR/>
-`mamba create -n accusnv -c conda-forge -c bioconda accusnv` or <BR/>
-`conda create -n accusnv -c conda-forge -c bioconda accusnv`<BR/>
+Install dependencies via bioconda:<BR/>
+`conda create -n accusnv -c conda-forge -c bioconda accusnv` or <BR/>
+`mamba create -n accusnv -c conda-forge -c bioconda accusnv` <BR/>
 
 then, `conda activate accusnv`
 
-If this installation method doesn’t work for your case, there are several other options you can try. See here.
+## Quick Test (local)
 
-## Quick Test 
+ Run in a local compute environment (e.g., laptop or on a single node) by passing the `-f local` parameter:
 
-Quick test with the provided test data.
-
-1. Test the tool on your **Laptop** (Support Linux or Ubuntu systems only):
-
-Note: If you plan to use the Slurm system on the Linux HPC cluster (then you should check '2. Test...with Slurm system'), please do not use `-f`, since it disables automatic Slurm job submission.
-
+### 1. Prepare output directory and config files for the pipeline:
 ```
-# Step-1: Snakemake pipeline
-python accusnv_snakemake.py -f 1 -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
-
-# Snakemake dry-run step: simulates the execution of a workflow without actually running any jobs or creating output files
-sh scripts/dry_run.sh
-
-# Run the pipeline locally
-sh scripts/run_snakemake_local.sh
-
-# Step-2: Downstream analysis
-python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
-
-# (or: python accusnv_downstream.py -i  Test_data_local/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_ds_pe_downstream)
-
-----------------------------------------------------------------------------------------------------------------------------------
-# Note: Running the tool locally is convenient, but it may not fully utilize the capabilities of the Snakemake framework,
-# which can execute many jobs in parallel by submitting them to different nodes or partitions on an HPC cluster.
-# To improve efficiency (especially for large-scale datasets),
-# it is recommended to run the Snakemake pipeline on an HPC system with Slurm (see the example below).
-----------------------------------------------------------------------------------------------------------------------------------
+./accusnv prepare -f local -i Test_data/samples_cae_test_pe.csv -r Test_data/reference_genomes -o cae_accusnv_output
 ```
 
+Here, `samples_cae_test_pe.csv` is an example input sample table, and `Test_data/reference_genomes` is an example directory of reference genomes for these samples.
 
-
-2. Test the tool on the **Linux HPC system (cluster)** with [Slurm](https://slurm.schedmd.com/overview.html) system:
-
+### 2. Run the pipeline locally:
 ```
-# Step-1: Snakemake pipeline
-python accusnv_snakemake.py -i test_data_csv/samples_cae_test_pe.csv -r reference_genomes -o cae_pe_test_snakemake
-
-# Snakemake dry-run step
-sh scripts/dry_run.sh
-
-# Run the pipeline on HPC compute nodes; the jobs will be automatically submitted through the Slurm system.
-sbatch scripts/run_snakemake.slurm
-# (This Slurm script starts the entire pipeline. You can modify it as needed (e.g., change the partition for job submission).)
-
-# Step-2: Downstream analysis (as this step requires minimal computational resources, it can still be run locally.You can also test this step directly using the provided test data, see the “or” option below.)
-python accusnv_downstream.py -i cae_pe_test_snakemake/3-AccuSNV/group_pe_test/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_pe_downstream
-
-# (or: python accusnv_downstream.py -i  Test_data_local/candidate_mutation_table_final.npz -r reference_genomes/Cae_ref -o cae_accusnv_ds_pe_downstream)
-
-----------------------------------------------------------------------------------------------------------------------------------
-# Note: If you got error like "ValueError: The binary mode of fromstring is removed, use frombuffer instead",
-# This is likely because: On some clusters, activating your conda environment on compute nodes may require additional steps.
-# To solve it, in your scripts/run_snakemake.slurm file, you may need something like the following:
-
-# conda activate accusnv
-----------------------------------------------------------------------------------------------------------------------------------
+./accusnv run -o cae_accusnv_output
 ```
 
-To adjust the Slurm configuration (e.g., the partitions to submit to, CPU and memory requirements for specific tasks, or the maximum number of submitted jobs), you can modify the config.yaml file in the output folder generated in Step 1 (in this example: `cae_pe_test_snakemake/conf/config.yaml`). Some notes on how to modify this file can be found here.
+## Quick Test (HPC cluster) 
 
+Run on a **Linux HPC system (cluster)** with a [Slurm](https://slurm.schedmd.com/overview.html) scheduler. Typically, we recommend that you run AccuSNV on an HPC cluster, and we provide out of the box Snakemake support for Slurm clusters, and this is currently the default run mode:
 
-3. For either Test (1) or Test (2), if the jobs finish successfully, the output folders should look like [this](readme_files/readme_test_output.md).
-4. For more example command lines for the Step 1 Snakemake pipeline (e.g., using `samclip` or replacing `bwa` with `bowtie2`), please check the file `test_run.sh`.
-
-
-## Usage
-
-Key point: Ensure that all of your input files follow the same format as the tested files used in the **Quick Test** above.
-
-To run the tool, you will need to:
-
-### (1) Prepare inputs
-
-- A sample sheet CSV (same format as the **Quick Test** CSV files). Details about this file can be found [here](readme_files/readme_input_csv.md). Examples can be found in the folder [test_data_csv](test_data_csv/).
-
-- A reference genome directory (each reference should have a file named exactly `genome.fasta`; annotations such as `genome.gff` (generated by [Prokka](https://github.com/tseemann/prokka) or [Bakta](https://github.com/oschwengers/bakta)) are recommended for richer outputs). Avoid reference folder names that start with `ref_` or contain `_ref_` because AccuSNV uses `_ref_` as an internal filename delimiter. AccuSNV can generate BWA/samtools indexes during the Snakemake run (`genome.fasta.bwt`, `.amb`, `.ann`, `.pac`, `.sa`, and `.fai`); if the reference directory is not writable, pre-create them with `bwa index genome.fasta` and `samtools faidx genome.fasta`. Examples can be found in the folder [reference_genomes](reference_genomes/).
-
-An example of the input directory structure and corresponding input files can be found [here](readme_files/readme_input_csv.md).
-
-### (2)  Run the Snakemake pipeline
-
+### 1. Prepare output directory and config files for the pipeline (Slurm):
 ```
-# from AccuSNV root
-python accusnv_snakemake.py -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
+./accusnv prepare -f slurm -i Test_data/samples_cae_test_pe.csv -r Test_data/reference_genomes -o cae_pe_test_snakemake
 ```
 
-<!---
-# or Bioconda command (equivalent to the above)
-# accusnv_snakemake -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
--->
+### 2. Submit and run the pipeline on an HPC Slurm cluster:
 
-Then check workflow plan with Snakemake dry run:
+```
+./accusnv run -o cae_pe_test_snakemake
+```
 
-`sh scripts/dry_run.sh`
+This runs a Slurm script that starts the entire pipeline. **You must first modify it to fit your HPC specifications** by modifying the `conf/config.yaml` file in the output folder generated in Step 1 (in this example: `cae_pe_test_snakemake/conf/config.yaml`). You will likely want to modify the partitions to submit to, CPU and memory requirements for specific tasks, or the maximum number of submitted jobs.
 
-Submit with Slurm:
+>For a description of the resulting output files, see [Output files of AccuSNV](readme_files/readme_test_output.md), or read on below.
 
-`sbatch scripts/run_snakemake.slurm`
+>*Note*: If you receive an error like "ValueError: The binary mode of fromstring is removed, use frombuffer instead", This is likely because on some clusters, you must first activate your conda environment on compute nodes. To solve it, in your `<output_dir>/run_snakemake.slurm` file, you may need something like the following: `conda activate accusnv`.
 
-If you do not use Slurm (single node/local-style run), set:
+## Full Usage
 
-`python accusnv_snakemake.py -f 1 -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>`
+First, you must ensure that all of your input files follow the same format as the example files used in the **Quick Test** above.
 
-(`-f 1` disables automatic Slurm submission mode).
+### 1. Prepare necessary input files
 
-and `sh scripts/run_snakemake_local.sh`
+AccuSNV requires three types of inputs: 
 
-### (3) Run downstream analysis (optional but recommended for dN/dS and re-analysis)
+- **A sample sheet CSV** 
+  - Sample sheets 
+  - Same format as the **Quick Test** CSV files. Examples can be found in the folder [Test_data](Test_data/) (e.g. `Test_data/samples_cae_test_pe.csv`).
+  - In this sample sheet, individual samples can be assigned to sample *groups*. Samples within the same Group are analyzed together and separately from other samples.
+  - Detailed description for this file can be found [here](readme_files/readme_input_csv.md).
 
-Use the final NPZ from:
+- **A directory of FASTQ files.** 
+  - AccuSNV does not take FASTQ paths directly. For each sample it locates the reads by combining the Path (the folder to search) and the FileName (the read-file prefix) columns from your sample sheet, and then searching the Path folder for files that match.
+  - Accepts gzipped or plain FASTQ files with extensions: .fastq.gz, .fq.gz, .fastq, or .fq.
+  - For paired end reads, R1/R2 files must be distinguished by a `1`/`2` joined by `_`, `.`, or `-`. 
+- **A reference genome directory** 
+  - Each reference should be in its own subfolder within the reference genome directory, and have a file named exactly `genome.fasta`.
+  - Annotations such as `genome.gff` (generated by [Prokka](https://github.com/tseemann/prokka) or [Bakta](https://github.com/oschwengers/bakta)) are recommended for richer outputs. 
+  - Avoid reference folder names that start with `ref_` or contain `_ref_` because AccuSNV uses `_ref_` as an internal filename delimiter. 
+  - AccuSNV can generate BWA/samtools indexes during the Snakemake run (`genome.fasta.bwt`, `.amb`, `.ann`, `.pac`, `.sa`, and `.fai`); if the reference directory is not writable, pre-create them with `bwa index genome.fasta` and `samtools faidx genome.fasta`. 
+  - Examples can be found in the folder [Test_data/reference_genomes](Test_data/reference_genomes/).
+
+
+
+A detailed description of the input directory structure and files can be found here: [Input files of AccuSNV](readme_files/readme_input_csv.md).
+
+### 2.  Run the Snakemake pipeline
+
+For running on an HPC with Slurm, first prepare the config and input files:
+
+```
+./accusnv prepare -f slurm -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
+```
+
+You can first test the workflow with a Snakemake dry run: `./accusnv run --dryrun -o <output_dir>`.
+
+To then submit with Slurm:
+
+```
+./accusnv run -o <output_dir>
+```
+
+If you do not use Slurm (single node/local run), instead run:
+
+```
+./accusnv prepare -f local -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
+```
+
+(`-f local` disables automatic Slurm submission mode).
+
+and then:
+
+```
+./accusnv run -o <output_dir>
+```
+
+### 3. Re-run downstream evolutionary analyses separately
+
+By default, the full AccuSNV snakemake pipeline will calculate distance to Most Recent Common Ancestor (dMRCA), dN/dS, and identify parallel mutations. 
+
+However, users may often wish to re-run these analyses without re-running the entire SNV calling pipeline. To do so, you can use the final NPZ from:
 `<output_dir>/3-AccuSNV/group_<group_id>/candidate_mutation_table_final.npz`
 
+And then run:
 ```
 python accusnv_downstream.py \
   -i <output_dir>/3-AccuSNV/group_<group_id>/candidate_mutation_table_final.npz \
@@ -188,35 +181,20 @@ python accusnv_downstream.py \
 ```
 Note: NPZ files under `2-Case/candidate_mutation_table` are for the local AccuSNV script (`new_snv_script.py`), not for `accusnv_downstream`
 
-<!---
-# Bioconda command (equivalent to the above):
-# accusnv_downstream -i <final_cmt_npz> -r <reference_dir> -o <downstream_output_dir>
--->
-
-### (4) Main output files to look at
-
-(Core output are in the `<output_dir>/3-AccuSNV/<folder_name>` from (2). E.g., for **Quick Test**, this is `cae_pe_test_snakemake/3-AccuSNV/group_pe_test/` folder.)
-
-Final SNV table: `snv_table_merge_all_mut_annotations_final.tsv`
-
-Interactive report: `snv_table_with_charts_final.html` (keep `bar_charts/` beside it).
-
-Downstream input/output anchor: `candidate_mutation_table_final.npz`.
-
-You can find examples to these four output files in the [demo_output](demo_output) folder.
-
+In the future, we plan to facilitate more interactive versions of these evolutionary analyses that allow the user to visualize, inspect, and interact with their data. 
 
 ## Output
 
-The main output files  are in the `<output_folder>/3-AccuSNV/<folder_name>` (e.g., for **Quick Test**, this is `cae_pe_test_snakemake/3-AccuSNV/group_pe_test/`) folder. 
-### Core files:
+The main output files for each sample group are found in the `<output_folder>/3-AccuSNV/group_[group_name]` directory (e.g., for **Quick Test**, this is the `cae_pe_test_snakemake/3-AccuSNV/group_pe_test/`). 
+
+### Core output files:
 
 | File or Folder |  Description |
 | ---  | --- | 
 | `snv_table_merge_all_mut_annotations_final.tsv`  | Final merged SNV report table (recommended primary text result for interpretation). More details, including explanations of the columns in this file, can be found [here](readme_files/readme_annotation_table.md).
-| `snv_table_cnn_plus_filter.txt` | Per-position prediction/filter summary table (CNN output + rule-based filters (from WideVariant)). Note that this file does not include annotation information for each SNV.
+| `snv_table_cnn_plus_filter.txt` | Per-position prediction/filter summary table (CNN output + rule-based filters). Note that this file does not include annotation information for each SNV.
 | `snv_table_with_charts_final.html`  | Interactive final HTML report for the final merged table (recommended to view). Keep `bar_charts/` in the same output folder so image links work.
-| `candidate_mutation_table_final.npz`  | Final machine-readable SNV matrix for downstream analysis. Contains arrays such as sample names, genomic positions, counts, quality values, prediction labels/probabilities, and recombination flags. This is the main input for `accusnv_downstream`.
+| `candidate_mutation_table_final.npz`  | Final machine-readable full SNV matrix for downstream analysis. Contains arrays such as sample names, genomic positions, counts, quality values, prediction labels/probabilities, and recombination flags. This is the main input for `accusnv_downstream`.
 
 You can find examples to these four core output files in the [demo_output](demo_output) folder.
 
@@ -230,55 +208,67 @@ For full documentation of all output files, please see [here](readme_files/readm
 
 A demo output HTML report of AccuSNV can be found at https://heruiliao.github.io/
 
+### Downstream evolutionary analysis output files:
+| File or Folder |  Description |
+| ---  | --- | 
+| `./3-AccuSNV/group_<group>/data_dNdS.npz`  | dN/dS values for each gene with mutations. Contains dNdS, a confidence interval, and the N/S mutation counts.
+| `./3-AccuSNV/group_<group>/snv_tree_genome_latest.nwk.tree` | Newick parsimony tree built by **dnapars**.
+| `./3-AccuSNV/group_<group>/snv_table_tree_distances.csv`  | Per-sample SNP distances to ancestor.
+| `./3-AccuSNV/group_<group>/snp_trees/*`  | per-SNV files named p_<position>_<N>.tree where N ≥ 2 flags a homoplasic (parallel) mutation.
+
+
+
 ## Full command-line options
 
-Snakemake pipeline - accusnv_snakemake.py 
+### `accusnv prepare` 
 ```
+usage: AccuSNV [-h] -i INPUT_SP [-a ALIGNER] [-p SAMCLIP] [-t ALIGNER_THREADS] [-f {local,slurm}] [-c CP_ENV] [-r REF_DIR] [-s MIN_COV_SAMP] [-v MIN_COV] [-e EXCLUDE_SAMP] [-g GENERATE_REP] [-o OUT_DIR]
+
 AccuSNV - SNV calling tool for bacterial isolates using deep learning.
 
 options:
   -h, --help            show this help message and exit
-  -i INPUT_SP, --input_sample_info INPUT_SP
+  -i, --input_sample_info INPUT_SP
                         The dir of input sample info file --- Required
-  -a ALIGNER, --aligner ALIGNER
+  -a, --aligner ALIGNER
                         The aligner used for read mapping, can be either BWA or Bowtie2. E.g. You can set "-a bowtie2" to use bowtie2. (Default: -a bwa)
-  -p SAMCLIP, --samclip SAMCLIP
-                        If set to 1, samclip will be used when the aligner is BWA. Note that this parameter is not applicable when Bowtie2 is used as the
-                        aligner. (Default: 0)
-  -t ALIGNER_THREADS, --aligner_threads ALIGNER_THREADS
+  -p, --samclip SAMCLIP
+                        If set to 1, samclip will be used when the aligner is BWA. Note that this parameter is not applicable when Bowtie2 is used as the aligner. (Default: 0)
+  -t, --aligner_threads ALIGNER_THREADS
                         The threads for the aligner - bwa or bowtie2 (Default: 4)
-  -f TF_SLURM, --turn_off_slurm TF_SLURM
-                        If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node.
-                        (Default: 0)
-  -c CP_ENV, --conda_prebuilt_env CP_ENV
-                        The absolute dir of your pre-built conda env. e.g.
-                        /path/snake_pipeline/accusnv_sub
-  -r REF_DIR, --ref_dir REF_DIR
+  -f, --mode {local,slurm}
+                        Execution mode: 'local' runs all jobs on a single node; 'slurm' submits jobs via the SLURM system. (Default: slurm)
+  -c, --config_prebuilt_env CP_ENV
+                        The absolute dir of your pre-built env. e.g. /path/snake_pipeline/accusnv_sub
+  -r, --ref_dir REF_DIR
                         The dir of your reference genomes
-  -s MIN_COV_SAMP, --min_cov_for_filter_sample MIN_COV_SAMP
-                        Before running the CNN model, low-quality samples with more than
-                        45% of positions having zero aligned reads will be filtered out.
-                        (default "-s 45") You can adjust this threshold with this
-                        parameter; to include all samples, set "-s 100".
-  -v MIN_COV, --min_cov_for_filter_pos MIN_COV
-                        For the filter module: on individual samples, calls must have at
-                        least this many reads on the fwd/rev strands individually. If
-                        many samples have low coverage (e.g. <5), then you can set this
-                        parameter to smaller value. (e.g. -v 2). Default is 5.
-  -e EXCLUDE_SAMP, --exclude_samples EXCLUDE_SAMP
-                        The names of the samples you want to exclude (e.g. -e S1,S2,S3).
-                        If you specify a number, such as "-e 1000", any sample with more
-                        than 1,000 SNVs will be automatically excluded.
-  -g GENERATE_REP, --generate_report GENERATE_REP
-                        If not generate html report and other related files, set to 0.
-                        (default: 1)
-  -o OUT_DIR, --output_dir OUT_DIR
-                        Output dir (default: current dir/wd_out_(uid), uid is generated
-                        randomly)
-
+  -s, --min_cov_for_filter_sample MIN_COV_SAMP
+                        Before running the CNN model, low-quality samples with more than 45% of positions having zero aligned reads will be filtered out. (default "-s 45") You can adjust this threshold with this parameter; to
+                        include all samples, set "-s 100".
+  -v, --min_cov_for_filter_pos MIN_COV
+                        For the filter module: on individual samples, calls must have at least this many reads on the fwd/rev strands individually. If many samples have low coverage (e.g. <5), then you can set this parameter to
+                        smaller value. (e.g. -v 2). Default is 5.
+  -e, --exclude_samples EXCLUDE_SAMP
+                        The names of the samples you want to exclude (e.g. -e S1,S2,S3). If you specify a number, such as "-e 1000", any sample with more than 1,000 SNVs will be automatically excluded.
+  -g, --generate_report GENERATE_REP
+                        If not generate html report and other related files, set to 0. (default: 1)
+  -o, --output_dir OUT_DIR
+                        Output dir (default: current dir/wd_out_(uid), uid is generated randomly)
 ```
 
-Local downstream analysis - accusnv_downstream.py
+### `accusnv run`
+
+```
+usage: accusnv run [-h] -o OUTPUT_DIR [--dryrun]
+
+options:
+  -h, --help            show this help message and exit
+  -o, --output_dir OUTPUT_DIR
+                        Output dir created by 'accusnv prepare'.
+  --dryrun              Simulate the run without executing any jobs.
+```
+
+### `python accusnv_downstream.py`
 
 ```
 SNV calling tool for bacterial isolates using deep learning.
@@ -311,16 +301,20 @@ options:
                         The output dir
 ```
 
-## -Contact-
+## Contact
   
- If you have any questions, please post an issue on GitHub or email us: herui728@mit.edu
+ If you have any questions, please post an issue on GitHub or email us: 
+ 
+ Herui Liao (creator) herui728@mit.edu
 
-## References:
+ Alex Crits-Christoph (maintainer) crits@mit.edu
 
-how to cite this tool:
-```
-Liao, H., Conwill, A., & Light-Maka, Ian., et al. High-accuracy SNV calling for bacterial isolates using deep learning with AccuSNV, BioRxiv, 2025; https://www.biorxiv.org/content/10.1101/2025.09.26.678787v2
-```
+## Citation
+
+How to cite this software:
+
+>Liao, Herui, Arolyn Conwill, Ian Light-Maka, Martin Fenk, Alyssa H. Mitchell, Evan B. Qu, Paul Torrillo, Jacob S. Baker, Felix M. Key, and Tami D. Lieberman. "[High-accuracy SNV calling for bacterial isolates using deep learning with AccuSNV](https://genome.cshlp.org/content/early/2026/07/02/gr281341125)." *Genome Research*. June 2026, Vol. 36, No. 6. [https://doi.org/10.1101/gr.281341.125](https://doi.org/10.1101/gr.281341.125)
+
 
 
 
