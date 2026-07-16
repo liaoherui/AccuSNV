@@ -313,7 +313,7 @@ options:
 
 How to cite this software:
 
->Liao, Herui, Arolyn Conwill, Ian Light-Maka, Martin Fenk, Alyssa H. Mitchell, Evan B. Qu, Paul Torrillo, Jacob S. Baker, Felix M. Key, and Tami D. Lieberman. "[High-accuracy SNV calling for bacterial isolates using deep learning with AccuSNV](https://genome.cshlp.org/content/early/2026/07/02/gr281341125)." *Genome Research*. June 2026, Vol. 36, No. 6. [https://doi.org/10.1101/gr.281341.125](https://doi.org/10.1101/gr.281341.125)
+>Liao, Herui, Arolyn Conwill, Ian Light-Maka, Martin Fenk, Alyssa H. Mitchell, Evan B. Qu, Paul Torrillo, Jacob S. Baker, Lilly R. Bartsch, Felix M. Key, and Tami D. Lieberman. "[High-accuracy SNV calling for bacterial isolates using deep learning with AccuSNV](https://genome.cshlp.org/content/early/2026/07/02/gr281341125)." *Genome Research*. June 2026, Vol. 36, No. 6. [https://doi.org/10.1101/gr.281341.125](https://doi.org/10.1101/gr.281341.125)
 
 
 
