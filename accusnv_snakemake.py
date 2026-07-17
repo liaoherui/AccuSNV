@@ -24,23 +24,87 @@ def del_same(arr1,arr2):
             if a in arr1:
                 arr2.remove(a)
 
+def _fastq_match_groups(path, filename, allow_unpaired=False):
+    """Return regex match groups for FASTQ files belonging to filename.
+
+    Matching is intentionally anchored to the basename so prefixes such as
+    sample_1 do not also match sample_10.
+    """
+    basename = os.path.basename(path)
+    suffix_pattern = r"(?:_001)?\.(?:fastq|fq)(?:\.gz)?$"
+    prefix = re.escape(filename)
+    if allow_unpaired:
+        pattern = rf"^{prefix}{suffix_pattern}"
+    else:
+        pattern = rf"^{prefix}(?:[_\.-](?:R)?(?P<read>[12])){suffix_pattern}"
+    return re.match(pattern, basename)
+
+def _find_fastq_matches(target_f, filename, allow_unpaired=False):
+    matches = []
+    for f in target_f:
+        match = _fastq_match_groups(f, filename, allow_unpaired)
+        if match:
+            matches.append(f)
+    return matches
+
+def _check_reference_inputs(infile, ref_dir):
+    """Validate reference names and required genome.fasta inputs up front."""
+    if not ref_dir:
+        return
+    ref_dir = os.path.abspath(ref_dir)
+    references = []
+    with open(infile, 'r') as f:
+        header = f.readline()
+        for line_num, line in enumerate(f, start=2):
+            line = line.strip()
+            if not line:
+                continue
+            ele = re.split(',', line)
+            if len(ele) < 4:
+                raise ValueError(f'Input CSV line {line_num} has fewer than 4 columns: {line}')
+            references.append(ele[3].strip())
+
+    missing = []
+    reserved = []
+    for reference in sorted(set(references)):
+        if reference.startswith('ref_') or '_ref_' in reference:
+            reserved.append(reference)
+        genome_fasta = os.path.join(ref_dir, reference, 'genome.fasta')
+        if not os.path.isfile(genome_fasta):
+            missing.append(genome_fasta)
+
+    if reserved:
+        raise ValueError(
+            'Reference folder names must not start with "ref_" or contain "_ref_" '
+            'because AccuSNV uses "_ref_" as an internal filename delimiter. '
+            'Please rename these references (for example, use "<clade>_ref" instead): '
+            + ', '.join(reserved)
+        )
+    if missing:
+        raise ValueError(
+            'Missing required reference genome file(s). Each reference folder listed '
+            'in the input CSV must contain a file named exactly "genome.fasta":\n'
+            + '\n'.join(missing)
+        )
+
 def findfastqfile(dr, smple, filename):
     ##### Add by Herui - 20240919 - Modified function based on the codes from Evan
     # Given the input path and filename, will return the fastq file (include SE, PE, different suffixs) Will gzip the file automatically.
     file_suffixs = ['.fastq.gz', '.fq.gz', '.fastq', '.fq',
                     '_001.fastq.gz', '_001.fq.gz', '_001.fastq', '_001.fq']
-    # Check whether the file is the soft link
+    # Keep directory entries themselves, including symlinks. Matching should use
+    # the symlink basename when users stage reads as links in the input folder.
     target_f=[]
     for f in glob.glob(f"{dr}/*"):
-        #print(f,dr)
-        if not os.path.islink(f):
-            target_f.append(f)
+        target_f.append(f)
 
     #print('target...',target_f)
     #exit()
-    # Search for filename as a prefix
-    files_F = [f for f in target_f if re.search(f"{filename}_?.*?R?1({'|'.join(file_suffixs)})", f)]
-    files_R = [f for f in target_f if re.search(f"{filename}_?.*?R?2({'|'.join(file_suffixs)})", f)]
+    # Search for exact filename/read-marker matches. The match is anchored to
+    # the basename to avoid sample_1 also matching sample_10.
+    paired_matches = _find_fastq_matches(target_f, filename)
+    files_F = [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '1']
+    files_R = [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '2']
     #print(files_F)
     # Search for filename as a directory
     file_F = []
@@ -48,23 +112,20 @@ def findfastqfile(dr, smple, filename):
     if os.path.isdir(f"{dr}/{filename}"):
         target_f = []
         for f in glob.glob(f"{dr}/{filename}/*"):
-            if not os.path.islink(f):
-                target_f.append(f)
-        files_F = files_F + [f"{filename}/{f}" for f in target_f
-                             if re.search(f"{filename}/.*_?.*?R?1({'|'.join(file_suffixs)})", f)]
-        files_R = files_R + [f"{filename}/{f}" for f in target_f
-                             if re.search(f"{filename}/.*_?.*?R?2({'|'.join(file_suffixs)})", f)]
+            target_f.append(f)
+        paired_matches = _find_fastq_matches(target_f, filename)
+        files_F = files_F + [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '1']
+        files_R = files_R + [f for f in paired_matches if _fastq_match_groups(f, filename).group('read') == '2']
 
     #print(files_F,files_R)
     del_same(files_F,files_R)
     if len(files_F) == 0 and len(files_R) == 0:
         # Can be single-end reads and no "1" or "2" ID in the filename
         print(f'No file found in {dr} for sample {smple} with prefix {filename}! Go single-end checking!')
-        files_F = [f for f in target_f if re.search(f"{filename}.*_?.*({'|'.join(file_suffixs)})", f)]
+        files_F = _find_fastq_matches(target_f, filename, allow_unpaired=True)
 
         if os.path.isdir(f"{dr}/{filename}"):
-            files_F = files_F + [f"{filename}/{f}" for f in target_f if
-                                 re.search(f"{filename}/.*_?.*({'|'.join(file_suffixs)})", f)]
+            files_F = files_F + _find_fastq_matches(target_f, filename, allow_unpaired=True)
         if len(files_F) == 0:
             raise ValueError(f'No file found in {dr} for sample {smple} with prefix {filename}')
         else:
@@ -235,9 +296,9 @@ def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm,tem_dir):
 					line=ele[0]+'"'+','.join(idle_p)+'"\n'
 			o.write(line)
 
-	with open(os.path.join(script_dir, 'scripts', 'dry_run.sh'), 'w+') as o2:
+	with open(os.path.join(odir, 'dry_run.sh'), 'w+') as o2:
 		o2.write('snakemake -np  --profile '+cond+'\n')
-	with open(os.path.join(script_dir, 'scripts', 'run_snakemake.slurm'), 'w+') as o3:
+	with open(os.path.join(odir, 'run_snakemake.slurm'), 'w+') as o3:
 		o3.write('#!/bin/bash\n')
 		o3.write('#SBATCH --job-name widevariant.main\n')
 		if len(idle_p)<3:
@@ -255,7 +316,7 @@ def copy_config_files(sfile,uid,odir,all_p,idle_p,tf_slurm,tem_dir):
 		o3.write('snakemake  --profile '+cond+'\n')
 		o3.write('# Print "Done!!!" at end of main log file\n')
 		o3.write('echo Done!!!\n')
-	with open(os.path.join(script_dir, 'scripts', 'run_snakemake_local.sh'), 'w+') as o4:
+	with open(os.path.join(odir, 'run_snakemake_local.sh'), 'w+') as o4:
 		o4.write('snakemake  --profile '+cond)
 
 
@@ -418,7 +479,7 @@ def main():
 	parser.add_argument('-a','--aligner', dest='aligner', type=str, help="The aligner used for read mapping, can be either BWA or Bowtie2. E.g. You can set \"-a bowtie2\" to use bowtie2. (Default: -a bwa)")
 	parser.add_argument('-p','--samclip', dest='samclip', type=str,help="If set to 1, samclip will be used when the aligner is BWA. Note that this parameter is not applicable when Bowtie2 is used as the aligner. (Default: 0)")
 	parser.add_argument('-t','--aligner_threads',dest='aligner_threads',type=str,help="The threads for the aligner - bwa or bowtie2 (Default: 4)")
-	parser.add_argument('-f','--turn_off_slurm',dest='tf_slurm',type=int,help="If set to 1, the SLURM system will not be used for automatic job submission. Instead, all jobs will run locally or on a single node. (Default: 0)")
+	parser.add_argument('-f','--mode',dest='tf_slurm',choices=['local','slurm'],default='slurm',help="Execution mode: 'local' runs all jobs on a single node; 'slurm' submits jobs via the SLURM system. (Default: slurm)")
 	parser.add_argument('-c','--config_prebuilt_env',dest='cp_env',type=str,help="The absolute dir of your pre-built env. e.g. /path/snake_pipeline/accusnv_sub")
 	parser.add_argument('-r','--ref_dir',dest='ref_dir',type=str,help="The dir of your reference genomes")
 	#### AccuSNV - CNN-filter part params
@@ -436,7 +497,7 @@ def main():
 	aligner_threads=args.aligner_threads
 	out_dir=args.out_dir
 	ref_dir=args.ref_dir
-	tf_slurm = args.tf_slurm
+	tf_slurm = 1 if args.tf_slurm == 'local' else 0
 	cp_env=args.cp_env
 	# CNN-filter params
 	min_cov_samp = args.min_cov_samp
@@ -454,10 +515,9 @@ def main():
 		out_dir = pwd+'/wd_out_'+uid
 	if not ref_dir:
 		ref_dir=''
+	_check_reference_inputs(input_file, ref_dir)
 	if not cp_env:
 		cp_env=''
-	if not tf_slurm:
-		tf_slurm=0
 	if not min_cov_filt:
 		min_cov_filt = 5
 	else:
@@ -526,19 +586,19 @@ def main():
 	data_dir = out_dir + '/link'
 	build_dir(tem_dir)
 	build_dir(data_dir)
-	all_p_raw = subprocess.check_output("sinfo -h -o '%P' | sort -u", shell=True, text=True).split()
+	# Only probe Slurm partitions in Slurm mode; a local run does not need them.
 	all_p=[]
-	for s in all_p_raw:
-		if is_partition_valid(s) and is_partition_time_limit_exceed(s):
-			all_p.append(s)
-	#all_p=','.join(all_p)
-
-	idle_p_raw = subprocess.check_output("sinfo -h -o '%P %T' | awk '$2 == \"idle\" {print $1}'", shell=True, text=True).split()
 	idle_p=[]
-	for s in idle_p_raw:
-		if s in all_p:
-			idle_p.append(s)
-	#idle_p = ','.join(idle_p)
+	if tf_slurm != 1:
+		all_p_raw = subprocess.check_output("sinfo -h -o '%P' | sort -u", shell=True, text=True).split()
+		for s in all_p_raw:
+			if is_partition_valid(s) and is_partition_time_limit_exceed(s):
+				all_p.append(s)
+
+		idle_p_raw = subprocess.check_output("sinfo -h -o '%P %T' | awk '$2 == \"idle\" {print $1}'", shell=True, text=True).split()
+		for s in idle_p_raw:
+			if s in all_p:
+				idle_p.append(s)
 	#out_dir=os.path.abspath(out_dir)
 	#print(all_p,idle_p)
 	#exit()

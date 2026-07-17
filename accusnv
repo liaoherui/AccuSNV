@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""AccuSNV command-line entry point. Two commands: prepare (set up a run) and run (execute it)."""
+import argparse
+import os
+import subprocess
+import sys
+
+here = os.path.dirname(os.path.abspath(__file__))
+
+def run(output_dir, dryrun):
+    outdir = os.path.abspath(output_dir)
+    profile = os.path.join(outdir, 'conf', 'config.yaml')
+    if not os.path.isfile(profile):
+        sys.exit(f"No prepared pipeline in {output_dir}. Run 'accusnv prepare ... -o {output_dir}' first.")
+    # The prepare step records the mode in the profile: a 'cluster:' key means Slurm.
+    slurm = any(line.startswith('cluster:') for line in open(profile))
+    if dryrun:
+        launcher, script_name = 'sh', 'dry_run.sh'
+    elif slurm:
+        launcher, script_name = 'sbatch', 'run_snakemake.slurm'
+    else:
+        launcher, script_name = 'sh', 'run_snakemake_local.sh'
+    # Run from the install dir so Snakemake finds the Snakefile.
+    return subprocess.call([launcher, os.path.join(outdir, script_name)], cwd=here)
+
+def main():
+    # 'prepare' forwards all of its arguments straight to accusnv_snakemake.py.
+    if sys.argv[1:2] == ['prepare']:
+        return subprocess.call([sys.executable, os.path.join(here, 'accusnv_snakemake.py')] + sys.argv[2:])
+
+    parser = argparse.ArgumentParser(prog='accusnv',
+        description='AccuSNV - SNV calling tool for bacterial isolates using deep learning.')
+    commands = parser.add_subparsers(dest='command')
+    commands.add_parser('prepare', add_help=False,
+        help='Set up the pipeline for a sample set (same options as accusnv_snakemake.py).')
+
+    runner = commands.add_parser('run', help='Execute a prepared pipeline (local or Slurm, inferred from prepare).')
+    runner.add_argument('-o', '--output_dir', required=True, help="Output dir created by 'accusnv prepare'.")
+    runner.add_argument('--dryrun', action='store_true', help='Simulate the run without executing any jobs.')
+
+    opts = parser.parse_args()
+    if opts.command == 'run':
+        return run(opts.output_dir, opts.dryrun)
+    parser.print_help()
+
+if __name__ == '__main__':
+    sys.exit(main())
