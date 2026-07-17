@@ -2489,13 +2489,11 @@ def annotate_mutations( my_rg , p_gp , ancnti_gp , calls_gp , my_cmt_gp , fixedm
             mut_annotations['AA'] = [aa[0] for aa in aa_ls] # turn amino acids into string
             mut_annotations['NonSyn'] = len(set(mut_annotations['AA']))>1 # indicates if a nonsynonymous mutation is *possible*, not necessarily if it happened
             
-            # Map genome-space NT calls to codon-index NTs for AA lookup.
-            # For reverse-strand genes, codon variants were generated using
-            # complements, so AA indexing must also use complemented NTs.
-            if p_anno.loc['strand'] == -1:
-                nts_for_aa_idx_dict = NTs_complement_dict
-            else:
-                nts_for_aa_idx_dict = {nt: nt for nt in NTs_list_without_N}
+            # AA[] is already indexed by the genome-forward base (the codon loop above
+            # complemented reverse-strand bases before translating), so the lookup uses the
+            # forward base directly on both strands. Complementing again here (as the previous
+            # reverse-strand branch did) reported the amino acid for the wrong base.
+            nts_for_aa_idx_dict = {nt: nt for nt in NTs_list_without_N}
 
             # Determine if any observed mutations *did* change the codon
             mut_annotations['AA_gt'] = '' # init # for filling in amino acids corresponding to observed mutations relative to the ancestor
