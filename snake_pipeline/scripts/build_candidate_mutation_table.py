@@ -84,7 +84,7 @@ parser.add_argument("-c", dest="cov_mat_raw", help="Output raw coverage matrix a
 parser.add_argument("-n", dest="cov_mat_norm",
                     help="Output double normalized coverage matrix as sparse csr gzip numpy object (*.npz)",
                     action='store', default='none')
-parser.add_argument("-t", dest="dim", help="Specify the number of statistics (default 8)", type=int, default=40)
+parser.add_argument("-t", dest="dim", help="Specify the number of statistics (default 8)", type=int, default=8)
 args = parser.parse_args()
 
 # %%
