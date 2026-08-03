@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "accusnv"
+version = "1.1.0"
+description = "High-accuracy SNV calling for bacterial isolates (Snakemake pipeline + CNN filter)."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "snakemake>=8",
+    "numpy",
+    "scipy",
+    "pandas",
+    "torch",
+    "biopython",
+    "bcbio-gff",
+    "matplotlib",
+    "statsmodels",
+]
+
+[project.optional-dependencies]
+slurm = ["snakemake-executor-plugin-slurm"]
+
+[project.scripts]
+accusnv = "accusnv.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+accusnv = ["workflow/Snakefile", "models/*.pt", "templates/*.yaml", "templates/dashboard.html",
+           "templates/peartree.bundle.min.js"]

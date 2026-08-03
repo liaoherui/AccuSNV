@@ -1,0 +1,46 @@
+# AccuSNV config.yaml
+# Snakemake execution profile + run paths
+# Pass it with:  accusnv -c config.yaml
+
+### General execution parameters
+rerun-incomplete: true
+latency-wait: 30
+keep-going: true
+printshellcmds: true
+
+# Auto-resubmit a failed job (out-of-memory or timeout) at the next resource tier up. Each rule's
+# mem_mb/runtime scale with the retry attempt, so attempt 2 requests more than attempt 1. Set to 0
+# to disable. Tiers per rule are defined in the workflow's resources.py.
+retries: 3
+
+# --- Local execution ---
+cores: 4
+
+# --- SLURM execution ---
+executor: slurm
+jobs: 100
+default-resources:
+  - slurm_partition="partition_a,partition_b"
+  - cpus_per_task=1
+  - mem_mb=4000
+  - runtime=60
+
+
+##### Automatically filled in by accusnv
+# You shouldn't have to edit this section directly.
+# These values will be added and/or changed by accusnv.
+
+configfile: [passed by accusnv -p]
+
+# Run inputs/outputs, merged into the workflow config (Snakemake reads this 'config:' block as --config).
+# You do not need to edit these before your run. They can be passed by accusnv -i, -o, -e.
+# The reference (-r) does not appear here: it is resolved per sample into samples.csv.
+config:
+  - sample_table=
+  - outdir=
+  # Environment activation command run before every job, e.g. "conda activate accusnv".
+  # Empty = inherit the environment AccuSNV itself is launched from.
+  - env=
+
+# --- Dry run (accusnv -m dryrun changes this) ---
+dryrun: false

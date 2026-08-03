@@ -1,0 +1,2 @@
+dataset	genome	num_samples_ingroup	num_snvs	num_snvs_with_outgroup_allele	dmrca_median	dmrca_min	dmrca_max
+group_se_test	genome	4	39	39	10.0	9	10

@@ -1,0 +1,1219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AccuSNV report</title>
+
+<!-- The tree viewer is PearTree (github.com/artic-network/peartree, MIT), bundled whole so the
+     report works offline. It is loaded first because it injects a stylesheet of its own and the
+     styles below have to come after it to win; its own classes are prefixed pt-, but it also
+     carries Bootstrap, so this page avoids the class names Bootstrap uses (btn, badge, row,
+     toast, right, mark). -->
+<script>/*__PEARTREE__*/</script>
+
+<style>
+:root {
+  --ink: #111111; --ink-2: #454545; --ink-3: #6e6e6e;
+  --line: #d6d6d6; --line-2: #e8e8e8; --bg: #ffffff; --bg-2: #f5f5f5;
+  --kept-bg: #dcecd8; --kept-ink: #2f5b2a;
+  --gone-bg: #f8e2da; --gone-ink: #8b3f27;
+  --flag-bg: #faecc6; --flag-ink: #6f4f0e;
+  --sel-bg: #e6eef8; --sel-line: #a6c0dc;
+  --row: 66px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: "Helvetica Neue", "HelveticaNeue", Helvetica, Arial, sans-serif;
+  font-weight: 300; font-size: 16px; line-height: 1.45;
+  color: var(--ink); background: var(--bg);
+  -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; overflow: hidden;
+}
+h1, h2, h3 { font-weight: 300; margin: 0; }
+button { font: inherit; color: inherit; }
+small { font-size: 13px; }
+
+/* ---------- header ---------- */
+.topbar {
+  display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;
+  padding: 14px 24px 12px; border-bottom: 1px solid var(--line); background: var(--bg);
+}
+.topbar h1 { font-size: 22px; letter-spacing: .01em; }
+.topbar .meta { color: var(--ink-2); font-size: 15px; }
+.topbar .meta b { font-weight: 400; color: var(--ink); }
+.spacer { flex: 1; }
+
+.button {
+  background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
+  padding: 8px 15px; font-size: 15px; cursor: pointer; white-space: nowrap;
+}
+.button:hover { background: var(--bg-2); border-color: #c2c2c2; }
+.button.tight { padding: 4px 10px; font-size: 14px; }
+.button.solid { background: var(--ink); color: #fff; border-color: var(--ink); }
+.button.solid:hover { background: #333; }
+
+/* ---------- top controls ---------- */
+.controls { border-bottom: 1px solid var(--line); background: var(--bg); }
+.band { padding: 12px 24px; }
+.band + .band { border-top: 1px solid var(--line); }
+
+.viewpick { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.segmented { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: #fff; }
+.segmented button { border: 0; background: transparent; padding: 8px 16px; cursor: pointer; font-size: 15px; }
+.segmented button + button { border-left: 1px solid var(--line); }
+.segmented button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.search { border: 1px solid var(--line); border-radius: 4px; padding: 8px 13px; font: inherit;
+          font-size: 15px; width: 250px; background: #fff; color: var(--ink); }
+.count-note { color: var(--ink-2); font-size: 15px; }
+.count-note b { font-weight: 400; color: var(--ink); }
+
+/* ---------- flow chart ---------- */
+.flow { display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap; }
+.flow-card { border: 1px solid var(--line); border-radius: 5px; background: #fff; padding: 9px 13px; }
+.flow-card.grow { flex: 2; min-width: 0; }
+.flow-card.half { flex: 1; min-width: 0; }
+.flow-title { font-size: 15.5px; color: var(--ink-2); margin-bottom: 6px; white-space: nowrap; }
+.flow-big { font-size: 31px; line-height: 1.15; }
+.flow-sub { color: var(--ink-2); font-size: 15.5px; width: 118px; }
+.flow-arrow { align-self: center; color: #b0b0b0; font-size: 19px; }
+
+.pick { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0;
+        background: transparent; padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+.pick:hover { background: var(--line-2); }
+.pick[aria-pressed="true"] { background: var(--sel-bg); box-shadow: inset 0 0 0 1px var(--sel-line); }
+.pick .n { min-width: 40px; text-align: right; }
+.pick .lbl { flex: 1; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick[aria-pressed="true"] .lbl { color: var(--ink); }
+.pick .bar { width: 44px; height: 5px; background: var(--line-2); border-radius: 3px; flex: none; }
+.pick .bar i { display: block; height: 100%; background: #a3a3a3; border-radius: 3px; }
+.pick.zero { opacity: .45; }
+.check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); column-gap: 16px; }
+.check-grid .bar { display: none; }
+
+/* ---------- histograms ---------- */
+.hists { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 14px; }
+.hist { border: 1px solid var(--line); border-radius: 5px; background: #fff; padding: 8px 11px 6px; }
+.hist header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.hist h3 { flex: 1; min-width: 0; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist .showraw { display: inline-flex; align-items: center; gap: 5px; font-size: 13px;
+                 color: var(--ink-2); white-space: nowrap; cursor: pointer; }
+.hist .clear { border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 13.5px; }
+.hist .clear:hover { color: var(--ink); }
+.hist svg { display: block; width: 100%; height: 50px; touch-action: none; cursor: pointer; }
+.hist .range { font-size: 13px; color: var(--ink-3); display: flex; justify-content: space-between;
+               gap: 10px; white-space: nowrap; }
+.hist .at { color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
+.hist .bg { fill: #dcdcdc; } .hist .fg { fill: #3a3a3a; } .hist .brush { fill: #6f8cad; opacity: .22; }
+.hist .over { fill: #111; opacity: .09; } .hist .fg.on { fill: #2f5b8a; }
+
+.chips { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.chip { border: 1px solid var(--line); background: #fff; border-radius: 20px; padding: 5px 13px;
+        cursor: pointer; font-size: 14.5px; color: var(--ink); }
+.chip:hover { background: var(--bg-2); }
+.chip[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.chips-label { font-size: 14px; color: var(--ink-2); }
+
+/* ---------- layout ---------- */
+main { flex: 1; display: flex; min-height: 0; }
+.tablepane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.sidepane { width: clamp(542px, 43.2vw, 939px); display: flex; flex-direction: column; min-width: 0; }
+.widthbar { flex: none; width: 8px; cursor: col-resize; background: var(--bg-2);
+            border-left: 1px solid var(--line); border-right: 1px solid var(--line-2); }
+.widthbar:hover { background: var(--line); }
+
+/* ---------- table ---------- */
+.scroller { flex: 1; overflow: auto; min-height: 0; position: relative; background: var(--bg); }
+.grid { min-width: 1030px; }
+.tr { display: grid; align-items: center;
+      grid-template-columns: minmax(100px, .7fr) minmax(120px, 1.3fr) 100px 132px minmax(160px, 1.5fr) 84px 88px 118px;
+      gap: 12px; padding: 0 20px; }
+.thead { position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line); }
+.thead .tr { padding-top: 10px; padding-bottom: 9px; align-items: end; }
+.th { font-size: 14px; font-weight: 600; color: var(--ink);
+      cursor: pointer; user-select: none; display: flex; align-items: center; gap: 5px;
+      flex-wrap: wrap; row-gap: 3px; min-width: 0; }
+.th:hover { color: #000; }
+.th .arrow { font-size: 10px; color: var(--ink); }
+.rows { position: relative; }
+.snvrow { position: absolute; left: 0; right: 0; height: var(--row);
+          border-bottom: 1px solid var(--line-2); cursor: pointer; }
+.snvrow:hover { background: var(--bg-2); }
+.snvrow.on { background: var(--sel-bg); box-shadow: inset 3px 0 0 var(--ink); }
+.snvrow.gone .pos, .snvrow.gone .gene b { color: var(--ink-3); }
+
+.pos { font-size: 16px; } .pos small { display: block; color: var(--ink-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gene { overflow: hidden; } .gene b { font-weight: 400; }
+.gene small, .gene b { display: block; color: var(--ink-3); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.gene b { color: var(--ink); font-size: 15px; }
+.change { font-size: 16px; letter-spacing: .02em; } .change small { display: block; color: var(--ink-3); }
+.tag { display: inline-block; padding: 3px 10px; border-radius: 3px; font-size: 13.5px; white-space: nowrap; }
+.eff-N { background: #f8ded5; color: #833c28; } .eff-S { background: #dfeddf; color: #355f38; }
+.eff-P { background: #ece4f6; color: #55416f; } .eff-I { background: #e2eaf6; color: #385375; }
+.eff-U { background: #eaeaea; color: #4d4d4d; }
+.kept { background: var(--kept-bg); color: var(--kept-ink); }
+.gone-t { background: var(--gone-bg); color: var(--gone-ink); }
+.flagged { background: var(--flag-bg); color: var(--flag-ink); }
+.result { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px; }
+.result .flagged { margin-top: 3px; }
+.num { font-size: 15px; } .num small { color: var(--ink-3); }
+.meter { height: 5px; background: var(--line-2); border-radius: 3px; margin-top: 4px; }
+.meter i { display: block; height: 100%; background: #707070; border-radius: 3px; }
+/* the reads chart and its scale: bar heights only mean something next to the read count */
+.readplot { display: grid; grid-template-columns: 30px 1fr; column-gap: 4px; }
+.yaxis { display: flex; flex-direction: column; justify-content: space-between;
+         font-size: 12px; line-height: 1; color: var(--ink-3); text-align: right; }
+.readbar { display: block; width: 100%; min-width: 0;
+           border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.key { display: inline-flex; gap: 8px; font-size: 13px; }
+.key span { display: inline-flex; align-items: center; gap: 3px; }
+.key i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.empty { flex: 1; padding: 60px 24px; color: var(--ink-3); font-size: 17px; text-align: center; }
+
+/* ---------- detail panel ---------- */
+.detail { flex: 1; overflow: auto; padding: 18px 24px 26px; min-height: 150px; }
+.detail .hint { color: var(--ink-3); font-size: 16px; padding: 36px 10px; text-align: center; }
+.detail h2 { font-size: 21px; }
+.dhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.dsub { color: var(--ink-3); font-size: 14.5px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 16px 0 0; }
+.tab { border: 0; background: none; padding: 8px 11px; cursor: pointer; font-size: 15px;
+       color: var(--ink-2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab:hover { color: var(--ink); }
+.tab[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.sect { border-top: 1px solid var(--line); padding-top: 13px; margin-top: 17px; }
+.pane > .sect:first-child { border-top: 0; padding-top: 0; margin-top: 15px; }
+.sect h3 { font-size: 14px; color: var(--ink-2); margin-bottom: 9px; }
+.sect .head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 9px; }
+.sect .head h3 { margin: 0; }
+.why { background: var(--gone-bg); border-radius: 5px; padding: 12px 16px; margin-top: 14px; font-size: 15px; }
+.why.ok { background: var(--kept-bg); }
+.why ul { margin: 6px 0 0; padding-left: 20px; } .why li { margin: 4px 0; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 15px; margin: 0; }
+.facts dt { color: var(--ink-3); } .facts dd { margin: 0; }
+.checklist { display: grid; gap: 2px; }
+.ck { display: flex; align-items: baseline; gap: 9px; font-size: 15px; padding: 2px 0; }
+.ck .sign { width: 16px; text-align: center; flex: none; }
+.ck .note { color: var(--ink-3); }
+.ck.pass .sign { color: #4a7a44; } .ck.fail .sign { color: #a04726; } .ck.skip { color: var(--ink-3); }
+.stable { width: 100%; border-collapse: collapse; font-size: 15px; }
+.stable th { text-align: left; font-weight: 600; color: var(--ink); font-size: 14px; padding: 0 8px 6px 0; }
+.stable td { padding: 5px 8px 5px 0; border-top: 1px solid var(--line-2); }
+.stable td.base { font-size: 17px; }
+.stable tr.dim td { color: var(--ink-3); }
+.chartnames { display: grid; font-size: 13px; color: var(--ink-3); text-align: center;
+              margin: 3px 0 0 34px; }   /* 34px clears the chart's y axis */
+.chartnames span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seq { position: relative; background: var(--bg-2); border: 1px solid var(--line); border-radius: 5px; padding: 11px 13px;
+       font-size: 14.5px; letter-spacing: .06em; word-break: break-all; max-height: 118px; overflow: auto; }
+.seq mark { background: #ffdd8a; color: var(--ink); padding: 1px 2px; border-radius: 2px; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.snackbar { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink);
+            color: #fff; padding: 11px 20px; border-radius: 4px; font-size: 15px; opacity: 0;
+            transition: opacity .2s; pointer-events: none; z-index: 90; }
+.snackbar.on { opacity: 1; }
+
+/* ---------- tree ---------- */
+.treepanel { flex: none; display: flex; flex-direction: column; height: 50%; min-height: 260px; background: var(--bg); }
+.dragbar { flex: none; height: 8px; cursor: row-resize; background: var(--bg-2);
+           border-top: 1px solid var(--line); border-bottom: 1px solid var(--line-2); }
+.dragbar:hover { background: var(--line); }
+.treehead { padding: 9px 24px 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.treehead h3 { font-size: 14px; color: var(--ink-2); }
+.treechips { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; font-size: 14.5px; color: var(--ink-3); }
+.tchip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line);
+         border-radius: 16px; padding: 3px 5px 3px 11px; background: #fff; color: var(--ink); }
+.tchip button { border: 0; background: none; cursor: pointer; color: var(--ink-3); padding: 0 4px; font-size: 15px; }
+.tchip button:hover { color: var(--ink); }
+.cladebar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 24px 9px; }
+.cladecount { font-size: 13.5px; color: var(--ink-2); }
+.cladebar .button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.treebox { flex: 1; min-height: 0; }
+.treenote { padding: 7px 24px 3px; color: var(--ink-3); font-size: 13.5px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.treehint { padding: 0 24px 10px; color: var(--ink-3); font-size: 13px; }
+.pt-toolbar { background: #fff !important; border-bottom: 1px solid var(--line) !important; }
+.pt-toolbar .btn { background: #fff !important; color: var(--ink-2) !important; border-color: var(--line) !important; }
+.pt-toolbar .btn:hover { background: var(--bg-2) !important; color: var(--ink) !important; }
+
+/* ---------- tooltip ---------- */
+#tip { position: fixed; z-index: 100; max-width: 330px; background: #1c1c1c; color: #fff;
+       padding: 10px 13px; border-radius: 5px; font-size: 14.5px; line-height: 1.4; font-weight: 300;
+       pointer-events: none; opacity: 0; transition: opacity .12s; }
+#tip.on { opacity: 1; }
+[data-tip] { cursor: pointer; }
+
+/* ---------- the pipeline's own chart for a position ---------- */
+.lightbox { position: fixed; inset: 0; z-index: 110; background: rgba(17, 17, 17, .72);
+            display: flex; align-items: center; justify-content: center; padding: 30px; cursor: zoom-out; }
+.lightbox img { max-width: 100%; max-height: 100%; background: #fff; border-radius: 5px; }
+.lightbox p { color: #fff; font-size: 16px; max-width: 460px; text-align: center; }
+
+@media (max-width: 1300px) {
+  main { flex-direction: column; overflow: auto; }
+  .tablepane { min-height: 66vh; }
+  .widthbar { display: none; }
+  .sidepane { width: auto !important; border-top: 1px solid var(--line); }
+  .scroller { max-height: 60vh; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>AccuSNV report</h1>
+  <div class="meta" id="meta"></div>
+  <div class="spacer"></div>
+  <button class="button" id="toggle-filters">Hide filters</button>
+  <button class="button solid" id="export">Export table</button>
+</header>
+
+<section class="controls" id="controls">
+  <div class="band viewpick">
+    <div class="segmented" id="views">
+      <button data-view="kept" aria-pressed="true">Final SNVs</button>
+      <button data-view="all" aria-pressed="false">All candidates</button>
+      <button data-view="removed" aria-pressed="false">Removed only</button>
+    </div>
+    <input class="search" id="search" placeholder="Search gene, product or position" autocomplete="off">
+    <div class="count-note" id="count-note"></div>
+    <div class="spacer"></div>
+    <button class="button" id="reset" hidden>Clear all filters</button>
+  </div>
+
+  <div class="band" id="filter-band">
+    <div class="flow" id="flow">
+        <div class="flow-card">
+          <div class="flow-title">Starting point</div>
+          <div class="flow-big" id="flow-all">0</div>
+          <div class="flow-sub" data-tip="Every position in the reference genome where either the AccuSNV neural network or the WideVariant checks saw a possible difference between your samples.">candidate positions</div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-card grow">
+          <div class="flow-title">SNV quality flags <span data-tip="These are the WideVariant quality checks, in the order they run. A position is counted against a check when that check is the one that removed the evidence for a variant. Click a check to see only those positions.">&#9432;</span></div>
+          <div class="check-grid" id="check-grid"></div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-card half">
+          <div class="flow-title">Called a variant by</div>
+          <div id="caller-list"></div>
+        </div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-card half">
+          <div class="flow-title">Result</div>
+          <div id="status-list"></div>
+        </div>
+    </div>
+    <div class="hists" id="hists"></div>
+    <div class="chips" id="chip-band"></div>
+  </div>
+</section>
+
+<main>
+  <section class="tablepane">
+    <div class="scroller" id="scroller">
+      <div class="grid">
+        <div class="thead"><div class="tr" id="thead"></div></div>
+        <div class="rows" id="rows"></div>
+      </div>
+      <div class="empty" id="empty" hidden>No SNVs match the current filters.</div>
+    </div>
+  </section>
+
+  <div class="widthbar" id="widthbar" title="Drag to make this panel wider or narrower"></div>
+  <aside class="sidepane" id="sidepane">
+    <div class="detail" id="detail"></div>
+    <div class="dragbar" id="dragbar" title="Drag to make the tree taller or shorter"></div>
+    <div class="treepanel" id="treepanel">
+      <div class="treehead">
+        <h3 data-tip="Parsimony tree built by final SNV set using dnapars.">Parsimony phylogeny</h3>
+        <div class="treechips" id="treechips"></div>
+      </div>
+      <div class="cladebar" id="cladebar" hidden></div>
+      <div class="treebox" id="treebox"></div>
+      <div class="treenote" id="treenote"></div>
+      <div class="treehint">Click nodes or drag and select to highlight SNVs found in those nodes.</div>
+    </div>
+  </aside>
+</main>
+
+<div id="tip"></div>
+<div class="snackbar" id="snackbar"></div>
+<div class="lightbox" id="lightbox" hidden><img alt="The pipeline's chart for this position"><p></p></div>
+
+<script>
+const DATA = "__DATA__";
+
+/* ============================ helpers ============================ */
+const $ = id => document.getElementById(id);
+const el = (tag, attrs = {}, html = '') => {
+  const n = document.createElement(tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (html) n.innerHTML = html;
+  return n;
+};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const BASES = ['A', 'T', 'C', 'G'];
+// Muted rather than pastel on purpose: these same four colours label the tips of the tree,
+// where a paler set would not read as text against white.
+const BASE_COLOUR = { A: '#3f719f', T: '#a76c14', C: '#3f7b50', G: '#ac4f57', N: '#949494' };
+const EFFECT = DATA.effects;   // letter -> [short name, full explanation]
+const S = DATA.snvs, SAMPLES = DATA.samples, NS = SAMPLES.length;
+
+// Read counts arrive as one deflate stream: 8 numbers per sample per SNV, holding the reads
+// carrying A, T, C and G on the forward strand and then the same four on the reverse strand.
+async function unpack(b64) {
+  if (!b64) return new Uint16Array(0);
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'));
+  return new Uint16Array(await new Response(stream).arrayBuffer());
+}
+let COUNTS = new Uint16Array(0), QUALS = new Uint16Array(0);
+const readsOf = (i, s) => COUNTS.subarray((i * NS + s) * 8, (i * NS + s) * 8 + 8);
+
+let snackTimer;
+function say(message) {
+  $('snackbar').textContent = message; $('snackbar').classList.add('on');
+  clearTimeout(snackTimer); snackTimer = setTimeout(() => $('snackbar').classList.remove('on'), 2200);
+}
+// Reports are opened from a file:// path, where the async clipboard API is usually blocked,
+// so the copy goes through a throwaway textarea instead.
+function copy(text, message) {
+  const box = el('textarea');
+  box.value = text;
+  box.style.cssText = 'position:fixed;opacity:0';
+  document.body.appendChild(box);
+  box.select();
+  document.execCommand('copy');
+  box.remove();
+  say(message);
+}
+
+/* ============================ filter state ============================ */
+const filters = {
+  view: 'kept',       // kept | all | removed
+  caller: null,       // both | cnn | wd
+  check: null,        // index into DATA.checks
+  effects: new Set(), // N S P I U
+  recomb: false,
+  search: [],         // one lowercase word per space-separated term
+  clade: null,        // { inClade: bool[] per sample, mode: 'within' | 'specific' } from the tree
+  ranges: {},         // one [lo, hi] per histogram key
+};
+let sortKey = 'p', sortDir = 1, view = [], focus = null, pinned = [], tree = null;
+let showUnfiltered = true;   // the grey bars behind the histograms; toggled from the first chart
+
+const callerOf = d => d.cnn && d.wd ? 'both' : d.cnn ? 'cnn' : d.wd ? 'wd' : 'neither';
+
+// Everything except the histogram ranges, which the histograms have to test one at a time.
+function passesRest(d) {
+  if (filters.view === 'kept' && !d.kept) return false;
+  if (filters.view === 'removed' && d.kept) return false;
+  if (filters.caller && callerOf(d) !== filters.caller) return false;
+  if (filters.check !== null && d.checks[filters.check] !== 1) return false;
+  if (filters.effects.size && !filters.effects.has(d.effect)) return false;
+  if (filters.recomb && !d.recomb) return false;
+  // Every word of the search has to appear somewhere in the row, so "hypothetical protein" or
+  // "kinase aspartate" both match a gene's product regardless of word order.
+  if (filters.search.length && !filters.search.every(word => d.text.includes(word))) return false;
+  if (filters.clade && !cladePass(d, filters.clade)) return false;
+  return true;
+}
+
+// Which SNVs a tree selection keeps: "within" wants a variant in at least one selected sample;
+// "specific" also wants no sample outside the selection to carry it.
+function cladePass(d, clade) {
+  let inside = false, outside = false;
+  for (let s = 0; s < NS; s++) {
+    if (d.calls[s] === d.anc || d.calls[s] === 'N') continue;   // this sample has no variant here
+    if (clade.inClade[s]) inside = true; else outside = true;
+  }
+  return clade.mode === 'within' ? inside : inside && !outside;
+}
+
+const outsideRange = (d, key) => d[key] < filters.ranges[key][0] || d[key] > filters.ranges[key][1];
+
+function passes(d) {
+  if (!passesRest(d)) return false;
+  for (const key in filters.ranges) if (outsideRange(d, key)) return false;
+  return true;
+}
+
+function apply(duringDrag) {
+  view = [];
+  for (let i = 0; i < S.length; i++) if (passes(S[i])) view.push(i);
+  view.sort((a, b) => {
+    const x = S[a][sortKey] ?? '', y = S[b][sortKey] ?? '';
+    return (x < y ? -1 : x > y ? 1 : 0) * sortDir || S[a].p - S[b].p;
+  });
+  // Keep the panel on a SNV the table is actually showing. Not while a histogram is being
+  // dragged: redrawing the tree on every frame of the drag would stall it.
+  if (!duringDrag && focus !== null && !view.includes(focus)) focus = view.length ? view[0] : null;
+  $('scroller').scrollTop = 0;
+  render();
+}
+
+let queued = false;
+function applySoon() {   // while a histogram is being dragged, redraw at most once a frame
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => { queued = false; apply(true); });
+}
+
+const anyFilter = () => filters.view !== 'kept' || filters.caller || filters.check !== null ||
+  filters.effects.size || filters.recomb || filters.search.length || filters.clade ||
+  Object.keys(filters.ranges).length;
+
+function resetFilters() {
+  Object.assign(filters, { view: 'kept', caller: null, check: null, recomb: false, search: [], clade: null, ranges: {} });
+  filters.effects.clear();
+  $('search').value = '';
+  selectedTips = []; treeSelection = null; drawCladeBar();
+  if (tree) tree.getSelectionChangedListener()(null);   // drop the tree's own highlight too
+  setView('kept');
+}
+
+/* ============================ flow chart ============================ */
+// These counts describe the whole run, so the chart is built once and only its pressed
+// buttons change afterwards.
+function pickButton(label, count, onClick) {
+  const b = el('button', { class: 'pick' + (count ? '' : ' zero'), 'aria-pressed': 'false' });
+  b.innerHTML = `<span class="n">${count.toLocaleString()}</span><span class="lbl">${esc(label)}</span>` +
+                `<span class="bar"><i style="width:${S.length ? 100 * count / S.length : 0}%"></i></span>`;
+  b.onclick = onClick;
+  return b;
+}
+
+function buildFlow() {
+  $('flow-all').textContent = S.length.toLocaleString();
+  const count = test => S.reduce((t, d) => t + (test(d) ? 1 : 0), 0);
+
+  const grid = $('check-grid');
+  DATA.checks.forEach((check, i) => {
+    const b = pickButton(check.name, count(d => d.checks[i] === 1), () => {
+      filters.check = filters.check === i ? null : i;
+      if (filters.check !== null) filters.view = 'all';
+      setView(filters.view);
+    });
+    b.dataset.check = i;
+    b.querySelector('.lbl').setAttribute('data-tip', check.help);
+    grid.appendChild(b);
+  });
+
+  for (const [key, label] of [['both', 'Both methods'], ['cnn', 'AccuSNV model only'], ['wd', 'WideVariant only']]) {
+    const b = pickButton(label, count(d => callerOf(d) === key), () => {
+      filters.caller = filters.caller === key ? null : key;
+      if (filters.caller) filters.view = 'all';
+      setView(filters.view);
+    });
+    b.dataset.caller = key;
+    $('caller-list').appendChild(b);
+  }
+
+  const kept = count(d => d.kept);
+  for (const [key, label, n] of [['kept', 'Kept in the final set', kept], ['removed', 'Removed', S.length - kept]]) {
+    const b = pickButton(label, n, () => setView(filters.view === key ? 'all' : key));
+    b.dataset.status = key;
+    $('status-list').appendChild(b);
+  }
+}
+
+function drawFlow() {
+  for (const b of $('flow').querySelectorAll('.pick'))
+    b.setAttribute('aria-pressed', b.dataset.check ? filters.check === +b.dataset.check
+                                 : b.dataset.caller ? filters.caller === b.dataset.caller
+                                 : filters.view === b.dataset.status);
+}
+
+function setView(v) {
+  filters.view = v;
+  for (const b of $('views').children) b.setAttribute('aria-pressed', b.dataset.view === v);
+  apply();
+}
+
+/* ============================ histograms ============================ */
+const HISTS = [
+  { key: 'prob', title: 'AccuSNV CNN model confidence',
+    help: 'How sure the AccuSNV neural network is that this position holds a real variant, from 0 to 1.',
+    fmt: v => v.toFixed(2) },
+  { key: 'p', title: 'Position on the genome',
+    help: 'Locations of variants in reference genome, counting straight through all contigs.',
+    fmt: v => Math.round(v).toLocaleString() },
+  { key: 'nVariant', title: 'Samples with the variant',
+    help: 'How many of your samples have a base here that differs from the inferred ancestor.',
+    fmt: v => Math.round(v).toLocaleString() },
+  { key: 'depth', title: 'Read depth',
+    help: 'Median number of reads covering this position across all samples.',
+    fmt: v => Math.round(v).toLocaleString() },
+];
+const HINT = ' Click a bar to keep just those SNVs, or drag across bars to keep a wider range.';
+// Shared between the filter chip and the per-SNV quality panel so the two never drift apart.
+const RECOMB_TIP = 'When genomically colocated (1,000 bp by default) SNVs strongly co-occur ' +
+  '(Pearson correlation > 0.85 by default) across the dataset, they are marked as potentially ' +
+  'recombinant. By default, these are excluded from the tree generation.';
+const BINS = 26;
+const histState = {};
+
+function buildHistograms() {
+  const box = $('hists'); box.innerHTML = '';
+  for (const h of HISTS) {
+    const values = S.map(d => d[h.key]);
+    const lo = Math.min(...values), hi = Math.max(...values);
+    const step = (hi - lo) / BINS || 1;
+    const binOf = v => Math.max(0, Math.min(BINS - 1, Math.floor((v - lo) / step)));
+    const total = new Array(BINS).fill(0);
+    for (const v of values) total[binOf(v)]++;
+
+    // The first chart carries the switch that shows or hides the grey "before filtering" bars on
+    // every chart at once, so it lives in that header rather than in a band of its own.
+    const toggle = h.key === 'prob'
+      ? `<label class="showraw"><input type="checkbox" id="show-raw" checked>Show unfiltered</label>` : '';
+    const card = el('div', { class: 'hist' });
+    card.innerHTML = `<header><h3 data-tip="${esc(h.help + HINT)}">${h.title}</h3>${toggle}` +
+      `<button class="clear" hidden>clear</button></header>` +
+      `<svg viewBox="0 0 ${BINS * 4} 40" preserveAspectRatio="none"></svg>` +
+      `<div class="range"><span></span><span class="at"></span><span></span></div>`;
+    box.appendChild(card);
+
+    const svg = card.querySelector('svg');
+    const st = histState[h.key] = { h, lo, hi, step, binOf, total, live: total, hover: null,
+                                    max: Math.max(...total, 1), svg, card,
+                                    range: card.querySelectorAll('.range span') };
+    card.querySelector('.clear').onclick = () => { delete filters.ranges[h.key]; apply(); };
+
+    // Click a bar to keep just that slice, or drag across bars to keep a wider range; the table
+    // follows the drag. Clicking the bar that is already the whole selection puts it all back.
+    let start = null, before = null;
+    const binAt = e => { const r = svg.getBoundingClientRect();
+                         return Math.max(0, Math.min(BINS - 1, Math.floor((e.clientX - r.left) / r.width * BINS))); };
+    const keep = (a, b) => filters.ranges[h.key] =
+      [lo + Math.min(a, b) * step, lo + (Math.max(a, b) + 1) * step];
+
+    svg.addEventListener('pointerdown', e => {
+      start = binAt(e); before = filters.ranges[h.key];
+      svg.setPointerCapture(e.pointerId);
+    });
+    svg.addEventListener('pointermove', e => {
+      const bin = binAt(e);
+      if (bin === st.hover && start === null) return;
+      st.hover = bin;
+      if (start === null) paint(st);        // just the highlight under the pointer
+      else { keep(start, bin); applySoon(); }
+    });
+    svg.addEventListener('pointerup', e => {
+      if (start === null) return;
+      const bin = binAt(e);
+      const only = before && before[0] === lo + bin * step && before[1] === lo + (bin + 1) * step;
+      if (bin === start && only) delete filters.ranges[h.key]; else keep(start, bin);
+      start = null; apply();
+    });
+    svg.addEventListener('pointerleave', () => {
+      if (start === null && st.hover !== null) { st.hover = null; paint(st); }
+    });
+  }
+  $('show-raw').onchange = e => { showUnfiltered = e.target.checked; drawHistograms(); };
+}
+
+// A SNV belongs in a chart when it clears every filter except that chart's own range, so one pass
+// over the data feeds all the charts: a SNV outside two ranges is counted in neither.
+function drawHistograms() {
+  for (const key in histState) histState[key].live = new Array(BINS).fill(0);
+  for (const d of S) {
+    if (!passesRest(d)) continue;
+    let missed = null, n = 0;
+    for (const key in filters.ranges) if (outsideRange(d, key)) { missed = key; n++; }
+    if (n > 1) continue;
+    for (const key in histState)
+      if (!missed || missed === key) histState[key].live[histState[key].binOf(d[key])]++;
+  }
+  for (const key in histState) paint(histState[key]);
+}
+
+function paint(st) {
+  const sel = filters.ranges[st.h.key];
+  // With the grey bars showing, everything shares the unfiltered scale. With them hidden, the
+  // shown bars fill the chart on their own scale, so differences within a subset stand out.
+  const scale = showUnfiltered ? st.max : Math.max(...st.live, 1);
+  let svg = '';
+  for (let i = 0; i < BINS; i++) {
+    const bg = 40 * st.total[i] / scale, fg = 40 * st.live[i] / scale;
+    if (i === st.hover) svg += `<rect class="over" x="${i * 4 - 0.4}" y="0" width="4" height="40"></rect>`;
+    if (bg && showUnfiltered) svg += `<rect class="bg" x="${i * 4}" y="${40 - bg}" width="3.2" height="${bg}"></rect>`;
+    if (fg) svg += `<rect class="fg${i === st.hover ? ' on' : ''}" x="${i * 4}" y="${40 - fg}" ` +
+                   `width="3.2" height="${fg}"></rect>`;
+  }
+  if (sel) svg += `<rect class="brush" x="${(sel[0] - st.lo) / st.step * 4}" y="0" ` +
+                  `width="${(sel[1] - sel[0]) / st.step * 4}" height="40"></rect>`;
+  st.svg.innerHTML = svg;
+  // The end labels stay at the full range of the data; a selection is shown by the shaded band
+  // and the caption between them, so the axis itself never appears to jump.
+  st.range[0].textContent = st.h.fmt(st.lo);
+  st.range[2].textContent = st.h.fmt(st.hi);
+  // The caption between the labels reports whichever the pointer is over, or the kept range when
+  // one is set and the pointer is away, so the selection is always spelled out somewhere.
+  st.range[1].textContent =
+    st.hover !== null ? `${st.h.fmt(st.lo + st.hover * st.step)} to ${st.h.fmt(st.lo + (st.hover + 1) * st.step)} · ` +
+                        `${st.live[st.hover].toLocaleString()} SNVs`
+    : sel ? `kept ${st.h.fmt(sel[0])} to ${st.h.fmt(sel[1])}` : '';
+  st.card.querySelector('.clear').hidden = !sel;
+}
+
+/* ============================ chips ============================ */
+function buildChips() {
+  const band = $('chip-band'); band.innerHTML = '';
+  band.appendChild(el('span', { class: 'chips-label' }, 'Effect'));
+  for (const key in EFFECT) {
+    const n = S.reduce((t, d) => t + (d.effect === key ? 1 : 0), 0);
+    if (!n) continue;
+    const c = el('button', { class: 'chip', 'aria-pressed': 'false', 'data-effect': key,
+                             'data-tip': EFFECT[key][1] }, `${EFFECT[key][0]} (${n})`);
+    c.onclick = () => {
+      filters.effects.has(key) ? filters.effects.delete(key) : filters.effects.add(key);
+      apply();
+    };
+    band.appendChild(c);
+  }
+  const recomb = S.reduce((t, d) => t + d.recomb, 0);
+  if (recomb) {
+    band.appendChild(el('span', { class: 'chips-label', style: 'margin-left:12px' }, 'Recombination'));
+    const c = el('button', { class: 'chip', 'aria-pressed': 'false', 'data-recomb': '1',
+      'data-tip': RECOMB_TIP }, `Possible recombinant blocks (${recomb})`);
+    c.onclick = () => { filters.recomb = !filters.recomb; apply(); };
+    band.appendChild(c);
+  }
+}
+
+function drawChips() {
+  for (const c of $('chip-band').querySelectorAll('.chip'))
+    c.setAttribute('aria-pressed', c.dataset.recomb ? filters.recomb : filters.effects.has(c.dataset.effect));
+}
+
+/* ============================ read count charts ============================ */
+// One pair of bars per sample: reads on the forward strand, then reads on the reverse strand,
+// each stacked by base. A real variant looks the same on both strands in every sample.
+function readChart(i, height, gap) {
+  let max = 1;
+  for (let s = 0; s < NS; s++) {
+    const r = readsOf(i, s);
+    max = Math.max(max, r[0] + r[1] + r[2] + r[3], r[4] + r[5] + r[6] + r[7]);
+  }
+  // All the bars of one base go into a single outline, so a hundred samples cost four shapes
+  // instead of hundreds of tiny rectangles — with many rows on screen that is the difference
+  // between a table that scrolls smoothly and one that does not.
+  const width = NS * (2 + gap), shape = ['', '', '', ''];
+  for (let s = 0; s < NS; s++) {
+    const r = readsOf(i, s);
+    for (const strand of [0, 1]) {
+      let y = 100;
+      for (let b = 0; b < 4; b++) {
+        const h = 100 * r[strand * 4 + b] / max;
+        if (h <= 0) continue;
+        y -= h;
+        shape[b] += `M${(s * (2 + gap) + strand).toFixed(2)} ${y.toFixed(2)}h.92v${h.toFixed(2)}h-.92z`;
+      }
+    }
+  }
+  const bars = shape.map((d, b) => d && `<path d="${d}" fill="${BASE_COLOUR[BASES[b]]}"></path>`).join('');
+  return `<div class="readplot"><div class="yaxis"><span>${max}</span><span>0</span></div>` +
+         `<svg class="readbar" data-snv="${i}" style="height:${height}px" viewBox="0 0 ${width} 100" ` +
+         `preserveAspectRatio="none">${bars}</svg></div>`;
+}
+
+const baseKey = () => '<span class="key">' +
+  BASES.map(b => `<span><i style="background:${BASE_COLOUR[b]}"></i>${b}</span>`).join('') + '</span>';
+
+/* ============================ table ============================ */
+const COLUMNS = [
+  { key: 'p', label: 'Position' },
+  { key: 'gene', label: 'Gene' },
+  { key: 'alleles', label: 'Mutation', tip: 'Ancestral to derived allele change (and protein change, if there is one)' },
+  { key: 'effect', label: 'Effect', tip: 'Impact of mutation: non-synonymous, synonymous, upstream of gene, or intergenic.' },
+  { key: null, label: 'Read support', tip: 'Reads at this position in every sample: forward strand, then reverse strand.' },
+  { key: 'nVariant', label: 'Samples', tip: 'How many samples carry a base here that differs from the inferred ancestor.' },
+  { key: 'prob', label: 'Confidence', tip: 'How sure the AccuSNV neural network is that this is a real variant, from 0 to 1.' },
+  { key: 'kept', label: 'Result', tip: 'Whether the variant made it into the final set. Click any row to see every check it went through.' },
+];
+const ROW_H = 66;
+
+function buildHead() {
+  const head = $('thead'); head.innerHTML = '';
+  for (const c of COLUMNS) {
+    const th = el('div', { class: 'th' },
+      esc(c.label) + (c.key === sortKey ? `<span class="arrow">${sortDir > 0 ? '▲' : '▼'}</span>` : ''));
+    if (c.tip) th.setAttribute('data-tip', c.tip);
+    if (c.label === 'Read support') th.innerHTML += ' ' + baseKey();
+    if (c.key) th.onclick = () => {
+      sortDir = sortKey === c.key ? -sortDir : (c.key === 'p' ? 1 : -1);
+      sortKey = c.key; buildHead(); apply();
+    };
+    else th.style.cursor = 'default';
+    head.appendChild(th);
+  }
+}
+
+const changeText = d => d.alleles && d.alleles.length > 1
+  ? `${d.alleles[0]} &rarr; ${d.alleles.slice(1).split('').join('/')}`
+  : esc(d.anc && d.anc !== '.' ? d.anc : '–');
+
+function rowHTML(i) {
+  const d = S[i], gene = d.gene ? DATA.genes[d.gene] : null;
+  return `<div class="tr" style="height:${ROW_H}px">
+    <div class="pos">${d.p.toLocaleString()}<small>${esc(d.contig)}</small></div>
+    <div class="gene"${gene ? ` data-tip="${esc(gene.product)}"` : ''}>${gene
+        ? `<b>${esc(d.gene)}</b><small>${esc(gene.product)}</small>`
+        : `<small>${d.effect === 'P' ? 'just upstream of a gene' : 'not inside a gene'}</small>`}</div>
+    <div class="change">${changeText(d)}${d.change && d.change !== '.' ? `<small>${esc(d.change)}</small>` : ''}</div>
+    <div><span class="tag eff-${d.effect}">${esc((EFFECT[d.effect] || ['?'])[0])}</span></div>
+    <div>${readChart(i, 42, 1.2)}</div>
+    <div class="num">${d.nVariant} <small>of ${NS}</small><div class="meter"><i style="width:${100 * d.nVariant / NS}%"></i></div></div>
+    <div class="num">${d.prob.toFixed(2)}<div class="meter"><i style="width:${100 * d.prob}%"></i></div></div>
+    <div class="result">${d.kept ? '<span class="tag kept">Kept</span>'
+                  : `<span class="tag gone-t" data-tip="${esc(d.why[0] || '')}">Removed</span>`}
+         ${d.recomb ? '<span class="tag flagged" data-tip="This variant may come from recombination, so it is left out of the tree.">Recombinant</span>' : ''}</div>
+  </div>`;
+}
+
+function renderRows() {
+  const scroller = $('scroller'), rows = $('rows');
+  rows.style.height = view.length * ROW_H + 'px';
+  const top = scroller.scrollTop - rows.offsetTop;
+  const first = Math.max(0, Math.floor(top / ROW_H) - 4);
+  const last = Math.min(view.length, Math.ceil((top + scroller.clientHeight) / ROW_H) + 4);
+  let html = '';
+  for (let k = first; k < last; k++) {
+    const i = view[k];
+    html += `<div class="snvrow${i === focus ? ' on' : ''}${S[i].kept ? '' : ' gone'}" ` +
+            `data-i="${i}" style="top:${k * ROW_H}px">${rowHTML(i)}</div>`;
+  }
+  rows.innerHTML = html;
+}
+
+function selectRow(i) {
+  focus = i; renderRows(); renderDetail(); renderTree();
+}
+
+/* ============================ detail panel ============================ */
+// The reported gene sequence already runs 5'->3' for the gene, so a variant on the reverse
+// strand has to be complemented before it is written into it.
+const COMPLEMENT = { A: 'T', T: 'A', C: 'G', G: 'C' };
+
+function sequences(d) {
+  const gene = d.gene ? DATA.genes[d.gene] : null;
+  if (!gene || !gene.dna || gene.dna === '.') return null;
+  const at = parseInt(d.ntPos, 10) - 1, variantBase = (d.alleles || '').slice(1)[0];
+  if (!variantBase || !(at >= 0 && at < gene.dna.length)) return { gene };
+  const base = d.orientation === 'reverse_complement' ? COMPLEMENT[variantBase] : variantBase;
+  const out = { gene, at, dna: gene.dna.slice(0, at) + base + gene.dna.slice(at + 1) };
+  const changed = (d.change.match(/[A-Z*]\d+([A-Z*])/) || [])[1];
+  out.aaAt = parseInt(d.aaPos, 10) - 1;
+  if (gene.protein && gene.protein !== '.' && changed && out.aaAt >= 0 && out.aaAt < gene.protein.length)
+    out.protein = gene.protein.slice(0, out.aaAt) + changed + gene.protein.slice(out.aaAt + 1);
+  return out;
+}
+
+const seqBox = (text, at) =>
+  `<div class="seq">${esc(text.slice(0, at))}<mark>${esc(text[at])}</mark>${esc(text.slice(at + 1))}</div>`;
+
+let described, tab = 0;   // the SNV the panel is already showing, and which of these it is showing
+const TABS = ['SNV information', 'SNV quality', 'SNV calls per sample'];
+
+function renderDetail() {
+  if (focus === described) return;
+  described = focus;
+  const box = $('detail');
+  if (focus === null) {
+    box.innerHTML = '<p class="hint">Select a SNV in the table to see its read evidence, ' +
+                    'the checks it went through, its gene and the samples that carry it.</p>';
+    return;
+  }
+  const d = S[focus], gene = d.gene ? DATA.genes[d.gene] : null, seq = sequences(d);
+
+  const head = `<div class="dhead"><h2>Position ${d.p.toLocaleString()}</h2>
+    <span class="tag ${d.kept ? 'kept' : 'gone-t'}">${d.kept ? 'Kept in the final set' : 'Removed'}</span>
+    ${d.recomb ? '<span class="tag flagged">Possibly recombination</span>' : ''}</div>
+    <div class="dsub">${esc(d.contig)} &middot; position ${Number(d.cpos).toLocaleString()} on that contig
+    &middot; ${changeText(d)}${d.change && d.change !== '.' ? ' &middot; ' + esc(d.change) : ''}</div>`;
+
+  let info = `<div class="why ${d.kept ? 'ok' : ''}">` + (d.kept
+    ? 'Kept because ' + (d.cnn && d.wd ? 'both the AccuSNV neural network and the WideVariant checks called a variant here.'
+      : d.cnn ? 'the AccuSNV neural network judged the read evidence to be a real variant.'
+      : 'the WideVariant checks called a variant here and nothing else ruled it out.')
+    : `<b style="font-weight:400">Why this SNV was removed</b><ul>${d.why.map(w => `<li>${esc(w)}</li>`).join('')}</ul>`)
+    + '</div>';
+
+  // Every sample takes an equal share of the chart, so a grid of equal columns lines the
+  // names up under their bars. Past a dozen or so they no longer fit, and the table below says it.
+  const names = NS <= 14
+    ? `<div class="chartnames" style="grid-template-columns:repeat(${NS},1fr)">` +
+      SAMPLES.map(n => `<span>${esc(n)}</span>`).join('') + '</div>'
+    : `<div class="dsub">${NS} samples, in the order listed below.</div>`;
+  let quality = `<div class="sect"><div class="head"><h3>Reads at this position</h3>
+    <button class="button tight" data-chart="1">Open full barchart</button></div>
+    ${readChart(focus, 150, 1.6)}${names}
+    <div class="dsub" style="margin-top:6px">Two bars per sample: reads on the forward strand,
+    then on the reverse strand &nbsp;&middot;&nbsp; ${baseKey()}</div></div>`;
+
+  const confidentCalls = [...d.confident].filter(c => c !== 'N').length;
+  quality += `<div class="sect"><h3>Quality of the evidence here</h3><dl class="facts">
+    <dt data-tip="How sure the AccuSNV neural network is that the reads here show a real variant. 1.00 is completely sure.">AccuSNV CNN model confidence</dt>
+    <dd>${d.prob.toFixed(2)} &mdash; ${d.cnn ? 'called a variant' : 'called an artifact'}</dd>
+    <dt data-tip="The bcftools FQ quality score for this SNV position, negated so higher is better. It is taken from the best-supported pair of samples whose base calls differ.">Position quality</dt><dd>${d.quality}</dd>
+    <dt data-tip="Share of samples whose reads do not agree on a single base here.">Samples without clean agreement</dt><dd>${(100 * d.ambig).toFixed(0)}%</dd>
+    <dt>Median read depth</dt><dd>${d.depth} reads</dd>
+    <dt data-tip="Samples whose base call here passed every quality check.">Samples with a confident base call</dt><dd>${confidentCalls} of ${NS}</dd>
+    <dt>Samples carrying the variant</dt><dd>${d.nVariant} of ${NS}</dd>
+    <dt data-tip="${esc(RECOMB_TIP)}">Possible recombinant block</dt><dd>${d.recomb ? 'yes' : 'no'}</dd>
+    </dl></div>`;
+
+  const carries = s => d.calls[s] !== d.anc && d.calls[s] !== 'N';
+  const order = SAMPLES.map((_, s) => s).sort((a, b) => carries(b) - carries(a));
+  const samples = `<div class="sect"><h3>Base in each sample</h3><table class="stable">
+    <tr><th>Sample</th>
+      <th data-tip="The base seen in that sample. Greyed out when the base call did not pass the quality checks.">Base</th>
+      <th data-tip="Reads covering this position in that sample, on the forward strand and on the reverse strand.">Reads (fwd / rev)</th>
+      <th data-tip="The variant caller's quality score for this position in that sample. 30 is the cutoff for a confident call.">Quality</th></tr>` +
+    order.map(s => {
+      const r = readsOf(focus, s), call = d.calls[s];
+      return `<tr class="${d.confident[s] === 'N' ? 'dim' : ''}">
+        <td>${esc(SAMPLES[s])}${DATA.outgroup[s] ? ' <small>(outgroup)</small>' : ''}</td>
+        <td class="base" style="color:${BASE_COLOUR[call] || '#999'}">${call}</td>
+        <td>${r[0] + r[1] + r[2] + r[3]} / ${r[4] + r[5] + r[6] + r[7]}</td>
+        <td>${QUALS[focus * NS + s]}</td></tr>`;
+    }).join('') + '</table></div>';
+
+  const line = (ok, name, tip, note) => `<div class="ck ${ok === 1 ? 'fail' : ok === 0 ? 'pass' : 'skip'}">
+    <span class="sign">${ok === 1 ? '✕' : ok === 0 ? '✓' : '–'}</span>
+    <span data-tip="${esc(tip)}">${esc(name)}</span><span class="note">&mdash; ${note}</span></div>`;
+  quality += '<div class="sect"><h3>Quality checks and filters</h3><div class="checklist">' +
+    DATA.checks.map((c, k) => line(d.checks[k], `${c.name} (${c.column})`, c.help,
+      d.checks[k] === 1 ? 'flagged here' : d.checks[k] === 0 ? 'passed' : 'not reached')).join('') +
+    line(d.cnn ? 0 : 1, 'AccuSNV neural network',
+      'AccuSNV\'s neural network reads the raw counts at this position across all your samples and decides whether they look like a real variant.',
+      `${d.cnn ? 'called a variant' : 'called an artifact'} (confidence ${d.prob.toFixed(2)})`) +
+    line(d.wd ? 0 : 1, 'WideVariant combined filters',
+      'Passes only when the position clears every WideVariant filter at once: FQ quality > 30, at least 5 forward and 5 reverse reads, at least 85% of reads on one base, under 33% indel reads, enough samples with a confident call, median depth at least 5x, copy number under 4x average and 7x per sample, and a confident base that differs from the ancestor.',
+      d.wd ? 'called a variant' : 'did not call a variant') + '</div></div>';
+
+  const codonOf = b => (d.codons.length === 4 ? d.codons[BASES.indexOf(b)] : '') || '';
+  info += `<div class="sect"><h3>Position and gene</h3><dl class="facts">
+    <dt data-tip="The bcftools FQ quality score for this SNV position, negated so higher is better. It is taken from the best-supported pair of samples whose base calls differ.">Position quality</dt><dd>${d.quality}</dd>
+    <dt data-tip="Share of samples whose reads do not agree on a single base here.">Samples without clean agreement</dt><dd>${(100 * d.ambig).toFixed(0)}%</dd>
+    <dt>Median read depth</dt><dd>${d.depth} reads</dd>
+    <dt>Effect</dt>
+    <dd><span class="tag eff-${d.effect}">${esc((EFFECT[d.effect] || ['?'])[0])}</span></dd>` +
+    (gene ? `<dt>Gene</dt><dd>${esc(d.gene)}</dd>
+      <dt>Makes</dt><dd>${esc(gene.product)}</dd>
+      <dt>Protein record</dt><dd>${esc(gene.proteinId)}</dd>
+      <dt data-tip="Which DNA strand the gene is read from.">Strand</dt><dd>${gene.strand}</dd>
+      <dt>Base within the gene</dt><dd>${esc(d.ntPos)} of ${gene.dna && gene.dna !== '.' ? gene.dna.length : '?'}</dd>
+      <dt>Amino acid</dt><dd>${d.aaPos !== '.' ? esc(d.aaPos) : '–'}</dd>
+      <dt data-tip="The codon the ancestor carries and the codon a sample with the variant carries.">Codon</dt>
+      <dd>${codonOf(d.anc) ? codonOf(d.anc) + ' &rarr; ' + ((d.alleles || '').slice(1).split('').map(codonOf).filter(Boolean).join(', ') || '–') : '–'}</dd>`
+    : '<dt>Gene</dt><dd>this variant is not inside a gene</dd>') + '</dl></div>';
+
+  if (seq && seq.dna) {
+    info += `<div class="sect"><h3>Gene sequence with the variant</h3>${seqBox(seq.dna, seq.at)}
+      <div class="tools" style="margin-top:10px">
+        <button class="button" data-copy="dna-ref">Copy DNA (ancestor)</button>
+        <button class="button" data-copy="dna-var">Copy DNA (with variant)</button>` +
+      (seq.protein ? `<button class="button" data-copy="prot-ref">Copy protein (ancestor)</button>
+        <button class="button" data-copy="prot-var">Copy protein (with variant)</button>` : '') + '</div>';
+    if (seq.protein) info += `<h3 style="margin-top:16px">Protein with the variant</h3>${seqBox(seq.protein, seq.aaAt)}`;
+    if (gene.protein && gene.protein !== '.')
+      info += `<h3 style="margin-top:16px">Look this gene up</h3><div class="tools">
+        <button class="button" data-paperblast="1" data-tip="PaperBLAST finds published papers about proteins similar to this one.">PaperBLAST</button>
+      </div>`;
+    info += '</div>';
+  }
+
+  box.innerHTML = head +
+    '<div class="tabs">' + TABS.map((t, k) =>
+      `<button class="tab" aria-pressed="${k === tab}">${t}</button>`).join('') + '</div>' +
+    [info, quality, samples].map((pane, k) =>
+      `<div class="pane"${k === tab ? '' : ' hidden'}>${pane}</div>`).join('');
+  box.scrollTop = 0;
+  // The variant is usually far into the sequence, so bring it into view inside its own box.
+  for (const m of box.querySelectorAll('.seq mark')) m.parentElement.scrollTop = m.offsetTop - 40;
+
+  const protein = gene ? gene.protein : '';
+  for (const b of box.querySelectorAll('[data-copy]')) b.onclick = () => copy(
+    { 'dna-ref': gene.dna, 'dna-var': seq.dna, 'prot-ref': protein, 'prot-var': seq.protein }[b.dataset.copy],
+    'Sequence copied to the clipboard');
+  const look = box.querySelector('[data-paperblast]');
+  if (look) look.onclick = () => window.open(
+    'https://papers.genomics.lbl.gov/cgi-bin/litSearch.cgi?query=' + encodeURIComponent(protein), '_blank');
+  box.querySelector('[data-chart]').onclick = () => showChart(d.p);
+  for (const b of box.querySelectorAll('.tab'))
+    b.onclick = () => { tab = TABS.indexOf(b.textContent); described = null; renderDetail(); };
+}
+
+// The pipeline draws its own chart for every position. Those images sit next to the analysis copy
+// of this page, and two folders below the copy at the top of the run directory, so both are tried.
+function showChart(p) {
+  const box = $('lightbox'), img = box.querySelector('img'), note = box.querySelector('p');
+  note.textContent = '';
+  // The pipeline skips these images when a run has more than 1,000 SNVs, to keep it from spending
+  // all its time drawing charts; say so rather than looking for a file that was never written.
+  if (!DATA.barcharts) {
+    img.removeAttribute('src');
+    note.textContent = 'Full bar charts are not generated for runs with more than 1,000 SNVs.';
+    box.hidden = false;
+    return;
+  }
+  const paths = ['per_snv_barcharts/p_' + p + '_bar_chart.png',
+                 '3-Analysis/' + DATA.group + '/per_snv_barcharts/p_' + p + '_bar_chart.png'];
+  let next = 0;
+  img.onerror = () => {
+    if (next < paths.length) return img.src = paths[next++];
+    img.removeAttribute('src');
+    note.textContent = 'No chart image was found for position ' + p.toLocaleString() +
+                       '. The pipeline writes these next to the report, in per_snv_barcharts.';
+  };
+  img.onerror();
+  box.hidden = false;
+}
+
+/* ============================ tree ============================ */
+const onTree = () => [focus, ...pinned.filter(i => i !== focus)].filter(i => i !== null).slice(0, 6);
+
+// Newick labels are the tokens that follow "(" or ","; branch lengths follow ":" and are left
+// alone. PearTree paints a tip in an exact colour when it carries a user_colour annotation, and
+// shows any annotation as the tip label, so each tip gets its bases at the chosen SNVs spelled out.
+function annotatedTree() {
+  const list = onTree();
+  const body = DATA.tree.replace(/(^|[(,])([^(),:;]+)/g, (all, before, name) => {
+    const tip = name.trim(), s = SAMPLES.indexOf(tip);
+    let bases;
+    if (s >= 0) bases = list.map(i => S[i].calls[s]);
+    else if (tip === 'inferred_ancestor') bases = list.map(i => S[i].anc);
+    else return all;
+    return `${before}${name}[&label="${tip}${bases.length ? '   ' + bases.join(' ') : ''}",` +
+           `user_colour="${BASE_COLOUR[bases[0]] || BASE_COLOUR.N}"]`;
+  });
+  return '#NEXUS\nbegin trees;\n\ttree TREE1 = [&R] ' + body + '\nend;\n';
+}
+
+async function buildTree() {
+  if (!DATA.tree) { $('treepanel').hidden = true; return; }
+  tree = await PearTreeEmbed.embed({
+    container: 'treebox', tree: annotatedTree(), filename: 'tree.nexus', height: '100%',
+    settings: {
+      tipLabelShow: 'label', tipLabelShape: 'square', tipLabelShapeSize: '45',
+      tipLabelShapeColourBy: 'user_colour', labelColourBy: 'off',
+      introAnimation: 'none', canvasBgColor: '#ffffff', branchColor: '#333333',
+      tipLabelColor: '#111111', tipLabelFontSize: '14', typeface: 'Sans-serif',
+      tipShapeSize: '0', paddingRight: '40', paddingLeft: '12',
+    },
+    ui: { theme: 'light', palette: false, statusBar: false, rtt: false, dataTable: false,
+          openTree: false, import: false, export: false,
+          toolbarSections: ['navigation', 'zoom', 'order'] },
+  });
+  // The panel is still settling when embed returns, and the tree has to be refitted whenever
+  // it changes size, or the tip labels end up cut off at the right edge.
+  let refit;
+  new ResizeObserver(() => { clearTimeout(refit); refit = setTimeout(() => tree.fitLabels(), 150); })
+    .observe($('treebox'));
+  // Recolouring the tree (loadTree) drops its selection, so ignore that automatic clear and put
+  // the selection back afterwards; only real clicks and drags reach syncSelection.
+  tree.onSelectionChanged(names => { if (!reloading) { selectedTips = names; syncSelection(); } });
+}
+
+let selectedTips = [], treeSelection = null, reloading = false;
+
+// Turn the selected tip names into a per-sample mask and show the two buttons for keeping its SNVs.
+function syncSelection() {
+  const mask = SAMPLES.map(n => selectedTips.includes(n));
+  treeSelection = mask.some(Boolean) ? mask : null;
+  drawCladeBar();
+}
+
+function drawCladeBar() {
+  const bar = $('cladebar');
+  bar.hidden = !treeSelection;
+  if (!treeSelection) return;
+  const count = treeSelection.filter(Boolean).length;
+  const active = filters.clade && filters.clade.inClade.every((v, s) => v === treeSelection[s])
+    ? filters.clade.mode : null;
+  bar.innerHTML = `<span class="cladecount">${count} ${count === 1 ? 'sample' : 'samples'} selected:</span>`;
+  const add = (mode, label, tip) => {
+    const b = el('button', { class: 'button tight', 'aria-pressed': active === mode, 'data-tip': tip }, label);
+    b.onclick = () => {
+      filters.clade = active === mode ? null : { inClade: treeSelection, mode };
+      drawCladeBar(); apply();
+    };
+    bar.appendChild(b);
+  };
+  add('within', 'SNVs in these samples',
+    'Keep every SNV that at least one of the selected samples carries, even if samples outside the selection carry it too.');
+  add('specific', 'SNVs unique to these samples',
+    'Keep only the SNVs carried by the selected samples and by no others.');
+}
+
+let treeShows = '';   // the SNVs the tree is already drawn for
+function renderTree() {
+  const chips = $('treechips'); chips.innerHTML = '';
+  const list = onTree();
+  if (!list.length) chips.appendChild(el('span', {}, 'Select a SNV to colour the tree by it.'));
+  list.forEach((i, k) => {
+    const chip = el('span', { class: 'tchip' });
+    chip.innerHTML = (k ? '' : '<span style="color:var(--ink-3)">colours:</span> ') + S[i].p.toLocaleString();
+    const x = el('button', { title: 'remove from the tree' }, '×');
+    x.onclick = () => {
+      pinned = pinned.filter(j => j !== i);
+      if (i === focus) focus = pinned.length ? pinned[0] : null;
+      renderRows(); renderDetail(); renderTree();
+    };
+    chip.appendChild(x); chips.appendChild(chip);
+  });
+  if (focus !== null && !pinned.includes(focus) && list.length < 6) {
+    const add = el('button', { class: 'chip' }, 'Keep on tree');
+    add.onclick = () => { pinned.push(focus); renderTree(); };
+    chips.appendChild(add);
+  }
+  $('treenote').textContent = list.length
+    ? 'Squares show each sample\u2019s base at ' + S[list[0]].p.toLocaleString() + '.'
+    : 'Recombinant SNVs were left out when this tree was built.';
+  if (tree && list.join() !== treeShows) {
+    treeShows = list.join();
+    reloading = true;
+    tree.loadTree(annotatedTree(), 'tree.nexus');
+    setTimeout(() => {
+      tree.fitLabels();
+      reloading = false;
+      if (selectedTips.length) tree.getSelectionChangedListener()(selectedTips);
+    }, 150);
+  }
+}
+
+/* ============================ export ============================ */
+function exportTable() {
+  const head = ['genome_position', 'contig', 'contig_position', 'result', 'why_removed', 'called_by',
+    'model_confidence', 'gene', 'product', 'effect', 'protein_change', 'ancestral_base',
+    'observed_bases', 'samples_with_variant', 'median_read_depth', 'possible_recombination', ...SAMPLES];
+  const named = { both: 'AccuSNV model and WideVariant', cnn: 'AccuSNV model', wd: 'WideVariant', neither: 'neither' };
+  const rows = view.map(i => {
+    const d = S[i], gene = d.gene ? DATA.genes[d.gene] : null;
+    return [d.p, d.contig, d.cpos, d.kept ? 'kept' : 'removed', d.why.join(' '), named[callerOf(d)],
+      d.prob, d.gene || '', gene ? gene.product : '', (EFFECT[d.effect] || ['?'])[0], d.change,
+      d.anc, d.alleles, d.nVariant, d.depth, d.recomb ? 'yes' : 'no', ...d.calls].join('\t');
+  });
+  const blob = new Blob([head.join('\t') + '\n' + rows.join('\n') + '\n'], { type: 'text/tab-separated-values' });
+  const a = el('a', { href: URL.createObjectURL(blob), download: DATA.group + '_snvs_shown.tsv' });
+  a.click(); URL.revokeObjectURL(a.href);
+  say(`Exported ${view.length.toLocaleString()} SNVs`);
+}
+
+/* ============================ wiring ============================ */
+// Follow the pointer until it is let go, then tell the tree its box has changed shape.
+function dragging(down, move) {
+  const bar = down.target;
+  bar.setPointerCapture(down.pointerId);
+  bar.onpointermove = move;
+  bar.onpointerup = () => {
+    bar.onpointermove = bar.onpointerup = null;
+    window.dispatchEvent(new Event('resize'));
+  };
+}
+
+function render() {
+  $('count-note').innerHTML = `Showing <b>${view.length.toLocaleString()}</b> of ${S.length.toLocaleString()} candidate positions`;
+  $('export').textContent = `Export ${view.length.toLocaleString()} SNVs`;
+  $('empty').hidden = view.length > 0;
+  $('reset').hidden = !anyFilter();
+  drawFlow(); drawHistograms(); drawChips(); renderRows(); renderDetail(); renderTree();
+}
+
+function start() {
+  $('meta').innerHTML = `<b>${esc(DATA.group)}</b> &middot; reference genome ${esc(DATA.reference)} &middot; ${NS} samples`;
+  for (const d of S)
+    d.text = [d.p, d.contig, d.gene || '', d.gene ? DATA.genes[d.gene].product : '', d.change].join(' ').toLowerCase();
+
+  buildHead(); buildFlow(); buildHistograms(); buildChips();
+  for (const b of $('views').children) b.onclick = () => setView(b.dataset.view);
+  $('search').oninput = e => { filters.search = e.target.value.toLowerCase().split(/\s+/).filter(Boolean); apply(); };
+  $('export').onclick = exportTable;
+  $('reset').onclick = resetFilters;
+  $('toggle-filters').onclick = () => {
+    const hidden = $('filter-band').hidden = !$('filter-band').hidden;
+    $('toggle-filters').textContent = hidden ? 'Show filters' : 'Hide filters';
+    renderRows();
+  };
+  $('scroller').addEventListener('scroll', renderRows, { passive: true });
+  // Drag the bar above the tree to give either panel more room.
+  $('dragbar').onpointerdown = e => {
+    const from = e.clientY, was = $('treepanel').offsetHeight;
+    dragging(e, ev => $('treepanel').style.height =
+      Math.max(160, Math.min(was + from - ev.clientY, $('sidepane').offsetHeight - 150)) + 'px');
+  };
+  // Drag the bar beside the side panel to make it wider or narrower, but never so wide that the
+  // table has to scroll sideways.
+  $('widthbar').onpointerdown = e => {
+    const from = e.clientX, was = $('sidepane').offsetWidth;
+    dragging(e, ev => $('sidepane').style.width =
+      Math.max(300, Math.min(was + from - ev.clientX, window.innerWidth - 1060)) + 'px');
+  };
+  $('lightbox').onclick = () => $('lightbox').hidden = true;
+  // A short screen has no room for both the filters and a usable table; start with them closed.
+  if (window.innerHeight < 860) $('toggle-filters').click();
+  $('rows').onclick = e => {
+    const row = e.target.closest('.snvrow');
+    if (row) selectRow(+row.dataset.i);
+  };
+  // Arrow keys walk down the table once a SNV is selected.
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') $('lightbox').hidden = true;
+    if (focus === null || e.target.tagName === 'INPUT') return;
+    const step = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const at = view.indexOf(focus) + step;
+    if (at < 0 || at >= view.length) return;
+    selectRow(view[at]);
+    $('scroller').scrollTop = Math.max(0, at * ROW_H - $('scroller').clientHeight / 2);
+  });
+  window.addEventListener('resize', renderRows);
+  apply();
+  if (view.length) selectRow(view[0]);
+  buildTree();
+}
+
+/* tooltips */
+const tip = $('tip');
+document.addEventListener('mouseover', e => {
+  const t = e.target.closest('[data-tip]');
+  if (!t || !t.dataset.tip) { tip.classList.remove('on'); return; }
+  tip.textContent = t.dataset.tip;
+  tip.classList.add('on');
+  const r = t.getBoundingClientRect(), box = tip.getBoundingClientRect();
+  tip.style.left = Math.max(8, Math.min(window.innerWidth - box.width - 8, r.left)) + 'px';
+  tip.style.top = (r.bottom + box.height + 12 > window.innerHeight ? r.top - box.height - 8 : r.bottom + 8) + 'px';
+});
+
+// A reads chart is a handful of shapes rather than one element per sample, so which sample the
+// pointer is over is worked out from how far along the chart it sits.
+document.addEventListener('mousemove', e => {
+  const chart = e.target.closest('.readbar');
+  if (!chart) return;
+  const i = +chart.dataset.snv, r = chart.getBoundingClientRect();
+  const s = Math.max(0, Math.min(NS - 1, Math.floor((e.clientX - r.left) / r.width * NS)));
+  const reads = readsOf(i, s);
+  tip.textContent = `${SAMPLES[s]} — base ${S[i].calls[s]}, ` +
+    `${reads[0] + reads[1] + reads[2] + reads[3]} reads forward, ` +
+    `${reads[4] + reads[5] + reads[6] + reads[7]} reverse`;
+  tip.classList.add('on');
+  const box = tip.getBoundingClientRect();
+  tip.style.left = Math.max(8, Math.min(window.innerWidth - box.width - 8, e.clientX + 14)) + 'px';
+  tip.style.top = (e.clientY + box.height + 26 > window.innerHeight ? e.clientY - box.height - 14 : e.clientY + 18) + 'px';
+});
+
+if (!S.length) {
+  $('meta').textContent = DATA.group;
+  document.querySelector('main').innerHTML = '<p class="empty">This group has no SNVs to report.</p>';
+  $('controls').hidden = $('toggle-filters').hidden = $('export').hidden = true;
+} else {
+  Promise.all([unpack(DATA.counts), unpack(DATA.quals)]).then(([c, q]) => { COUNTS = c; QUALS = q; start(); });
+}
+</script>
+</body>
+</html>

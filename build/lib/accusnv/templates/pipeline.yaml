@@ -1,0 +1,80 @@
+# AccuSNV pipeline.yaml -- pipeline parameters (read by the workflow).
+# Edit values as needed, then run:  accusnv -i samples.csv -r ref_dir/ -o out/ -p pipeline.yaml
+
+# --- Logging ---
+# Two log files per run. The summary holds the milestones, warnings and errors; the full one adds
+# the per-sample detail and the output of bwa/samtools/bcftools. A relative path (the default)
+# puts the file at the top level of the output directory.
+log_file: "accusnv.log"
+full_log_file: "accusnv.full.log"
+
+# --- Read mapping ---
+aligner: "bwa"                   # bwa or bowtie2
+aligner_threads: "4"             # max threads per job
+samclip: "0"                     # 1 = clip soft-clipped bwa alignments with samclip (recommended for bwa)
+adapter_sequence: "CTGTCTCTTAT"  # 3' adapter trimmed by cutadapt (nextera in this case)
+
+# --- SNV filtering cutoffs ---
+min_cov_samp: "45"               # drop samples with more than this % zero-coverage positions
+min_cov_filt: "5"                # per-position minimum forward/reverse reads
+exclude_samp: "null"             # comma-separated sample names, an SNV-count cutoff, or null
+
+# --- Read trimming / QC (sickle) ---
+sickle_quality: 20               # Phred quality threshold for sickle trimming
+sickle_min_length: 50            # minimum read length (bp) kept after trimming
+
+# --- Mapping (bowtie2) ---
+bowtie2_maxins: 2000             # bowtie2 max insert size (-X) for paired-end only
+
+# --- Duplicate marking (samtools markdup) ---
+markdup_optical_distance: 100    # optical-duplicate pixel distance (-d); use ~2500 for patterned flowcells (NovaSeq)
+
+# --- Pileup & variant calling (samtools / bcftools) ---
+mpileup_min_mapq: 30             # minimum read mapping quality (samtools/bcftools mpileup -q)
+mpileup_max_depth: 3000          # maximum per-file pileup depth (mpileup -d)
+variant_min_af: 0.75             # minimum alt-allele fraction to emit a candidate variant (bcftools view -q)
+max_fq: -30                      # bcftools FQ score threshold for calling a position variable (variants2positions)
+
+# --- Per-call SNV filters (CNN calling stage) ---
+call_min_major_allele_freq: 0.85 # minimum dominant-base fraction for a confident call
+call_min_qual: 30                # minimum per-call quality
+call_max_indel_frac: 0.33        # max fraction of reads supporting an indel before a call is dropped
+min_mut_qual: 1                  # minimum mutation quality to keep a SNV position
+
+# --- Across-sample position filters (the MFAS/MMCP/CPN columns in the SNV tables) ---
+max_frac_ambiguous_samples: 1    # MFAS_filter: drop a position when more than this fraction of samples
+                                 # have no base call. 1 means never drop; try 0.25 to switch it on
+min_median_coverage_position: 5  # MMCP_filter: drop a position whose median depth across samples is below this
+max_mean_copynum: 4              # CPN_filter: drop a position whose depth averages more than this many times
+                                 # the genome-wide median depth (catches repeats and duplications)
+max_max_copynum: 7               # CPN_filter: ...or exceeds this multiple in any one sample
+
+fast_mode_positions: 100000      # above this many candidate SNV positions, switch to fast mode:
+                                 # score with the CNN only, and skip annotation, dN/dS, trees and the dashboard
+
+# When the CNN rejects a SNV the WideVariant filters accepted, it is only rescued if at most this
+# fraction of samples have mixed read support (the Fraction_ambiguous_samples column).
+rebuild_sample_count: 20         # cohort size above which the stricter cutoff below applies
+rebuild_cutoff_many: 0.1         # ambiguity cutoff when sample count > rebuild_sample_count
+rebuild_cutoff_few: 0.25         # ambiguity cutoff when sample count <= rebuild_sample_count
+
+# --- Recombination detection ---
+recomb_distance_bp: 1000         # max bp between SNV pairs tested for correlated (recombinant) SNVs
+recomb_corr_threshold: 0.75      # SNV correlation above which a pair is flagged recombinant
+
+# --- Annotation ---
+annotate_min_major_allele_freq: 0.75  # major-allele SNV cutoff when rebuilding calls for annotation
+
+# --- Optional modules (true/false).  ---
+
+#     Recombination detection is on by default; recombinant SNVs are flagged but kept in the
+#     tables, and excluded from dN/dS, tree building + dMRCA. Turn it off to count them there.
+
+skip_recombination: false
+skip_report: false               # HTML report
+skip_dnds: false                 # genome-wide dN/dS
+skip_trees: false                # parsimony tree (dnapars); dMRCA estimate still run
+use_nj_tree: false               # build a neighbor-joining tree (Biopython) instead; no dnapars needed
+build_snv_trees: false           # one NEXUS tree per SNV, tips coloured by basecall (FigTree)
+skip_all_downstream: false       # stop after the annotated SNV tables (no dN/dS, report, trees)
+downstream_only: false           # re-run only the evolutionary analyses from an existing output dir

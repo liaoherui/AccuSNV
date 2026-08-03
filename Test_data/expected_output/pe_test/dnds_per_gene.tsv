@@ -1,0 +1,30 @@
+gene_num_global	locus_tag	product	gene_length	num_muts_N	num_muts_S	p_nonsyn	probnonsyn_expected	dNdS
+115	cds-WP_002519782.1	DNA topoisomerase (ATP-hydrolyzing) subunit B	2058	1	0	1.0	0.7744349546007939	inf
+336	cds-WP_041446199.1	FtsX-like permease family protein	2640	1	0	1.0	0.7463048666617289	inf
+378	cds-WP_002517091.1	NAD(P)/FAD-dependent oxidoreductase	1350	1	0	1.0	0.7563837272105476	inf
+423	cds-WP_015011350.1	glutamate-1-semialdehyde 2,1-aminomutase	1311	1	1	0.5	0.7631013457306798	0.31044192962664297
+439	cds-WP_041446201.1	aspartate-semialdehyde dehydrogenase	1044	1	0	1.0	0.74540221906794	inf
+451	cds-WP_338141079.1	hypothetical protein	1071	1	0	1.0	0.7810878209149754	inf
+464	cds-WP_002517294.1	phosphate ABC transporter substrate-binding protein PstS	1152	1	0	1.0	0.7763452765795082	inf
+633	cds-WP_015011400.1	nitrate reductase subunit alpha	3738	1	0	1.0	0.7754695390598594	inf
+680	cds-WP_002516731.1	hypothetical protein	840	0	1	0.0	0.7683395610296435	0.0
+809	cds-WP_002519168.1	type I glutamate--ammonia ligase	1422	1	0	1.0	0.7892249280441767	inf
+928	cds-WP_015011462.1	undecaprenyldiphospho-muramoylpentapeptide beta-N-acetylglucosaminyltransferase	1119	0	1	0.0	0.7353050447837454	0.0
+1032	cds-WP_041446291.1	ATP-binding cassette domain-containing protein	1905	1	0	1.0	0.7553885347600127	inf
+1106	cds-WP_002515525.1	tRNA dihydrouridine synthase DusB	1230	1	0	1.0	0.7615771192876797	inf
+1121	cds-WP_002519029.1	pyridoxal 5'-phosphate synthase glutaminase subunit PdxT	648	1	0	1.0	0.753585796301574	inf
+1215	cds-WP_015011532.1	APC family permease	2025	1	0	1.0	0.7621498298597148	inf
+1273	cds-WP_002514990.1	phosphoglucomutase (alpha-D-glucose-1,6-bisphosphate-dependent)	1632	0	1	0.0	0.7699142171533363	0.0
+1338	cds-WP_002529970.1	acyl-CoA dehydratase activase-related protein	4434	1	0	1.0	0.7640050217716076	inf
+1495	cds-WP_002516423.1	ATP-dependent DNA helicase UvrD2	2121	0	1	0.0	0.7433708577317388	0.0
+1500	cds-WP_002517954.1	ATP-dependent DNA helicase	3219	1	0	1.0	0.7465369905888569	inf
+1670	cds-WP_002516872.1	ABC transporter ATP-binding protein	1032	1	0	1.0	0.7692716546434119	inf
+1726	cds-WP_015011651.1	NADP-specific glutamate dehydrogenase	1338	0	1	0.0	0.7696277970566815	0.0
+1986	cds-WP_002516067.1	tRNA (adenosine(37)-N6)-threonylcarbamoyltransferase complex dimerization subunit type 1 TsaB	660	0	1	0.0	0.7432978120027585	0.0
+2188	cds-WP_041446319.1	MFS transporter	1299	1	0	1.0	0.7458238857098164	inf
+2237	cds-WP_002516354.1	ABC transporter ATP-binding protein	735	0	1	0.0	0.764593176299797	0.0
+2343	cds-WP_236886383.1	alpha/beta hydrolase	894	0	1	0.0	0.8048662428771928	0.0
+2357	cds-WP_002518178.1	ABC transporter permease	924	1	0	1.0	0.7529708773532326	inf
+2456	cds-WP_015011798.1	septal ring lytic transglycosylase RlpA family protein	1194	0	1	0.0	0.7482883157704192	0.0
+2470	cds-WP_002516466.1	amino acid permease	1407	1	0	1.0	0.7438603909876185	inf
+2471	cds-WP_041446256.1	metallophosphoesterase	1185	0	1	0.0	0.7584958405463513	0.0
