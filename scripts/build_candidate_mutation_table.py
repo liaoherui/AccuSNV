@@ -84,7 +84,7 @@ parser.add_argument("-c", dest="cov_mat_raw", help="Output raw coverage matrix a
 parser.add_argument("-n", dest="cov_mat_norm",
                     help="Output double normalized coverage matrix as sparse csr gzip numpy object (*.npz)",
                     action='store', default='none')
-parser.add_argument("-t", dest="dim", help="Specify the number of statistics (default 8)", type=int, default=8)
+parser.add_argument("-t", dest="dim", help="Specify the number of statistics (default 40)", type=int, default=40)
 args = parser.parse_args()
 
 # %%
@@ -156,7 +156,7 @@ def main(path_to_p_file, path_to_sample_names_file, path_to_outgroup_boolean_fil
         counts[:, :, i] = data[p - 1, 0:dim].T  # -1 convert position to index
 
         if flag_cov_raw:
-            np.sum(data[:, 0:dim], axis=1, out=all_coverage_per_bp[:, i])
+            np.sum(data[:, 0:8], axis=1, out=all_coverage_per_bp[:, i])
 
         indel_counter[:, :, i] = data[p - 1, 38:40].T  # Num reads supporting indels and reads supporting deletions
         # -1 convert position to index
