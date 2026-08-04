@@ -18,10 +18,10 @@ dependencies = [
     "bcbio-gff",
     "matplotlib",
     "statsmodels",
+    # Needed only for -m slurm, but a small pure-Python package that installs anywhere, so it is
+    # a plain requirement rather than an extra the user has to know to ask for.
+    "snakemake-executor-plugin-slurm",
 ]
-
-[project.optional-dependencies]
-slurm = ["snakemake-executor-plugin-slurm"]
 
 [project.scripts]
 accusnv = "accusnv.cli:main"

@@ -18,9 +18,9 @@ and the third row is an intergenic position):
 
 ```
 genome_pos	contig	contig_pos	ancestral_allele	derived_allele	reference_allele	gene_nucleotide_mutation	gene_nt_position	aa_mutation	mutation_type	protein_id	locus_tag	product	Pred_label	CNN_pred	WideVariant_pred	CNN_prob	Qual_filter	Cov_filter	MAF_filter	Indel_filter	MFAS_filter	MMCP_filter	CPN_filter	Fix_filter	Whether_recomb	Fraction_ambiguous_samples	Gap_filter	gene_num_global	gene_num_contig	quality	ontology	strand	gene_contig_start_pos	gene_contig_stop_pos	aa_pos	possible_codons_at_site	possible_AAs_at_site	strain1	strain2	strain3	strain4	sequence	translation
-10866	NC_018707.1	10866	A	T	A	A1353T	1353	K451N	N	WP_002519782.1	cds-WP_002519782.1	DNA topoisomerase (ATP-hydrolyzing) subunit B	1	1	1	0.999997	0	0	0	0	0	0	0	0	0	0.000000	0	115.0	10.0	102.0	['GO:0006265', 'GO:0003918', 'GO:0009330']	1.0	9514	11571	451	AAA AAT AAC AAG	K N N K	T	A	A	A	ATGCCCGAGTCCGTGACCGA...(truncated)	MPESVTDGDTPEDLLIDATD...(truncated)
-353798	NC_018707.1	353798	G	C	G	C927G	927	.	S	WP_015011350.1	cds-WP_015011350.1	glutamate-1-semialdehyde 2,1-aminomutase	1	1	1	0.99996734	0	0	0	0	0	0	0	0	0	0.000000	0	423.0	330.0	81.0	['GO:0006779', 'GO:0042286', 'GO:0005737']	-1.0	353414	354724	309	GCT GCA GCG GCC	A A A A	C	G	G	G	ATGACCTCCAACGCCGAACT...(truncated)	MTSNAELFSAAQAVIPGGVD...(truncated)
-271668	NC_018707.1	271668	A	G	A	.	.	.	P	.	.	.	1	1	1	1.0	0	0	0	0	0	0	0	0	0	0.000000	0	0.5	242.5	90.0	.	.	.	.	.			A	A	A	G	.	.
+11476	NC_018707.1	11476	G	T	G	C692A	692	S231*	N	WP_041446291.1	cds-WP_041446291.1	ATP-binding cassette domain-containing protein	1	1	1	0.99997425	0	0	0	0	0	0	0	0	0	0.000000	0	32.0	14.0	54.0	.	-1.0	10263	12167	231	TTA TAA TGA TCA	L * * S	G	G	G	T	ATGTGCATGGACTGCTCCGG...(truncated)	MCMDCSGLGYVDGIDLQELI...(truncated)
+257244	NC_018707.1	257244	A	C	A	T1074G	1074	.	S	WP_002514990.1	cds-WP_002514990.1	phosphoglucomutase (alpha-D-glucose-1,6-bisphosphate-dependent)	1	1	0	0.9998721	0	1	-1	-1	-1	-1	-1	-1	0	0.000000	0	273.0	265.0	.	['GO:0005975', 'GO:0004614']	-1.0	256686	258317	358	GCT GCA GCG GCC	A A A A	A	A	C	A	ATGGCTCATGAACGTGCTGG...(truncated)	MAHERAGKPAQESDLIDVDA...(truncated)
+321762	NC_018707.1	321762	C	T	C	.	.	.	P	.	.	.	1	1	1	0.9999999	0	0	0	0	0	0	0	0	0	0.000000	0	0.5	321.5	63.0	.	.	.	.	.			C	C	T	C	.	.
 ......
 ```
 

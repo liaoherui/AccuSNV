@@ -1,6 +1,6 @@
 [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](https://anaconda.org/bioconda/accusnv)
 
-# <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/logo.png" width = "100" height = "100" >  High-accuracy SNV calling for bacterial isolates using AccuSNV 
+# <img src="readme_files/logo.png" width = "100" height = "100" >  High-accuracy SNV calling for bacterial isolates using AccuSNV 
 
 ### Version: V1.1.0 (Last update on 2026-August)
 
@@ -9,16 +9,12 @@ AccuSNV is a computational tool designed to identify single nucleotide variants 
 
 The architecture of the AccuSNV convolutional neural network:
 
-# <img src="https://github.com/liaoherui/AccuSNV/blob/main/readme_files/method_fix.jpg" width = "800" height = "500" >  
+# <img src="readme_files/method_fix.jpg" width = "800" height = "500" >  
 
 
 ## Overview
 
 This pipeline and toolkit is used to identify and analyze single nucleotide differences between bacterial isolates from short read WGS data. 
-
-* Key features
-	* Excludes false SNVs through deep learning classification, and enables visualization of raw data behind each SNV call.
-	* Enables downstream evolutionary analyses, including phylogenetic tree construction, nonsynonmous vs synonymous mutation counting, and detection of parallel evolution.
 
 * Inputs
 	* Short-read sequencing FASTQ data from multiple (>=3) bacterial isolates.
@@ -55,19 +51,14 @@ Note: This tool is based on the Lieberman and Key Lab SNV calling pipeline - [Wi
 To install AccuSNV, clone the GitHub repository, install the Python package, and install the
 bioinformatics binaries it calls.
 
-Git clone:<BR/>
-`git clone https://github.com/liaoherui/AccuSNV.git`<BR/>
-`cd AccuSNV`<BR/>
+Git clone and install via pip:<BR/>
+```git clone https://github.com/liaoherui/AccuSNV.git
+cd AccuSNV
+pip install .
+```
 
-Install the package:<BR/>
-`pip install .` (or `pip install -e .` for development)<BR/>
-
-This installs the `accusnv` command, the bundled `Snakefile`, the CNN model weights, and the Python dependencies (`snakemake`, `numpy`, `scipy`, `pandas`, `torch`, `biopython`, `bcbio-gff`, `matplotlib`, `statsmodels`). For SLURM submission, also install the executor plugin:<BR/>
-`pip install '.[slurm]'`<BR/>
-
-The read mapping and variant calling binaries are not Python packages, so install them separately and have them on `PATH`: `bwa` (or `bowtie2`), `samtools`, `bcftools`, `tabix`, `sickle`, `cutadapt`, and optionally `samclip`.<BR/>
-`conda create -n accusnv -c conda-forge -c bioconda bwa samtools bcftools tabix sickle cutadapt` or <BR/>
-`mamba create -n accusnv -c conda-forge -c bioconda bwa samtools bcftools tabix sickle cutadapt` <BR/>
+And to install non-Python dependencies, we recommend using conda, or install them separately and have them on `PATH`: `bwa` (or `bowtie2`), `samtools`, `bcftools`, `tabix`, `sickle`, `cutadapt`, and optionally `samclip`.
+```conda create -n accusnv -c conda-forge -c bioconda bwa samtools bcftools tabix sickle cutadapt```
 
 then, `conda activate accusnv`
 
@@ -134,7 +125,7 @@ For running on an HPC with Slurm:
 accusnv -m slurm -sp <partition> -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
 ```
 
-You can first test the workflow with a Snakemake dry run, which builds and prints the job graph without running anything:
+You can first test the workflow with a Snakemake dry run, which creates the default output folder and config files, and builds and prints the job graph without running anything:
 
 ```
 accusnv -m dryrun -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
@@ -146,7 +137,9 @@ If you do not use Slurm (single node/local run), instead run:
 accusnv -m local -j <cores> -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
 ```
 
-Pipeline parameters, including the aligner, thread counts, adapter sequence, and the read trimming, mapping, variant calling, CNN filter and recombination cutoffs, are read from `pipeline.yaml`. It is written into `<output_dir>/configs` on the first run with defaults filled in. To change any of them, copy that file, edit it, and pass it back with `-p`.
+Pipeline parameters, including the aligner, thread counts, adapter sequence, and the read trimming, mapping, variant calling, CNN filter and recombination cutoffs, are read from `pipeline.yaml`. 
+
+The defaults for this are written into `<output_dir>/configs` on the first run with defaults filled in. To change any of them, copy that file, edit it, and pass it back with `-p`.
 
 ### 3. Re-run downstream evolutionary analyses separately
 
@@ -158,21 +151,21 @@ However, users may often wish to re-run these analyses without re-running the en
 accusnv --downstream_only -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
 ```
 
-This reads the calling-stage output already in `<output_dir>/2-SNV-filtering/group_<group_id>/` and re-runs annotation, dN/dS, tree building and the dashboard, without repeating read mapping or SNV calling. It fails with a clear message, before touching anything, if that calling output is missing. The cutoffs these stages use are in `pipeline.yaml`, so editing that file and re-running with `--downstream_only` is the way to try different downstream choices.
+This reads the calling-stage output already in `<output_dir>/2-SNV-filtering/group_<group_id>/` and re-runs annotation, dN/dS, tree building and the dashboard, without repeating read mapping or SNV calling. The cutoffs these stages use are in `pipeline.yaml`, so consider inspecting and editing that file before running.
 
 In the future, we plan to facilitate more interactive versions of these evolutionary analyses that allow the user to visualize, inspect, and interact with their data. 
 
 ## Output
 
-The headline results for each sample group are written at the top level of the output directory, one set per group (e.g., for **Quick Test**, `cae_pe_test_snakemake/group_pe_test_snv_table_final.tsv`). Everything behind them lives under `2-SNV-filtering/group_[group_name]/` and `3-Analysis/group_[group_name]/`.
+The results for each sample group are written at the top level of the output directory, one set per group (e.g., for **Quick Test**, `cae_pe_test_snakemake/group_pe_test_snv_table_final.tsv`). Raw data tables and diagnostic information are in: `2-SNV-filtering/group_[group_name]/` and `3-Analysis/group_[group_name]/`.
 
 ### Core output files:
 
 | File or Folder |  Description |
 | ---  | --- | 
-| `group_<group>_snv_table_final.tsv`  | Final SNV report table (recommended primary text result for interpretation). More details, including explanations of the columns in this file, can be found [here](readme_files/readme_annotation_table.md).
-| `group_<group>_snv_dashboard.html`  | Interactive final HTML report (recommended to view). One self-contained page holding every candidate SNV, why each was kept or dropped, its read counts in each sample, its gene and protein sequence, and the tree. Nothing else needs to be installed and it works offline.
-| `2-SNV-filtering/group_<group>/snv_table_unfiltered.tsv` | Every position AccuSNV called, with the CNN and rule-based filter breakdown for each.
+| `group_<group>_snv_table_final.tsv`  | Final SNV report table (recommended primary output table). More details, including explanations of the columns in this file, can be found [here](readme_files/readme_annotation_table.md).
+| `group_<group>_snv_dashboard.html`  | Interactive final HTML report (recommended to view).
+| 2-SNV-filtering/group_<group>/snv_table_unfiltered.tsv` | Every position AccuSNV called with the CNN and rule-based filter breakdown for each.
 | `2-SNV-filtering/group_<group>/snv_table_cnn_raw.tsv` | Per-position CNN scores for every position scored. Note that this file does not include annotation information for each SNV.
 
 For final SNV calling results, please use:
@@ -180,8 +173,6 @@ For final SNV calling results, please use:
 `group_<group>_snv_table_final.tsv` as the primary human-readable SNV result table.
 
 For full documentation of all output files, please see [here](readme_files/readme_test_output.md).
-
-A demo output HTML report of AccuSNV can be found at https://heruiliao.github.io/
 
 ### Downstream evolutionary analysis output files:
 | File or Folder |  Description |
