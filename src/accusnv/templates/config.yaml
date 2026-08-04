@@ -20,7 +20,7 @@ cores: 4
 executor: slurm
 jobs: 100
 default-resources:
-  - slurm_partition="partition_a,partition_b"
+  # - slurm_partition="[your_partition1,your_partition2" example for specifying partition. filled in by the cli.
   - cpus_per_task=1
   - mem_mb=4000
   - runtime=60

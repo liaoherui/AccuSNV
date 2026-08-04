@@ -136,7 +136,7 @@ def create_configs(args, run_parser, conf_dir):
         config.setdefault('jobs', 100)
         config.pop('cores', None)
         # --partition sets slurm_partition in default-resources; if omitted, none is set and
-        # sbatch runs without a partition (cluster default).
+        # sbatch runs with the cluster's default partitions.
         if args.partition:
             resources = {}
             for item in (config.get('default-resources') or []):
