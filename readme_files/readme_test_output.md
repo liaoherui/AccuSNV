@@ -16,6 +16,7 @@ tree cae_pe_test_snakemake
 |-- samples.csv
 |-- accusnv.log
 |-- accusnv.full.log
+|-- accusnv.snakemake.log
 |-- configs
 |   |-- config.yaml
 |   `-- pipeline.yaml
@@ -120,6 +121,7 @@ All paths below are relative to the group folder they sit in.
 | `3-Analysis/group_<group>/snv_trees/`  | Per-SNV tree files (`p_<pos>_<n>.tree`), where `n` >= 2 flags a homoplasic (parallel) mutation. Written only when you pass `--build_snv_trees`.
 | `accusnv.log`  | One line per step per sample saying what it did and what came out of it, plus every warning and error. This is the one to read first.
 | `accusnv.full.log`  | The same, plus the per-sample detail and everything bwa, samtools, bcftools, cutadapt and sickle printed.
+| `accusnv.snakemake.log`  | Everything Snakemake printed, verbatim. A failed job is already summarised in `accusnv.log` with its reason and resource tier; this is the surrounding detail.
 | `configs/config.yaml`, `configs/pipeline.yaml`  | The two config files generated for this run, with defaults filled in. Copy, edit and pass back with `-c` or `-p` to change them.
 
 ##  Re-running the downstream analyses
