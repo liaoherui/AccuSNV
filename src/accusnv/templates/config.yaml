@@ -14,14 +14,17 @@ printshellcmds: true
 retries: 3
 
 # --- Local execution ---
-cores: 4
+# The core budget is `cores` in pipeline.yaml (or accusnv -j); accusnv copies it in here.
 
 # --- SLURM execution ---
 executor: slurm
 jobs: 100
 default-resources:
   # - slurm_partition="[your_partition1,your_partition2" example for specifying partition. filled in by the cli.
-  - cpus_per_task=1
+  # - slurm_account="your_account"  # the account sbatch charges the jobs to. Uncomment this only if
+  #   your cluster needs one and accusnv could not work it out from your recent jobs.
+  # No cpus_per_task here on purpose: setting it would override every rule's threads, so the
+  # executor takes cpus-per-task from the rule instead (1, or `cores` for cutadapt and mapping).
   - mem_mb=4000
   - runtime=60
 

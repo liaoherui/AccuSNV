@@ -1009,6 +1009,8 @@ async function buildTree() {
           openTree: false, import: false, export: false,
           toolbarSections: ['navigation', 'zoom', 'order'] },
   });
+
+  document.title = 'AccuSNV report';
   // The panel is still settling when embed returns, and the tree has to be refitted whenever
   // it changes size, or the tip labels end up cut off at the right edge.
   let refit;

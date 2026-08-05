@@ -20,20 +20,23 @@ import sys
 import glob
 import yaml
 import shutil
+import getpass
 import logging
 import argparse
 import subprocess
 import numpy as np
 import pandas as pd
 from importlib.resources import files
+from accusnv import __version__
 
 from accusnv import log as accusnv_log
+from accusnv.workflow import resources as tiers
 from accusnv.preprocessing.utils import resolve_fasta_path
 
 log = logging.getLogger('accusnv')
 
 SNAKEFILE = str(files("accusnv").joinpath("workflow", "Snakefile"))
-FLAG_KEYS = ['skip_recombination', 'skip_report', 'skip_dnds', 'skip_trees',
+FLAG_KEYS = ['skip_recombination', 'skip_report', 'skip_dnds', 'skip_trees', 'skip_samclip',
          'build_snv_trees', 'skip_all_downstream', 'downstream_only']
 
 # Dependencies every run needs. dnapars is checked separately for tree building.
@@ -45,6 +48,78 @@ def fail(run_parser, message):
     """Record the problem in the log, then let argparse print it and exit."""
     log.error(message)
     run_parser.error(message)
+
+
+def guess_slurm_account():
+    """The SLURM account to submit under, or None to leave it to Snakemake.
+
+    Snakemake's SLURM plugin guesses the account from your recent jobs, but it hands sacct a shell
+    pipe as arguments, which older versions of sacct reject ("sacct: invalid option -- '1'"). So we
+    first run the plugin's own command: if it works the plugin can look after itself, and only if it
+    fails do we repeat the lookup properly and take the most recent account sacct reports.
+    """
+    user = getpass.getuser()
+    try:
+        if subprocess.run(['sacct', '-nu', user, '-o', 'Account%256', '|', 'tail', '-1'],
+                          capture_output=True, timeout=60).returncode == 0:
+            return None
+        out = subprocess.run(['sacct', '-nu', user, '-o', 'Account%256'],
+                             capture_output=True, text=True, timeout=60).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    accounts = [a for a in (line.strip() for line in out.splitlines())
+                if a not in ('', 'none', '(null)')]
+    return accounts[-1] if accounts else None
+
+
+def describe_failure(block, started):
+    """One line for the AccuSNV log about a failed job: which one, why, and at which tier.
+
+    `block` is the fields Snakemake printed under 'Error in rule ...', `started` the ones it
+    printed when the job began, which is where the wildcards and the requested resources are.
+    """
+    who = block['rule'] + (f" ({started['wildcards']})" if started.get('wildcards') else '')
+    # On SLURM the executor plugin reports the state as its failure message; a local run has none.
+    status = re.search(r"SLURM status is: '(\w+)'", block.get('message', ''))
+    why = {'TIMEOUT': 'ran out of time', 'OUT_OF_MEMORY': 'ran out of memory'}.get(
+        status.group(1) if status else '', 'failed')
+
+    asked = dict(re.findall(r'(\w+)=(\d+)', started.get('resources', '')))
+    tier_list = tiers.TIERS.get(block['rule'], [])
+    tier = (int(asked.get('mem_mb', 0)), int(asked.get('runtime', 0)))
+    if tier not in tier_list:
+        return f'{who} {why}'
+    n = tier_list.index(tier) + 1
+    at = f'{who} {why} at tier {n} of {len(tier_list)} ({tier[0]} MB, {tier[1]} min)'
+    return at if n < len(tier_list) else (at + ', the largest tier there is, so a retry asks for '
+                                          'exactly the same again. Raise it in resources.py')
+
+
+def run_snakemake(cmd, snakemake_log):
+    """Run Snakemake, copying its output to the terminal and to accusnv.snakemake.log, and
+    summarising each job failure in the AccuSNV log. Returns Snakemake's exit code."""
+    block, failed, started = None, False, {}
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    with open(snakemake_log, 'a') as tee:
+        for line in proc.stdout:
+            sys.stdout.write(line)
+            tee.write(line)
+            # Snakemake prints one block per job, headed 'rule x:' (or 'localrule x:', or
+            # 'Error in rule x:') and followed by indented 'key: value' lines. Anything
+            # unindented ends the block. A retry reprints the header, so the resources we
+            # remember for a job are always the ones the failing attempt asked for.
+            field = re.match(r'\s+(\w+):\s*(.*?)\s*$', line) if block else None
+            if field:
+                block[field.group(1)] = field.group(2)
+                continue
+            if block and failed:
+                log.error(describe_failure(block, started.get(block.get('jobid'), {})))
+            elif block and 'jobid' in block:
+                started[block['jobid']] = block
+            header = re.match(r'(?:local)?(?:rule|checkpoint) (\w+):|Error in rule (\w+):', line)
+            block = {'rule': header.group(1) or header.group(2)} if header else None
+            failed = bool(header and header.group(2))
+    return proc.wait()
 
 
 def pipeline_params(args):
@@ -96,6 +171,11 @@ def create_configs(args, run_parser, conf_dir):
             log.info('Command line sets %s', flag)
             pipeline_config[flag] = True
 
+    # One core setting for the whole run: it is what cutadapt and the aligner are given, what
+    # SLURM is asked for as cpus-per-task for those two rules, and the budget of a local run.
+    cores = args.cores or pipeline_config.get('cores') or 4
+    pipeline_config['cores'] = cores
+
     pipeline_file_new = os.path.join(conf_dir, "pipeline.yaml")
     log.debug('Writing the pipeline parameters this run will use to %s', pipeline_file_new)
     with open(pipeline_file_new, 'w') as f:
@@ -127,34 +207,38 @@ def create_configs(args, run_parser, conf_dir):
 
     if args.partition and args.mode != 'slurm':
         log.warning('Ignoring --partition %r: it only applies in slurm mode', args.partition)
-    if args.cores and args.mode == 'slurm':
-        log.warning('Ignoring --cores %s in slurm mode; set jobs and resources in config.yaml instead',
-                    args.cores)
 
     if args.mode == 'slurm':
         config['executor'] = 'slurm'
         config.setdefault('jobs', 100)
         config.pop('cores', None)
         # --partition sets slurm_partition in default-resources; if omitted, none is set and
-        # sbatch runs with the cluster's default partitions.
+        # sbatch runs with the cluster's default partitions. slurm_account is only filled in if the
+        # config does not already give one, i.e. if the user has not uncommented that line.
+        resources = {}
+        for item in (config.get('default-resources') or []):
+            if '=' in str(item):
+                k, v = str(item).split('=', 1)
+                resources[k] = v
         if args.partition:
-            resources = {}
-            for item in (config.get('default-resources') or []):
-                if '=' in str(item):
-                    k, v = str(item).split('=', 1)
-                    resources[k] = v
             resources['slurm_partition'] = f'"{args.partition}"'
-            config['default-resources'] = [f'{k}={v}' for k, v in resources.items()]
+        if 'slurm_account' not in resources:
+            account = guess_slurm_account()
+            if account:
+                log.info('Submitting under SLURM account %s, guessed from your recent jobs', account)
+                resources['slurm_account'] = f'"{account}"'
+        config['default-resources'] = [f'{k}={v}' for k, v in resources.items()]
 
     else:
         # local/dryrun: the template ships the SLURM executor, so switch it back and drop
         # the SLURM-only default resources, which the local executor does not understand.
         config['executor'] = 'local'
         config.pop('jobs', None)
-        if args.cores is not None:
-            config['cores'] = args.cores
+        # Snakemake caps every rule's threads at this, so it has to match the cores the
+        # cutadapt and mapping rules ask for or they would quietly run narrower.
+        config['cores'] = cores
         config['default-resources'] = [item for item in (config.get('default-resources') or [])
-                                       if not str(item).startswith('slurm_partition=')]
+                                       if not str(item).startswith('slurm_')]
         if args.mode == 'dryrun':
             config['dryrun'] = True
 
@@ -194,6 +278,9 @@ def check_inputs_and_dependencies(args, run_parser):
     flag_on = lambda flag: getattr(args, flag, False) or params.get(flag, False)
     if not (flag_on('skip_trees') or flag_on('skip_all_downstream') or flag_on('use_nj_tree')):
         dependencies.append('dnapars')
+    # samclip only runs on bwa alignments, and only when it has not been turned off.
+    if aligner == 'bwa' and not flag_on('skip_samclip'):
+        dependencies.append('samclip')
 
     if not env:
         missing_tools = []
@@ -366,7 +453,7 @@ class _Parser(argparse.ArgumentParser):
     """ArgumentParser whose help drops the lone -h `options:` block and is colorized."""
     def format_help(self):
         text = super().format_help()
-        text = re.sub(r'options:\n  -h, --help[^\n]*\n\n?', '', text)
+        text = re.sub(r'  -h, --help[^\n]*\n', '', text)
         return _colorize(text)
 
 def build_parser():
@@ -375,8 +462,10 @@ def build_parser():
     parser = _Parser(
         prog='accusnv',
         formatter_class=_HelpFormatter,
-        description=f'{_bold("AccuSNV")}\n'
+        description=f'{_bold("AccuSNV")} v{__version__}\n'
                     'High-accuracy SNV calling for bacterial isolates using deep learning.\n')
+    parser.add_argument('--version', action='version', version=f'AccuSNV {__version__}',
+                        help='Show version and exit')
 
     inputs = parser.add_argument_group('Inputs and Outputs')
     inputs.add_argument('-i', '--input_sample_info', metavar='CSV', help='Input sample CSV (required)')
@@ -392,9 +481,13 @@ def build_parser():
     configs.add_argument('-m', '--mode', choices=['dryrun', 'slurm', 'local'], default='local',
                       help='Run mode (default: local)')
     configs.add_argument('-j', '--cores', metavar='N', type=int, default=None,
-                      help='Cores for local execution (default: value in config.yaml, 4)')
+                      help='Cores per cutadapt/mapping job, and the total cores a local run may \
+                      use (default: the cores value in pipeline.yaml, 4)')
     configs.add_argument('-sp', '--partition', metavar='PARTITIONS', default=None,
                       help='SLURM partition(s) to submit to, comma-separated list for >1 (default: not specified)')
+    configs.add_argument('--skip_samclip', action='store_true',
+                      help='Do not pipe bwa alignments through samclip, which drops soft-clipped \
+                      reads (on by default with bwa; samclip is never used with bowtie2)')
     configs.add_argument('-e', '--env', metavar='CMD', default=None,
                       help='Environment activation command, e.g. \'conda activate accusnv\' \
                       (default: inherit current environment)')
@@ -456,18 +549,23 @@ def run_pipeline(args, run_parser):
         # reports nothing to be done and any edited cutoffs are ignored. dN/dS, the tree and the
         # dashboard then follow from annotation's rewritten tables.
         cmd += ['--forcerun', 'annotate_snvs']
-    log.info('Handing the run to Snakemake; per-job scheduling decisions go to %s',
-             os.path.join(out_dir, '.snakemake', 'log'))
+    snakemake_log = os.path.join(os.path.dirname(summary_log), 'accusnv.snakemake.log')
+    log.info('Handing the run to Snakemake; everything it prints is kept in %s', snakemake_log)
     log.debug('Snakemake command: %s', ' '.join(cmd))
     try:
-        results = subprocess.call(cmd)
+        results = run_snakemake(cmd, snakemake_log)
     except Exception as e:
         log.error('Could not start Snakemake: %s', e)
         return 1
 
     if results != 0:
-        log.error('Pipeline FAILED (Snakemake exit code %d). The failing rule is named in the '
-                  'Snakemake output above; what the tools printed is in %s', results, full_log)
+        log.error('Pipeline FAILED (Snakemake exit code %d). The failed jobs are named above; '
+                  'the whole Snakemake run is in %s and what the tools printed is in %s',
+                  results, snakemake_log, full_log)
+        if args.mode == 'slurm':
+            log.error('If SLURM refused the jobs over the account (no account given, invalid '
+                      'account), uncomment the slurm_account line under default-resources in %s '
+                      'and set it to an account you can submit under.', config_file)
         return results
     else:
         log.info('Pipeline completed successfully. Summary: %s  Full detail: %s', summary_log, full_log)

@@ -10,8 +10,10 @@ full_log_file: "accusnv.full.log"
 
 # --- Read mapping ---
 aligner: "bwa"                   # bwa or bowtie2
-aligner_threads: "4"             # max threads per job
-samclip: "0"                     # 1 = clip soft-clipped bwa alignments with samclip (recommended for bwa)
+cores: 4                         # cores each cutadapt/mapping job runs with, and the total core
+                                 # budget of a local run. accusnv -j overrides it
+skip_samclip: false              # samclip drops soft-clipped bwa alignments, a common source of
+                                 # false SNVs. On by default with bwa; never applies to bowtie2
 adapter_sequence: "CTGTCTCTTAT"  # 3' adapter trimmed by cutadapt (nextera in this case)
 
 # --- SNV filtering cutoffs ---

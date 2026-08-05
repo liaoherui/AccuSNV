@@ -26,7 +26,13 @@ else:
     ENV = ""
 
 aligner = config.get("aligner", "bwa")
+# Cores for the two rules that can use more than one. On SLURM this is also what the executor
+# requests as cpus-per-task, because it takes that from each rule's threads.
+CORES = int(config.get("cores", 4))
 IDX_SUFFIX = ".bwt" if aligner == "bwa" else ".1.bt2"
+# samclip discards reads with soft-clipped ends, which bwa produces around indels and repeat edges
+# and which turn into false SNVs. bowtie2 is run end-to-end, so it has nothing to clip.
+CLIP = "" if config.get("skip_samclip") or aligner != "bwa" else " | samclip --ref {params.ref} --max 0"
 outdir = config['outdir'].rstrip("/")
 
 # --- Logging ---------------------------------------------------------------
@@ -101,8 +107,8 @@ onsuccess:
 
 onerror:
     accusnv_log.setup('workflow', SUMMARY_LOG, FULL_LOG).error(
-        'Workflow failed. The failing rule is named in the Snakemake output above; its tool '
-        'output is in %s', FULL_LOG)
+        'Workflow failed. Each failed job is logged above with the reason and the tier it ran '
+        'at; its tool output is in %s', FULL_LOG)
 
 
 # --- Outputs ---------------------------------------------------------------
@@ -150,10 +156,10 @@ rule cutadapt:
         unpack(get_read_files)
     params:
         adapter  = config.get("adapter_sequence", "CTGTCTCTTAT"),  # 3' adapter trimmed by cutadapt
-        cores    = int(config["aligner_threads"])
     output:
         fq1 = outdir + "/1-Mapping/alignment/trimmed_filtered_reads/{sampleID}_R1_trimmed.fastq.gz",
         fq2 = outdir + "/1-Mapping/alignment/trimmed_filtered_reads/{sampleID}_R2_trimmed.fastq.gz"
+    threads: CORES
     resources:
         mem_mb  = lambda wc, attempt: res.mem('cutadapt', sample_driver(wc.sampleID), attempt),
         runtime = lambda wc, attempt: res.runtime('cutadapt', sample_driver(wc.sampleID), attempt),
@@ -162,11 +168,11 @@ rule cutadapt:
         shell(ENV + note('cutadapt', f"{wildcards.sampleID}: trimming adapter {params.adapter} from {layout} reads"))
         if len(input) == 2: # Paired end reads
             shell(ENV +
-                "cutadapt -a {params.adapter} -A {params.adapter} --cores={params.cores} "
+                "cutadapt -a {params.adapter} -A {params.adapter} --cores={threads} "
                 "-o {output.fq1} -p {output.fq2} {input.r1} {input.r2} " + TOOL_OUT)
         else: # Single end reads
             shell(ENV +
-                "cutadapt -a {params.adapter} --cores={params.cores} -o {output.fq1} {input.r1} " + TOOL_OUT)
+                "cutadapt -a {params.adapter} --cores={threads} -o {output.fq1} {input.r1} " + TOOL_OUT)
 
             # Create empty r2 file for snakemake
             shell(ENV + "touch {output.fq2}")
@@ -226,7 +232,8 @@ rule create_mapping_index:
     output:
         idx = "{fasta}" + IDX_SUFFIX
     resources:
-        mem_mb=8000, runtime=60
+        mem_mb  = lambda wc, attempt: res.mem('create_mapping_index', GENOME_LEN[wc.fasta], attempt),
+        runtime = lambda wc, attempt: res.runtime('create_mapping_index', GENOME_LEN[wc.fasta], attempt),
     run:
         shell(ENV + note('index', f"Building {aligner} index for {input.fasta}"))
         if aligner == "bwa":
@@ -242,23 +249,26 @@ rule mapping:
         r1  = rules.sickle.output.fq1,
         r2  = rules.sickle.output.fq2,
         ref_index = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"] + IDX_SUFFIX,
+        # samclip reads the .fai; the pileup needs it later anyway, so always wait for it here.
+        fai = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"] + ".fai",
     params:
         ref    = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"],
         paired = lambda sample: sample_table.loc[sample.sampleID, "Type"].upper(),
         maxins = config.get("bowtie2_maxins", 2000),
     output:
         sam = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sam",
-    threads: int(config["aligner_threads"])
+    threads: CORES
     resources:
-        mem_mb=64000, runtime=120
+        mem_mb  = lambda wc, attempt: res.mem('mapping', sample_driver(wc.sampleID), attempt),
+        runtime = lambda wc, attempt: res.runtime('mapping', sample_driver(wc.sampleID), attempt),
     run:
         shell(ENV + note('mapping', f"{wildcards.sampleID}: mapping {params.paired} reads to "
                                     f"{wildcards.reference} with {aligner} on {threads} threads"))
         if aligner == "bwa":
             if params.paired == 'PE':
-                shell(ENV + "bwa mem -t {threads} {params.ref} {input.r1} {input.r2} > {output.sam} " + TOOL_ERR)
+                shell(ENV + "bwa mem -t {threads} {params.ref} {input.r1} {input.r2}" + CLIP + " > {output.sam} " + TOOL_ERR)
             else:
-                shell(ENV + "bwa mem -t {threads} {params.ref} {input.r1} > {output.sam} " + TOOL_ERR)
+                shell(ENV + "bwa mem -t {threads} {params.ref} {input.r1}" + CLIP + " > {output.sam} " + TOOL_ERR)
         else: #bowtie2
             if params.paired == 'PE':
                 shell(ENV + "bowtie2 --threads {threads} -X {params.maxins} --no-unal -x {params.ref} -1 {input.r1} -2 {input.r2} --no-mixed --dovetail -S {output.sam} " + TOOL_ERR)
