@@ -4,8 +4,11 @@
 
 ### Version: V1.1.0 (Last update on 2026-August)
 
-AccuSNV is a computational tool designed to identify single nucleotide variants (SNVs) in short-read whole genome sequencing data from bacterial isolates. By leveraging deep learning, it classifies potential SNVs as true or false variants, improving the accuracy of variant detection. AccuSNV takes WGS data and a reference genome as input, and outputs a high-quality mutation table along with text and HTML reports. Additionally, it facilitates downstream analyses including phylogenetic tree construction, mutation annotation, dN/dS, and other evolutionary analyses.
+AccuSNV is a computational pipeline designed to identify single nucleotide variants (SNVs) in short-read whole genome sequencing data between genomes in a group of bacterial isolates. 
 
+Candidate SNVs are identified by a Convolutional Neural Network of pileup features to improve the accuracy of variant detection.
+
+AccuSNV takes WGS data and a reference genome as input, and outputs SNV tables, phylogenetic trees, dN/dS analyses, and an interactive HTML for exploring SNVs.
 
 The architecture of the AccuSNV convolutional neural network:
 
@@ -14,7 +17,7 @@ The architecture of the AccuSNV convolutional neural network:
 
 ## Overview
 
-This pipeline and toolkit is used to identify and analyze single nucleotide differences between bacterial isolates from short read WGS data. 
+This pipeline is used to identify and analyze single nucleotide differences between bacterial isolates from short read WGS data. 
 
 * Inputs
 	* Short-read sequencing FASTQ data from multiple (>=3) bacterial isolates.
@@ -57,16 +60,18 @@ cd AccuSNV
 pip install .
 ```
 
-And to install non-Python dependencies, we recommend using conda, or install them separately and have them on `PATH`: `bwa` (or `bowtie2`), `samtools`, `bcftools`, `tabix`, `sickle`, `cutadapt`, and optionally `samclip`.
-```conda create -n accusnv -c conda-forge -c bioconda bwa samtools bcftools tabix sickle cutadapt```
+To install non-Python dependencies, we recommend using conda, or install them separately and have them on `PATH`:
 
-then, `conda activate accusnv`
+```conda install -c bioconda bwa bowtie2 samtools bcftools tabix sickle-trim cutadapt samclip phylip```
+
+The default aligner for AccuSNV is `BWA-MEM` (with `samclip`), but you can also use `bowtie2` by changing the aligner value in the config file.
 
 If those binaries are in a different environment from the one you run `accusnv` in, pass `-e 'conda activate <env>'`, so every workflow rule activates it first.
 
 ## Quick Test (local)
 
- Run in a local compute environment (e.g., laptop or on a single node) by passing the `-m local` parameter. One command prepares the output directory, writes the config files, and runs the pipeline:
+Run in a local compute environment (e.g., laptop or on a single node) by passing the `-m local` parameter. 
+This command prepares the output directory, writes the config files, and runs the pipeline:
 
 ```
 accusnv -m local -i Test_data/samples_cae_test_pe.csv -r Test_data/reference_genomes -o cae_accusnv_output
@@ -82,11 +87,29 @@ Run on a **Linux HPC system (cluster)** with a [Slurm](https://slurm.schedmd.com
 accusnv -m slurm -sp <partition> -i Test_data/samples_cae_test_pe.csv -r Test_data/reference_genomes -o cae_pe_test_snakemake
 ```
 
-This submits the whole pipeline as Slurm jobs. `-sp` chooses the partition(s) to submit to, comma-separated for more than one (e.g. `-sp short,long`); omit it to let sbatch use the cluster default. Other cluster settings, such as CPU and memory requirements for specific tasks and the maximum number of submitted jobs, are read from the `config.yaml` written into `<output_dir>/configs` on the first run. To change them, copy that file, edit it, and pass it back with `-c`.
+This submits the whole pipeline as Slurm jobs. `-sp` chooses the partition(s) to submit to. This can be comma-separated for more than one (e.g. `-sp short,long`), or you can omit it to let sbatch use your cluster default. 
 
 >For a description of the resulting output files, see [Output files of AccuSNV](readme_files/readme_test_output.md), or read on below.
 
 >*Note*: On some clusters you must activate your conda environment on the compute nodes. Pass `-e 'conda activate accusnv'` so every workflow rule activates it first.
+
+## Changing config parameters
+
+There are two AccuSNV config yaml files:
+
+`pipeline.yaml`: All pipeline parameters, including the aligner, adapter sequence, and the read trimming, mapping, variant calling, CNN filter and recombination cutoffs.
+
+`config.yaml`: Contains snakemake parameters, including partitions and slurm params. It is less likely you will have to edit this file.
+
+Both files are created and filled with their default values the first time you run AccuSNV, in `<output_dir>/configs/`.
+
+
+The defaults for this are written into `<output_dir>/configs` on the first run with defaults filled in. 
+
+To change any of them, copy that file, edit it, and pass it back with `-p`. These files will then be copied into `<output_dir>/configs/`.
+
+When you pass any command line arguments, such as `-sp` (`--partition`), `-j` (`--cores`), `--skip_recombination`, the config files created or copied to `<output_dir>/configs/` will have these values automatically updated.
+
 
 ## Full Usage
 
@@ -97,7 +120,6 @@ First, you must ensure that all of your input files follow the same format as th
 AccuSNV requires three types of inputs: 
 
 - **A sample sheet CSV** 
-  - Sample sheets 
   - Same format as the **Quick Test** CSV files. Examples can be found in the folder [Test_data](Test_data/) (e.g. `Test_data/samples_cae_test_pe.csv`).
   - In this sample sheet, individual samples can be assigned to sample *groups*. Samples within the same Group are analyzed together and separately from other samples.
   - Detailed description for this file can be found [here](readme_files/readme_input_csv.md).
@@ -106,9 +128,10 @@ AccuSNV requires three types of inputs:
   - AccuSNV does not take FASTQ paths directly. For each sample it locates the reads by combining the Path (the folder to search) and the FileName (the read-file prefix) columns from your sample sheet, and then searching the Path folder for files that match.
   - Accepts gzipped or plain FASTQ files with extensions: .fastq.gz, .fq.gz, .fastq, or .fq.
   - For paired end reads, R1/R2 files must be distinguished by a `1`/`2` joined by `_`, `.`, or `-`. 
+
 - **A reference genome directory** 
-  - Each reference should be in its own subfolder within the reference genome directory, and have a file named exactly `genome.fasta`.
-  - Annotations such as `genome.gff` (generated by [Prokka](https://github.com/tseemann/prokka) or [Bakta](https://github.com/oschwengers/bakta)) are recommended for richer outputs. 
+  - Each reference should be in its own subfolder within the reference genome directory, and have one FASTA file ending in `.fasta`, `.fa`, or `.fna`.
+  - Annotations such as `genome.gff` (from NCBI, or generated by [Prokka](https://github.com/tseemann/prokka) or [Bakta](https://github.com/oschwengers/bakta)) are recommended for mutation annotation and gene-based analyses. Only put one `gff` file in each reference genome subfolder - this `gff` will be assumed to be the annotations for that particular reference genome. 
   - Avoid reference folder names that start with `ref_` or contain `_ref_` because AccuSNV uses `_ref_` as an internal filename delimiter. 
   - AccuSNV can generate BWA/samtools indexes during the Snakemake run (`genome.fasta.bwt`, `.amb`, `.ann`, `.pac`, `.sa`, and `.fai`); if the reference directory is not writable, pre-create them with `bwa index genome.fasta` and `samtools faidx genome.fasta`. 
   - Examples can be found in the folder [Test_data/reference_genomes](Test_data/reference_genomes/).
@@ -136,10 +159,6 @@ If you do not use Slurm (single node/local run), instead run:
 ```
 accusnv -m local -j <cores> -i <samples.csv> -r <reference_genomes_dir> -o <output_dir>
 ```
-
-Pipeline parameters, including the aligner, thread counts, adapter sequence, and the read trimming, mapping, variant calling, CNN filter and recombination cutoffs, are read from `pipeline.yaml`. 
-
-The defaults for this are written into `<output_dir>/configs` on the first run with defaults filled in. To change any of them, copy that file, edit it, and pass it back with `-p`.
 
 ### 3. Re-run downstream evolutionary analyses separately
 

@@ -311,6 +311,13 @@ def check_inputs_and_dependencies(args, run_parser):
 
     sample_file = pd.read_csv(args.input_sample_info)
 
+    ## a sample may be listed more than once (e.g. as the outgroup of several groups), but only
+    ## once per group, and every row of it must point at the same reads.
+    for sample, rows in sample_file.groupby('Sample'):
+        if rows['Group'].duplicated().any():
+            fail(run_parser, "Error: sample {} is listed more than once in the same group".format(sample))
+        if len(rows[['FileName', 'Path', 'Type']].drop_duplicates()) > 1:
+            fail(run_parser, "Error: sample {} is listed more than once with different FASTQ files or Type. Give the rows different sample names if they are different samples.".format(sample))
 
     ## check fastqs
     ## read sample file

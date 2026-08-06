@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+
+# Pipeline runs: output directories, their Snakemake state and logs
+.snakemake/
+*.log
+output.txt

@@ -60,11 +60,20 @@ def note(step, message):
 sample_table = pd.read_csv(config["sample_table"], keep_default_na=False).set_index("Sample", drop=False)
 sample_table['Outgroup'] = sample_table['Outgroup'].astype(int)
 sample_table['Group'] = sample_table['Group'].astype(str)
-filenames = sample_table.index #filenames are the index (filenames must be unique)
 sample_groups = sorted(set(sample_table['Group']))
 
+# A sample can be listed on several rows, e.g. as the outgroup of more than one group. Those rows
+# all name the same reads, so the trimming and mapping rules run once per sample and reference.
+def sample_row(sampleID):
+    '''The first row for a sample. Its reads and Type are the same on all of them.'''
+    return sample_table.loc[[sampleID]].iloc[0]
+
+# The reference FASTA per reference name, so rules carrying the {reference} wildcard can look it
+# up without going through a sample (a sample in two groups can have two references).
+REF_FASTA = dict(zip(sample_table['Reference'], sample_table['Reference_FASTA']))
+
 # --- Dynamic resources -----------------------------------------------------
-# Pick each rule's memory/runtime tier from the dataset size, and let a retry bump it up.
+# Every job starts in its first memory/runtime tier; a retry bumps it to the next tier up.
 sys.path.insert(0, workflow.basedir)
 import resources as res
 
@@ -75,13 +84,6 @@ def _genome_len(fasta):
     return sum(len(l.strip()) for l in open(fasta) if not l.startswith('>'))
 
 GENOME_LEN = {f: _genome_len(f) for f in sample_table['Reference_FASTA'].unique()}
-
-def sample_driver(sampleID):
-    return GENOME_LEN[sample_table.loc[sampleID, 'Reference_FASTA']]
-
-def group_driver(cladeID):
-    rows = sample_table[sample_table['Group'] == cladeID]
-    return len(rows) * GENOME_LEN[rows['Reference_FASTA'].iloc[0]]
 
 
 # --- Run banner ------------------------------------------------------------
@@ -137,7 +139,7 @@ rule all:
 def get_read_files(wildcards):
     '''Returns the R1 and R2 files (if present) for a given sample for cutadapt.'''
 
-    sample_data = sample_table.loc[wildcards.sampleID].squeeze()
+    sample_data = sample_row(wildcards.sampleID)
     if sample_data['Type'].upper() == 'PE':
         if not (sample_data['Read1_file_path'] and sample_data['Read2_file_path']):
             raise WorkflowError("Error: this row is marked as PE data but has no Read2 file: {}".format(wildcards.sampleID))
@@ -161,8 +163,8 @@ rule cutadapt:
         fq2 = outdir + "/1-Mapping/alignment/trimmed_filtered_reads/{sampleID}_R2_trimmed.fastq.gz"
     threads: CORES
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('cutadapt', sample_driver(wc.sampleID), attempt),
-        runtime = lambda wc, attempt: res.runtime('cutadapt', sample_driver(wc.sampleID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('cutadapt', attempt),
+        runtime = lambda wc, attempt: res.runtime('cutadapt', attempt),
     run:
         layout = "paired-end" if len(input) == 2 else "single-end"
         shell(ENV + note('cutadapt', f"{wildcards.sampleID}: trimming adapter {params.adapter} from {layout} reads"))
@@ -181,7 +183,7 @@ rule cutadapt:
 def get_read_files_trimmed(wildcards):
     '''Returns the trimmed R1 and R2 files (if present) for a given sample for sickle.
     '''
-    sample_data = sample_table.loc[wildcards.sampleID].squeeze()
+    sample_data = sample_row(wildcards.sampleID)
     if sample_data['Type'].upper() == 'PE':
         return {"r1": rules.cutadapt.output.fq1, "r2": rules.cutadapt.output.fq2}
     else:
@@ -202,8 +204,8 @@ rule sickle:
         fq2 = outdir + "/1-Mapping/alignment/trimmed_filtered_reads/{sampleID}_R2_filtered.fastq.gz",
         fqS = outdir + "/1-Mapping/alignment/trimmed_filtered_reads/{sampleID}_unpaired.fastq.gz",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('sickle', sample_driver(wc.sampleID), attempt),
-        runtime = lambda wc, attempt: res.runtime('sickle', sample_driver(wc.sampleID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('sickle', attempt),
+        runtime = lambda wc, attempt: res.runtime('sickle', attempt),
     run:
         shell(ENV + note('sickle', f"{wildcards.sampleID}: quality trimming at Q{params.qual}, "
                                    f"dropping reads under {params.readlen} bp"))
@@ -232,8 +234,8 @@ rule create_mapping_index:
     output:
         idx = "{fasta}" + IDX_SUFFIX
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('create_mapping_index', GENOME_LEN[wc.fasta], attempt),
-        runtime = lambda wc, attempt: res.runtime('create_mapping_index', GENOME_LEN[wc.fasta], attempt),
+        mem_mb  = lambda wc, attempt: res.mem('create_mapping_index', attempt),
+        runtime = lambda wc, attempt: res.runtime('create_mapping_index', attempt),
     run:
         shell(ENV + note('index', f"Building {aligner} index for {input.fasta}"))
         if aligner == "bwa":
@@ -248,19 +250,19 @@ rule mapping:
     input:
         r1  = rules.sickle.output.fq1,
         r2  = rules.sickle.output.fq2,
-        ref_index = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"] + IDX_SUFFIX,
+        ref_index = lambda sample: REF_FASTA[sample.reference] + IDX_SUFFIX,
         # samclip reads the .fai; the pileup needs it later anyway, so always wait for it here.
-        fai = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"] + ".fai",
+        fai = lambda sample: REF_FASTA[sample.reference] + ".fai",
     params:
-        ref    = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"],
-        paired = lambda sample: sample_table.loc[sample.sampleID, "Type"].upper(),
+        ref    = lambda sample: REF_FASTA[sample.reference],
+        paired = lambda sample: sample_row(sample.sampleID)["Type"].upper(),
         maxins = config.get("bowtie2_maxins", 2000),
     output:
         sam = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sam",
     threads: CORES
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('mapping', sample_driver(wc.sampleID), attempt),
-        runtime = lambda wc, attempt: res.runtime('mapping', sample_driver(wc.sampleID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('mapping', attempt),
+        runtime = lambda wc, attempt: res.runtime('mapping', attempt),
     run:
         shell(ENV + note('mapping', f"{wildcards.sampleID}: mapping {params.paired} reads to "
                                     f"{wildcards.reference} with {aligner} on {threads} threads"))
@@ -295,8 +297,8 @@ rule sam2bam:
         final_bam = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sorted.bam",
         bai = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sorted.bam.bai",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('sam2bam', sample_driver(wc.sampleID), attempt),
-        runtime = lambda wc, attempt: res.runtime('sam2bam', sample_driver(wc.sampleID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('sam2bam', attempt),
+        runtime = lambda wc, attempt: res.runtime('sam2bam', attempt),
     shell:
         ENV + note('sam2bam', "{wildcards.sampleID}: sorting alignments and marking duplicates "
                               "(optical distance {params.optdist})") +
@@ -323,9 +325,9 @@ rule mpileup2vcf:
     # Produce a pileup and a SNP-only variant VCF for one sample with samtools/bcftools.
     input:
         bam     = rules.sam2bam.output.final_bam,
-        fai     = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"] + ".fai",
+        fai     = lambda sample: REF_FASTA[sample.reference] + ".fai",
     params:
-        ref      = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"],
+        ref      = lambda sample: REF_FASTA[sample.reference],
         minmapq  = config.get("mpileup_min_mapq", 30),
         maxdepth = config.get("mpileup_max_depth", 3000),
         minaf    = config.get("variant_min_af", 0.75),
@@ -334,8 +336,8 @@ rule mpileup2vcf:
         variants = outdir + "/1-Mapping/vcf/{sampleID}_ref_{reference}.variant.vcf.gz",
         strain   = outdir + "/1-Mapping/vcf/{sampleID}_ref_{reference}.strain.vcf.gz",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('mpileup2vcf', sample_driver(wc.sampleID), attempt),
-        runtime = lambda wc, attempt: res.runtime('mpileup2vcf', sample_driver(wc.sampleID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('mpileup2vcf', attempt),
+        runtime = lambda wc, attempt: res.runtime('mpileup2vcf', attempt),
     shell:
         ENV + note('mpileup2vcf', "{wildcards.sampleID}: calling variants (min mapping quality "
                                   "{params.minmapq}, max depth {params.maxdepth}, min alt-allele fraction {params.minaf})") +
@@ -350,12 +352,12 @@ rule vcf2quals:
     input:
         strain = rules.mpileup2vcf.output.strain
     params:
-        ref = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"]
+        ref = lambda sample: REF_FASTA[sample.reference]
     output:
         quals = outdir + "/1-Mapping/quals/{sampleID}_ref_{reference}.quals.pickle.gz"
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('vcf2quals', sample_driver(wc.sampleID), attempt),
-        runtime = lambda wc, attempt: res.runtime('vcf2quals', sample_driver(wc.sampleID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('vcf2quals', attempt),
+        runtime = lambda wc, attempt: res.runtime('vcf2quals', attempt),
     shell:
         ENV +
         "python -m accusnv.preprocessing.vcf2quals_snakemake -i {input.strain} -r {params.ref} -o {output.quals} "
@@ -366,13 +368,13 @@ rule variants2positions:
     input:
         variants = rules.mpileup2vcf.output.variants
     params:
-        ref = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"],
+        ref = lambda sample: REF_FASTA[sample.reference],
         maxfq = config.get("max_fq", -30)
     output:
         positions = outdir + "/1-Mapping/quals/{sampleID}_ref_{reference}.positions.pickle"
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('variants2positions', sample_driver(wc.sampleID), attempt),
-        runtime = lambda wc, attempt: res.runtime('variants2positions', sample_driver(wc.sampleID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('variants2positions', attempt),
+        runtime = lambda wc, attempt: res.runtime('variants2positions', attempt),
     shell:
         ENV + "python -m accusnv.preprocessing.variants2positions -i {input.variants} -o {output.positions} "
         "-r {params.ref} -q {params.maxfq} --sample {wildcards.sampleID} " + LOG_ARGS + " ;"
@@ -386,12 +388,12 @@ rule pileup2diversity:
     input:
         pileup = rules.mpileup2vcf.output.pileup,
     params:
-        ref = lambda sample: sample_table.loc[sample.sampleID, "Reference_FASTA"],
+        ref = lambda sample: REF_FASTA[sample.reference],
     output:
         diversity = outdir + "/1-Mapping/diversity/{sampleID}_ref_{reference}.diversity.pickle.gz",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('pileup2diversity', sample_driver(wc.sampleID), attempt),
-        runtime = lambda wc, attempt: res.runtime('pileup2diversity', sample_driver(wc.sampleID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('pileup2diversity', attempt),
+        runtime = lambda wc, attempt: res.runtime('pileup2diversity', attempt),
     run:
         shell(ENV + "python -m accusnv.preprocessing.pileup2diversity -i {input.pileup} -r {params.ref} "
         "-o {output.diversity} --sample {wildcards.sampleID} " + LOG_ARGS + " ; ")
@@ -449,8 +451,8 @@ rule combine_positions:
     output:
         allpositions = outdir + "/2-SNV-filtering/raw_tables/group_{cladeID}_allpositions.pickle",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('combine_positions', group_driver(wc.cladeID), attempt),
-        runtime = lambda wc, attempt: res.runtime('combine_positions', group_driver(wc.cladeID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('combine_positions', attempt),
+        runtime = lambda wc, attempt: res.runtime('combine_positions', attempt),
     run:
         combine_positions(input.positions, output.allpositions, params.ref, wildcards.cladeID)
 
@@ -472,8 +474,8 @@ rule candidate_mutation_table:
         cov_raw  = outdir + "/2-SNV-filtering/raw_tables/group_{cladeID}_coverage_matrix_raw.npz",
         cov_norm = outdir + "/2-SNV-filtering/raw_tables/group_{cladeID}_coverage_matrix_norm.npz",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('candidate_mutation_table', group_driver(wc.cladeID), attempt),
-        runtime = lambda wc, attempt: res.runtime('candidate_mutation_table', group_driver(wc.cladeID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('candidate_mutation_table', attempt),
+        runtime = lambda wc, attempt: res.runtime('candidate_mutation_table', attempt),
     run:
         from accusnv.preprocessing.build_candidate_mutation_table import build_candidate_mutation_table
         accusnv_log.setup('candidate_mutation_table', SUMMARY_LOG, FULL_LOG)
@@ -525,8 +527,8 @@ rule calling_accusnv:
         state    = outdir + "/2-SNV-filtering/group_{cladeID}/_snv_state.npz",
         npz      = outdir + "/2-SNV-filtering/group_{cladeID}/candidate_mutation_table_final.npz",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('calling_accusnv', group_driver(wc.cladeID), attempt),
-        runtime = lambda wc, attempt: res.runtime('calling_accusnv', group_driver(wc.cladeID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('calling_accusnv', attempt),
+        runtime = lambda wc, attempt: res.runtime('calling_accusnv', attempt),
     shell:
         ENV + "python -m accusnv.accusnv.accusnv "
             "-i {input.cmt} -c {input.cov_raw} -r {params.ref} -o {params.out} "
@@ -560,8 +562,8 @@ rule annotate_snvs:
         deliverable_unfiltered = outdir + "/group_{cladeID}_snv_table_unfiltered.tsv",
         deliverable_final = outdir + "/group_{cladeID}_snv_table_final.tsv",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('annotate_snvs', group_driver(wc.cladeID), attempt),
-        runtime = lambda wc, attempt: res.runtime('annotate_snvs', group_driver(wc.cladeID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('annotate_snvs', attempt),
+        runtime = lambda wc, attempt: res.runtime('annotate_snvs', attempt),
     # && so that a failed stage fails the rule: the copies would otherwise succeed on
     # whatever is on disk and mask it.
     shell:
@@ -591,8 +593,8 @@ rule dnds:
     output:
         dnds = outdir + "/3-Analysis/group_{cladeID}/dNdS_out/data_dNdS.npz",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('dnds', group_driver(wc.cladeID), attempt),
-        runtime = lambda wc, attempt: res.runtime('dnds', group_driver(wc.cladeID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('dnds', attempt),
+        runtime = lambda wc, attempt: res.runtime('dnds', attempt),
     shell:
         ENV + "python -m accusnv.downstream.dnds -r {params.ref} -i {params.source} -o {params.out} "
         "--group group_{wildcards.cladeID} " + LOG_ARGS + " ;"
@@ -611,8 +613,8 @@ rule build_tree:
         tree = outdir + "/3-Analysis/group_{cladeID}/phylogeny/snv_tree_final.nwk.tree",
         deliverable = outdir + "/group_{cladeID}_snv_tree_final.nwk.tree",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('build_tree', group_driver(wc.cladeID), attempt),
-        runtime = lambda wc, attempt: res.runtime('build_tree', group_driver(wc.cladeID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('build_tree', attempt),
+        runtime = lambda wc, attempt: res.runtime('build_tree', attempt),
     shell:
         ENV + "python -m accusnv.downstream.tree_building -r {params.ref} -i {params.source} "
         "-o {params.out} -g group_{wildcards.cladeID} " + tree_flags + " " + LOG_ARGS + " && "
@@ -637,8 +639,8 @@ rule report_html:
         dashboard = outdir + "/3-Analysis/group_{cladeID}/snv_dashboard.html",
         deliverable_dashboard = outdir + "/group_{cladeID}_snv_dashboard.html",
     resources:
-        mem_mb  = lambda wc, attempt: res.mem('report_html', group_driver(wc.cladeID), attempt),
-        runtime = lambda wc, attempt: res.runtime('report_html', group_driver(wc.cladeID), attempt),
+        mem_mb  = lambda wc, attempt: res.mem('report_html', attempt),
+        runtime = lambda wc, attempt: res.runtime('report_html', attempt),
     shell:
         ENV + "python -m accusnv.downstream.generate_dashboard -r {params.ref} -i {params.source} "
         "-o {params.out} -g group_{wildcards.cladeID} -t {params.tree} " + LOG_ARGS + " && "
