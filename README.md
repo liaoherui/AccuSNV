@@ -62,7 +62,9 @@ pip install .
 
 To install non-Python dependencies, we recommend using conda, or install them separately and have them on `PATH`:
 
-```conda install -c bioconda bwa bowtie2 samtools bcftools tabix sickle-trim cutadapt samclip phylip```
+```
+conda install -c bioconda bwa bowtie2 samtools bcftools tabix sickle-trim cutadapt samclip phylip
+```
 
 The default aligner for AccuSNV is `BWA-MEM` (with `samclip`), but you can also use `bowtie2` by changing the aligner value in the config file.
 
