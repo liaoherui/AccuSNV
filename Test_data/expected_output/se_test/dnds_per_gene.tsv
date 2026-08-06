@@ -1,37 +1,14 @@
 gene_num_global	locus_tag	product	gene_length	num_muts_N	num_muts_S	p_nonsyn	probnonsyn_expected	dNdS
-145	cds-WP_015011276.1	hypothetical protein	819	0	1	0.0	0.7343154451326626	0.0
-167	cds-WP_002519822.1	alkaline phosphatase family protein	1056	1	0	1.0	0.7812043130008095	inf
-176	cds-WP_015011285.1	YhgE/Pip family protein	2370	1	0	1.0	0.7489194668543684	inf
-288	cds-WP_002517088.1	lactate utilization protein C	681	1	0	1.0	0.7642628722671957	inf
-401	cds-WP_002517111.1	NADH-quinone oxidoreductase subunit D	1161	1	0	1.0	0.7475591891506067	inf
-433	cds-WP_002517527.1	DNA repair protein RadA	1398	1	0	1.0	0.7372977678530953	inf
-524	cds-WP_002515104.1	O-acetyl-ADP-ribose deacetylase	516	0	1	0.0	0.749955036804534	0.0
-581	cds-WP_002516693.1	MFS transporter	1608	0	1	0.0	0.7644313823626164	0.0
-714	cds-WP_002515206.1	HTH domain-containing protein	762	1	0	1.0	0.7581567537169241	inf
-808	cds-WP_002515320.1	hypothetical protein	408	0	1	0.0	0.746123667998668	0.0
-996	cds-WP_015011478.1	MDR family MFS transporter	1764	1	0	1.0	0.7666902181286901	inf
-1115	cds-WP_002515541.1	trehalose-6-phosphate synthase	1404	1	0	1.0	0.775972626103104	inf
-1136	cds-WP_015011509.1	VWA domain-containing protein	969	1	0	1.0	0.7556939014509293	inf
-1147	cds-WP_041446218.1	pyruvate dehydrogenase (acetyl-transferring), homodimeric type	2787	0	1	0.0	0.7767029615147896	0.0
-1204	cds-WP_002515631.1	nucleotide pyrophosphatase/phosphodiesterase family protein	1128	0	1	0.0	0.747723484232735	0.0
-1251	cds-WP_002518982.1	YhjD/YihY/BrkB family envelope integrity protein	1311	1	0	1.0	0.7592565088268212	inf
-1280	cds-WP_015011547.1	phosphotransferase	1299	1	0	1.0	0.7537146260761037	inf
-1283	cds-WP_015011548.1	glycogen debranching protein GlgX	2121	1	0	1.0	0.7756035194576626	inf
-1329	cds-WP_015011559.1	protein translocase subunit SecF	1176	0	1	0.0	0.7553187946293961	0.0
-1333	cds-WP_002518946.1	DUF349 domain-containing protein	1299	1	0	1.0	0.7682452076098649	inf
-1354	cds-WP_002516794.1	elongation factor P	570	1	0	1.0	0.7748968853854035	inf
-1379	cds-WP_002516803.1	ribokinase	915	0	1	0.0	0.7543938736285851	0.0
-1449	cds-WP_015011586.1	ABC transporter substrate-binding protein	1488	0	1	0.0	0.7512185683002338	0.0
-1486	cds-WP_002517838.1	hypothetical protein	363	1	0	1.0	0.731024286350347	inf
-1715	cds-WP_080591584.1	choice-of-anchor M domain-containing protein	1035	1	0	1.0	0.7613161533864434	inf
-1803	cds-WP_002518466.1	DNA-formamidopyrimidine glycosylase family protein	819	1	0	1.0	0.7503154205490424	inf
-1917	cds-WP_002519601.1	hypothetical protein	723	1	0	1.0	0.768167751328779	inf
-2099	cds-WP_002515952.1	exodeoxyribonuclease III	894	1	0	1.0	0.7796954361938796	inf
-2126	cds-WP_002515419.1	NADH-quinone oxidoreductase subunit NuoK	300	1	0	1.0	0.7622838482767559	inf
-2134	cds-WP_002515389.1	NADH-quinone oxidoreductase subunit C	825	1	0	1.0	0.7797502684049809	inf
-2223	cds-WP_002519470.1	VTT domain-containing protein	729	0	1	0.0	0.7585733551650627	0.0
-2241	cds-WP_015011765.1	TrkA C-terminal domain-containing protein	1578	1	0	1.0	0.7406438867176423	inf
-2243	cds-WP_002516231.1	SGNH/GDSL hydrolase family protein	909	1	0	1.0	0.7505190907851764	inf
-2390	cds-WP_002516309.1	MaoC/PaaZ C-terminal domain-containing protein	744	1	0	1.0	0.7573196177542342	inf
-2422	cds-WP_015011793.1	hypothetical protein	1299	1	0	1.0	0.7325478965711999	inf
-2579	cds-WP_002522816.1	membrane protein insertion efficiency factor YidD	477	1	0	1.0	0.7572423655452519	inf
+115	cds-WP_002515541.1	trehalose-6-phosphate synthase	1404	1	0	1.0	0.775972626103104	inf
+136	cds-WP_015011509.1	VWA domain-containing protein	969	1	0	1.0	0.7556939014509293	inf
+147	cds-WP_041446218.1	pyruvate dehydrogenase (acetyl-transferring), homodimeric type	2787	0	1	0.0	0.7767029615147896	0.0
+204	cds-WP_002515631.1	nucleotide pyrophosphatase/phosphodiesterase family protein	1128	0	1	0.0	0.747723484232735	0.0
+251	cds-WP_002518982.1	YhjD/YihY/BrkB family envelope integrity protein	1311	1	0	1.0	0.7592565088268212	inf
+280	cds-WP_015011547.1	phosphotransferase	1299	1	0	1.0	0.7537146260761037	inf
+283	cds-WP_015011548.1	glycogen debranching protein GlgX	2121	1	0	1.0	0.7756035194576626	inf
+329	cds-WP_015011559.1	protein translocase subunit SecF	1176	0	1	0.0	0.7553187946293961	0.0
+333	cds-WP_002518946.1	DUF349 domain-containing protein	1299	1	0	1.0	0.7682452076098649	inf
+354	cds-WP_002516794.1	elongation factor P	570	1	0	1.0	0.7748968853854035	inf
+379	cds-WP_002516803.1	ribokinase	915	0	1	0.0	0.7543938736285851	0.0
+449	cds-WP_015011586.1	ABC transporter substrate-binding protein	1488	0	1	0.0	0.7512185683002338	0.0
+486	cds-WP_002517838.1	hypothetical protein	363	1	0	1.0	0.731024286350347	inf
