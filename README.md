@@ -54,9 +54,9 @@ Note: This tool is based on the Lieberman and Key Lab SNV calling pipeline - [Wi
 **Install dependencies** with conda or mamba, or otherwise have them installed system-wide:
 
 ```
-conda create -n accusnv python=3.13
+conda create -n accusnv python=3.12
 conda activate accusnv
-conda install -c bioconda bwa bowtie2 samtools bcftools tabix sickle-trim cutadapt samclip phylip
+conda install -c conda-forge -c bioconda bwa bowtie2 samtools bcftools tabix sickle-trim cutadapt samclip phylip
 ```
 
 (the phylip package installs dnapars, which must be on path for AccuSNV tree building)
