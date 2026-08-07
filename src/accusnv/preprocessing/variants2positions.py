@@ -104,7 +104,7 @@ if __name__ == '__main__':
     accusnv_log.add_args(parser)
 
     args = parser.parse_args()
-    accusnv_log.setup('variants2positions', args.log, args.full_log)
+    accusnv_log.setup('variants2positions', args.log)
 
     generate_positions_single_sample(args.i,args.o,args.q,args.r,args.sample)
 

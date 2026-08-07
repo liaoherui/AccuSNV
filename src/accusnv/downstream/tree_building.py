@@ -321,7 +321,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    accusnv_log.setup('tree', args.log, args.full_log)
+    accusnv_log.setup('tree', args.log)
     # Absolute, because everything below runs from the phylogeny dir.
     source = os.path.abspath(args.input_dir)
     dataset = args.group or os.path.basename(os.path.abspath(args.output_dir))

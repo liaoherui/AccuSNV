@@ -378,7 +378,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    accusnv_log.setup('dnds', args.log, args.full_log)
+    accusnv_log.setup('dnds', args.log)
     group = args.group
     # The GFF sits beside the FASTA; accept either the reference FASTA path or its directory.
     dir_ref_genome = ref_directory(args.ref_genome)

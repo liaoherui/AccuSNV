@@ -4,7 +4,8 @@
 # --- Logging ---
 # Two log files per run. The summary holds the milestones, warnings and errors; the full one adds
 # the per-sample detail and the output of bwa/samtools/bcftools. A relative path (the default)
-# puts the file at the top level of the output directory.
+# puts the file at the top level of the output directory. Both are the merge of the per-job logs
+# in the output directory's logs/, which is where each job writes as the run goes along.
 log_file: "accusnv.log"
 full_log_file: "accusnv.full.log"
 

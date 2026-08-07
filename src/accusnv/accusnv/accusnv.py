@@ -83,7 +83,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    accusnv_log.setup('calling', args.log, args.full_log)
+    accusnv_log.setup('calling', args.log)
     group = args.group
     input_mat = args.input_mat
     input_cov = args.input_cov

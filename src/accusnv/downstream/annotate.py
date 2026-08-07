@@ -493,7 +493,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    accusnv_log.setup('annotate', args.log, args.full_log)
+    accusnv_log.setup('annotate', args.log)
     annotate_main(args)
 
 

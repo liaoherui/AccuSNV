@@ -51,19 +51,22 @@ Note: This tool is based on the Lieberman and Key Lab SNV calling pipeline - [Wi
 
 ## Install
 
-To install AccuSNV, clone the GitHub repository, install the Python package, and install the
-bioinformatics binaries it calls.
+**Install dependencies** with conda or mamba, or otherwise have them installed system-wide:
 
-Git clone and install via pip:<BR/>
-```git clone https://github.com/liaoherui/AccuSNV.git
+```
+conda create -n accusnv python=3.13
+conda activate accusnv
+conda install -c bioconda bwa bowtie2 samtools bcftools tabix sickle-trim cutadapt samclip phylip
+```
+
+(the phylip package installs dnapars, which must be on path for AccuSNV tree building)
+
+Then install **AccuSNV and Python dependencies** (requires Python>=3.9):
+
+```
+git clone https://github.com/liaoherui/AccuSNV.git
 cd AccuSNV
 pip install .
-```
-
-To install non-Python dependencies, we recommend using conda, or install them separately and have them on `PATH`:
-
-```
-conda install -c bioconda bwa bowtie2 samtools bcftools tabix sickle-trim cutadapt samclip phylip
 ```
 
 The default aligner for AccuSNV is `BWA-MEM` (with `samclip`), but you can also use `bowtie2` by changing the aligner value in the config file.

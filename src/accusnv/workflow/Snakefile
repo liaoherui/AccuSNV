@@ -36,19 +36,29 @@ CLIP = "" if config.get("skip_samclip") or aligner != "bwa" else " | samclip --r
 outdir = config['outdir'].rstrip("/")
 
 # --- Logging ---------------------------------------------------------------
-# The run's two log files. Every step appends to them directly rather than through Snakemake's
-# log: directive, so the whole run is in one pair of files instead of one file per job. Python
-# steps are handed the paths and log themselves; rules that only run external tools write a
-# summary line with `python -m accusnv.log` and send the tool's output to the full log.
+# Each job writes its own pair of log files in <outdir>/logs, named for its rule and the sample or
+# group it ran on, rather than every job appending to one shared pair. The run's two log files are
+# the merge of those, made when the run finishes. Every rule starts its shell with job_log(), which
+# names its files in $L; Python steps are then handed $L with LOG_ARGS and log themselves, and
+# rules that only run external tools write a summary line with note() and send the tool's output
+# to $L.full.log.
 
-SUMMARY_LOG, FULL_LOG = accusnv_log.paths(outdir, config)
-LOG_ARGS = f"--log {SUMMARY_LOG} --full_log {FULL_LOG}"
-TOOL_OUT = f">> {FULL_LOG} 2>&1"      # tool writes its data to files; all its output is chatter
-TOOL_ERR = f"2>> {FULL_LOG}"          # tool writes its data to stdout, so only capture stderr
+FULL_LOG = accusnv_log.paths(outdir, config)[1]
+LOG_ARGS = '--log "$L"'
+TOOL_OUT = '>> "$L.full.log" 2>&1'    # tool writes its data to files; all its output is chatter
+TOOL_ERR = '2>> "$L.full.log"'        # tool writes its data to stdout, so only capture stderr
 
-def note(step, message):
+# The tags naming a job's log files, in the same form as its output filenames.
+SAMPLE_TAG = "{wildcards.sampleID}_ref_{wildcards.reference}"
+GROUP_TAG = "group_{wildcards.cladeID}"
+
+def job_log(step, tag=None):
+    '''Shell prefix putting this job's log files in $L, for LOG_ARGS, TOOL_OUT and note().'''
+    return f'L="{accusnv_log.stem(outdir, step, tag)}" ; '
+
+def note(message):
     '''Shell fragment that writes one summary-log line, for rules that only run external tools.'''
-    return f'python -m accusnv.log {step} {SUMMARY_LOG} {FULL_LOG} "{message}" ; '
+    return f'python -m accusnv.log "$L" "{message}" ; '
 
 ################# SAMPLE SHEET AND OUTPUTS #################
 
@@ -91,7 +101,7 @@ GENOME_LEN = {f: _genome_len(f) for f in sample_table['Reference_FASTA'].unique(
 # SLURM each job re-reads this file, which is why the overview lives here and not at top level.
 
 onstart:
-    log = accusnv_log.setup('workflow', SUMMARY_LOG, FULL_LOG)
+    log = accusnv_log.setup('workflow', accusnv_log.stem(outdir, 'workflow'))
     log.info('Workflow starting: %d samples in %d group(s), aligner %s',
              len(sample_table), len(sample_groups), aligner)
     for clade in sample_groups:
@@ -104,13 +114,21 @@ onstart:
         log.debug('Group %s reference FASTA: %s', clade, ref)
         log.debug('Group %s samples: %s', clade, ', '.join(rows['Sample']))
 
+# Both hooks write to a second pair of files, so that their message lands at the end of the merged
+# logs rather than back with the overview above. Both then merge the per-job logs, so a run started
+# with snakemake directly still ends with the two log files; a run started with the accusnv CLI is
+# merged again there, after its own last message.
+
 onsuccess:
-    accusnv_log.setup('workflow', SUMMARY_LOG, FULL_LOG).info('Workflow finished successfully.')
+    accusnv_log.setup('workflow', accusnv_log.stem(outdir, 'workflow', 'finished')).info(
+        'Workflow finished successfully.')
+    accusnv_log.merge(outdir, config)
 
 onerror:
-    accusnv_log.setup('workflow', SUMMARY_LOG, FULL_LOG).error(
+    accusnv_log.setup('workflow', accusnv_log.stem(outdir, 'workflow', 'finished')).error(
         'Workflow failed. Each failed job is logged above with the reason and the tier it ran '
-        'at; its tool output is in %s', FULL_LOG)
+        'at; its tool output is in %s, and on its own in %s', FULL_LOG, os.path.join(outdir, 'logs'))
+    accusnv_log.merge(outdir, config)
 
 
 # --- Outputs ---------------------------------------------------------------
@@ -167,13 +185,14 @@ rule cutadapt:
         runtime = lambda wc, attempt: res.runtime('cutadapt', attempt),
     run:
         layout = "paired-end" if len(input) == 2 else "single-end"
-        shell(ENV + note('cutadapt', f"{wildcards.sampleID}: trimming adapter {params.adapter} from {layout} reads"))
+        L = job_log('cutadapt', wildcards.sampleID)
+        shell(ENV + L + note(f"{wildcards.sampleID}: trimming adapter {params.adapter} from {layout} reads"))
         if len(input) == 2: # Paired end reads
-            shell(ENV +
+            shell(ENV + L +
                 "cutadapt -a {params.adapter} -A {params.adapter} --cores={threads} "
                 "-o {output.fq1} -p {output.fq2} {input.r1} {input.r2} " + TOOL_OUT)
         else: # Single end reads
-            shell(ENV +
+            shell(ENV + L +
                 "cutadapt -a {params.adapter} --cores={threads} -o {output.fq1} {input.r1} " + TOOL_OUT)
 
             # Create empty r2 file for snakemake
@@ -207,16 +226,17 @@ rule sickle:
         mem_mb  = lambda wc, attempt: res.mem('sickle', attempt),
         runtime = lambda wc, attempt: res.runtime('sickle', attempt),
     run:
-        shell(ENV + note('sickle', f"{wildcards.sampleID}: quality trimming at Q{params.qual}, "
-                                   f"dropping reads under {params.readlen} bp"))
+        L = job_log('sickle', wildcards.sampleID)
+        shell(ENV + L + note(f"{wildcards.sampleID}: quality trimming at Q{params.qual}, "
+                             f"dropping reads under {params.readlen} bp"))
         if len(input) == 2: # Paired end reads
-            shell(ENV +
+            shell(ENV + L +
             "sickle pe -f {input.r1} -r {input.r2} -t sanger -o {output.fq1} -p {output.fq2} -s {output.fqS}"
             " -g -q {params.qual} -l {params.readlen} -x -n " + TOOL_OUT)
             shell("  rm {input.r1} {input.r2}")
 
         else: #Single end reads
-            shell(ENV +
+            shell(ENV + L +
             "sickle se -f {input.r1} -t sanger -o {output.fq1} -g -q {params.qual} -l {params.readlen} -x -n " + TOOL_OUT)
 
             # Create empty r2 file for snakemake
@@ -237,11 +257,12 @@ rule create_mapping_index:
         mem_mb  = lambda wc, attempt: res.mem('create_mapping_index', attempt),
         runtime = lambda wc, attempt: res.runtime('create_mapping_index', attempt),
     run:
-        shell(ENV + note('index', f"Building {aligner} index for {input.fasta}"))
+        L = job_log('create_mapping_index', os.path.basename(input.fasta))
+        shell(ENV + L + note(f"Building {aligner} index for {input.fasta}"))
         if aligner == "bwa":
-            shell(ENV + "bwa index {input.fasta} " + TOOL_OUT)
+            shell(ENV + L + "bwa index {input.fasta} " + TOOL_OUT)
         else:
-            shell(ENV + "bowtie2-build -q {input.fasta} {input.fasta} " + TOOL_OUT)
+            shell(ENV + L + "bowtie2-build -q {input.fasta} {input.fasta} " + TOOL_OUT)
 
 
 rule mapping:
@@ -258,24 +279,27 @@ rule mapping:
         paired = lambda sample: sample_row(sample.sampleID)["Type"].upper(),
         maxins = config.get("bowtie2_maxins", 2000),
     output:
-        sam = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sam",
+        # temp(): SAMs are large and only sam2bam reads them, so Snakemake deletes each one as
+        # soon as its BAM is made, and also if either rule fails partway.
+        sam = temp(outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sam"),
     threads: CORES
     resources:
         mem_mb  = lambda wc, attempt: res.mem('mapping', attempt),
         runtime = lambda wc, attempt: res.runtime('mapping', attempt),
     run:
-        shell(ENV + note('mapping', f"{wildcards.sampleID}: mapping {params.paired} reads to "
-                                    f"{wildcards.reference} with {aligner} on {threads} threads"))
+        L = job_log('mapping', f"{wildcards.sampleID}_ref_{wildcards.reference}")
+        shell(ENV + L + note(f"{wildcards.sampleID}: mapping {params.paired} reads to "
+                             f"{wildcards.reference} with {aligner} on {threads} threads"))
         if aligner == "bwa":
             if params.paired == 'PE':
-                shell(ENV + "bwa mem -t {threads} {params.ref} {input.r1} {input.r2}" + CLIP + " > {output.sam} " + TOOL_ERR)
+                shell(ENV + L + "bwa mem -t {threads} {params.ref} {input.r1} {input.r2}" + CLIP + " > {output.sam} " + TOOL_ERR)
             else:
-                shell(ENV + "bwa mem -t {threads} {params.ref} {input.r1}" + CLIP + " > {output.sam} " + TOOL_ERR)
+                shell(ENV + L + "bwa mem -t {threads} {params.ref} {input.r1}" + CLIP + " > {output.sam} " + TOOL_ERR)
         else: #bowtie2
             if params.paired == 'PE':
-                shell(ENV + "bowtie2 --threads {threads} -X {params.maxins} --no-unal -x {params.ref} -1 {input.r1} -2 {input.r2} --no-mixed --dovetail -S {output.sam} " + TOOL_ERR)
+                shell(ENV + L + "bowtie2 --threads {threads} -X {params.maxins} --no-unal -x {params.ref} -1 {input.r1} -2 {input.r2} --no-mixed --dovetail -S {output.sam} " + TOOL_ERR)
             else:
-                shell(ENV + "bowtie2 --threads {threads} -X {params.maxins} --no-unal -x {params.ref} -U {input.r1} -S {output.sam} " + TOOL_ERR)
+                shell(ENV + L + "bowtie2 --threads {threads} -X {params.maxins} --no-unal -x {params.ref} -U {input.r1} -S {output.sam} " + TOOL_ERR)
 
 
 ################# CANDIDATE MUTATIONS #################
@@ -288,36 +312,42 @@ rule sam2bam:
     input:
         sam = rules.mapping.output.sam
     params:
-        bam     = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.bam",
-        mate    = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.fixmates.bam",
-        matesrt = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.sortedmates.bam",
-        stats   = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.bam.stats.txt",
         optdist = config.get("markdup_optical_distance", 100),
     output:
+        # The three intermediate BAMs are outputs rather than params so that Snakemake deletes
+        # them when the rule finishes and also when it fails partway; the stats file is kept.
+        bam     = temp(outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.bam"),
+        mate    = temp(outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.fixmates.bam"),
+        matesrt = temp(outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.sortedmates.bam"),
+        stats   = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.bam.stats.txt",
         final_bam = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sorted.bam",
         bai = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sorted.bam.bai",
     resources:
         mem_mb  = lambda wc, attempt: res.mem('sam2bam', attempt),
         runtime = lambda wc, attempt: res.runtime('sam2bam', attempt),
     shell:
-        ENV + note('sam2bam', "{wildcards.sampleID}: sorting alignments and marking duplicates "
-                              "(optical distance {params.optdist})") +
-        "samtools view -bS {input.sam} | samtools sort -n - -o {params.bam} " + TOOL_OUT + " ; "
-        "samtools fixmate -m {params.bam} {params.mate} " + TOOL_OUT + " ; "
-        "samtools sort -o {params.matesrt} {params.mate} " + TOOL_OUT + " ; "
-        "samtools markdup -r -s -f {params.stats} -d {params.optdist} -m s {params.matesrt} {output.final_bam} " + TOOL_OUT + " ; "
+        ENV + job_log('sam2bam', SAMPLE_TAG) +
+        note("{wildcards.sampleID}: sorting alignments and marking duplicates "
+             "(optical distance {params.optdist})") +
+        "samtools view -bS {input.sam} | samtools sort -n - -o {output.bam} " + TOOL_OUT + " ; "
+        "samtools fixmate -m {output.bam} {output.mate} " + TOOL_OUT + " ; "
+        "samtools sort -o {output.matesrt} {output.mate} " + TOOL_OUT + " ; "
+        "samtools markdup -r -s -f {output.stats} -d {params.optdist} -m s {output.matesrt} {output.final_bam} " + TOOL_OUT + " ; "
         "samtools index {output.final_bam} {output.bai} " + TOOL_OUT + " ;"
-        "rm -f {input.sam} {params.bam} {params.mate} {params.matesrt} ;"
 
 
 rule samtools_idx:
     ''' Create the .fai index samtools needs to read the reference FASTA during pileup.'''
     input:
         fasta = "{fasta}",
+    params:
+        # The wildcard here is a path, so the log files are named after the FASTA alone.
+        tag = lambda sample: os.path.basename(sample.fasta),
     output:
         fai = "{fasta}.fai",
     shell:
-        ENV + note('index', "Indexing reference FASTA {input.fasta}") +
+        ENV + job_log('samtools_idx', "{params.tag}") +
+        note("Indexing reference FASTA {input.fasta}") +
         "samtools faidx {input.fasta} " + TOOL_OUT + " ;"
 
 
@@ -339,8 +369,9 @@ rule mpileup2vcf:
         mem_mb  = lambda wc, attempt: res.mem('mpileup2vcf', attempt),
         runtime = lambda wc, attempt: res.runtime('mpileup2vcf', attempt),
     shell:
-        ENV + note('mpileup2vcf', "{wildcards.sampleID}: calling variants (min mapping quality "
-                                  "{params.minmapq}, max depth {params.maxdepth}, min alt-allele fraction {params.minaf})") +
+        ENV + job_log('mpileup2vcf', SAMPLE_TAG) +
+        note("{wildcards.sampleID}: calling variants (min mapping quality {params.minmapq}, "
+             "max depth {params.maxdepth}, min alt-allele fraction {params.minaf})") +
         "samtools mpileup -q{params.minmapq} -x -s -O -d{params.maxdepth} -f {params.ref} {input.bam} > {output.pileup} " + TOOL_ERR + " ; "
         "bcftools mpileup -q{params.minmapq} --annotate FORMAT/SP -d{params.maxdepth} -f {params.ref} {input.bam} -Ou " + TOOL_ERR + " | bcftools call -c -Oz -o {output.strain} " + TOOL_ERR + " ; "
         "bcftools view -Oz -v snps -q {params.minaf} {output.strain} > {output.variants} " + TOOL_ERR + " ; "
@@ -359,7 +390,7 @@ rule vcf2quals:
         mem_mb  = lambda wc, attempt: res.mem('vcf2quals', attempt),
         runtime = lambda wc, attempt: res.runtime('vcf2quals', attempt),
     shell:
-        ENV +
+        ENV + job_log('vcf2quals', SAMPLE_TAG) +
         "python -m accusnv.preprocessing.vcf2quals_snakemake -i {input.strain} -r {params.ref} -o {output.quals} "
         "--sample {wildcards.sampleID} " + LOG_ARGS
 
@@ -376,7 +407,8 @@ rule variants2positions:
         mem_mb  = lambda wc, attempt: res.mem('variants2positions', attempt),
         runtime = lambda wc, attempt: res.runtime('variants2positions', attempt),
     shell:
-        ENV + "python -m accusnv.preprocessing.variants2positions -i {input.variants} -o {output.positions} "
+        ENV + job_log('variants2positions', SAMPLE_TAG) +
+        "python -m accusnv.preprocessing.variants2positions -i {input.variants} -o {output.positions} "
         "-r {params.ref} -q {params.maxfq} --sample {wildcards.sampleID} " + LOG_ARGS + " ;"
 
 rule pileup2diversity:
@@ -395,7 +427,8 @@ rule pileup2diversity:
         mem_mb  = lambda wc, attempt: res.mem('pileup2diversity', attempt),
         runtime = lambda wc, attempt: res.runtime('pileup2diversity', attempt),
     run:
-        shell(ENV + "python -m accusnv.preprocessing.pileup2diversity -i {input.pileup} -r {params.ref} "
+        shell(ENV + job_log('pileup2diversity', SAMPLE_TAG) +
+        "python -m accusnv.preprocessing.pileup2diversity -i {input.pileup} -r {params.ref} "
         "-o {output.diversity} --sample {wildcards.sampleID} " + LOG_ARGS + " ; ")
 
         ## if successful, delete the big pileup file
@@ -404,7 +437,7 @@ rule pileup2diversity:
 
 def combine_positions(positions_files, output_p_file, ref_genome, cladeID):
     ''' Function called by combine_positions rule to create clade-wide positions lists.'''
-    log = accusnv_log.setup('combine_positions', SUMMARY_LOG, FULL_LOG)
+    log = accusnv_log.setup('combine_positions', accusnv_log.stem(outdir, 'combine_positions', f'group_{cladeID}'))
     log.info('Group %s: merging candidate variant positions from %d ingroup samples',
              cladeID, len(positions_files))
     chr_starts = utils.genomestats(ref_genome)[0]
@@ -478,7 +511,8 @@ rule candidate_mutation_table:
         runtime = lambda wc, attempt: res.runtime('candidate_mutation_table', attempt),
     run:
         from accusnv.preprocessing.build_candidate_mutation_table import build_candidate_mutation_table
-        accusnv_log.setup('candidate_mutation_table', SUMMARY_LOG, FULL_LOG)
+        accusnv_log.setup('candidate_mutation_table',
+                          accusnv_log.stem(outdir, 'candidate_mutation_table', f'group_{wildcards.cladeID}'))
         build_candidate_mutation_table(input.allpositions, params.names, params.outgroup, input.quals, input.diversity,
                                        output.cmt, output.cov_raw, output.cov_norm, True, True, 40,
                                        wildcards.cladeID)
@@ -530,7 +564,7 @@ rule calling_accusnv:
         mem_mb  = lambda wc, attempt: res.mem('calling_accusnv', attempt),
         runtime = lambda wc, attempt: res.runtime('calling_accusnv', attempt),
     shell:
-        ENV + "python -m accusnv.accusnv.accusnv "
+        ENV + job_log('calling_accusnv', GROUP_TAG) + "python -m accusnv.accusnv.accusnv "
             "-i {input.cmt} -c {input.cov_raw} -r {params.ref} -o {params.out} "
             "-s {min_cov_samp} -v {min_cov_filt} -e {exclude_samp} -m {recomb_flag} "
             "--min_maf_call {call_min_major_allele_freq} "
@@ -567,7 +601,8 @@ rule annotate_snvs:
     # && so that a failed stage fails the rule: the copies would otherwise succeed on
     # whatever is on disk and mask it.
     shell:
-        ENV + "python -m accusnv.downstream.annotate -r {params.ref} -o {params.out} "
+        ENV + job_log('annotate_snvs', GROUP_TAG) +
+        "python -m accusnv.downstream.annotate -r {params.ref} -o {params.out} "
         "--maf {annotate_min_major_allele_freq} --group group_{wildcards.cladeID} " + LOG_ARGS + " && "
         "cp {output.unfiltered} {output.deliverable_unfiltered} && "
         "cp {output.final} {output.deliverable_final} ;"
@@ -596,7 +631,8 @@ rule dnds:
         mem_mb  = lambda wc, attempt: res.mem('dnds', attempt),
         runtime = lambda wc, attempt: res.runtime('dnds', attempt),
     shell:
-        ENV + "python -m accusnv.downstream.dnds -r {params.ref} -i {params.source} -o {params.out} "
+        ENV + job_log('dnds', GROUP_TAG) +
+        "python -m accusnv.downstream.dnds -r {params.ref} -i {params.source} -o {params.out} "
         "--group group_{wildcards.cladeID} " + LOG_ARGS + " ;"
 
 rule build_tree:
@@ -616,7 +652,8 @@ rule build_tree:
         mem_mb  = lambda wc, attempt: res.mem('build_tree', attempt),
         runtime = lambda wc, attempt: res.runtime('build_tree', attempt),
     shell:
-        ENV + "python -m accusnv.downstream.tree_building -r {params.ref} -i {params.source} "
+        ENV + job_log('build_tree', GROUP_TAG) +
+        "python -m accusnv.downstream.tree_building -r {params.ref} -i {params.source} "
         "-o {params.out} -g group_{wildcards.cladeID} " + tree_flags + " " + LOG_ARGS + " && "
         "cp {output.tree} {output.deliverable} ;"
 
@@ -642,6 +679,7 @@ rule report_html:
         mem_mb  = lambda wc, attempt: res.mem('report_html', attempt),
         runtime = lambda wc, attempt: res.runtime('report_html', attempt),
     shell:
-        ENV + "python -m accusnv.downstream.generate_dashboard -r {params.ref} -i {params.source} "
+        ENV + job_log('report_html', GROUP_TAG) +
+        "python -m accusnv.downstream.generate_dashboard -r {params.ref} -i {params.source} "
         "-o {params.out} -g group_{wildcards.cladeID} -t {params.tree} " + LOG_ARGS + " && "
         "cp {output.dashboard} {output.deliverable_dashboard} ;"

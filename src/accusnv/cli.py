@@ -532,9 +532,12 @@ def run_pipeline(args, run_parser):
         run_parser.error("Error: could not find existing directory for downstream_only run: {}".format(out_dir))
     os.makedirs(out_dir, exist_ok=True)
 
-    # Open the run's two log files before anything else that can fail, so the reason is recorded.
-    summary_log, full_log = accusnv_log.paths(out_dir, pipeline_params(args))
-    accusnv_log.setup('accusnv', summary_log, full_log)
+    # Open this process's own log files before anything else that can fail, so the reason is
+    # recorded. Every workflow job writes its own pair alongside them; merge() at the end of the
+    # run gathers them all into summary_log and full_log.
+    params = pipeline_params(args)
+    summary_log, full_log = accusnv_log.paths(out_dir, params)
+    accusnv_log.setup('accusnv', accusnv_log.stem(out_dir, 'accusnv'))
     log.info('AccuSNV starting in %s mode, writing to %s%s', args.mode, out_dir,
              ' (which already exists)' if existed else '')
     if args.downstream_only:
@@ -559,24 +562,31 @@ def run_pipeline(args, run_parser):
     snakemake_log = os.path.join(os.path.dirname(summary_log), 'accusnv.snakemake.log')
     log.info('Handing the run to Snakemake; everything it prints is kept in %s', snakemake_log)
     log.debug('Snakemake command: %s', ' '.join(cmd))
+    # Everything this process says from here on is the wrap-up, so it goes to a second pair of
+    # files. They are written after the jobs are done and so land at the end of the merged logs,
+    # rather than back in the block holding the message the run opened with.
+    accusnv_log.setup('accusnv', accusnv_log.stem(out_dir, 'accusnv', 'finished'))
     try:
         results = run_snakemake(cmd, snakemake_log)
     except Exception as e:
         log.error('Could not start Snakemake: %s', e)
-        return 1
-
-    if results != 0:
-        log.error('Pipeline FAILED (Snakemake exit code %d). The failed jobs are named above; '
-                  'the whole Snakemake run is in %s and what the tools printed is in %s',
-                  results, snakemake_log, full_log)
-        if args.mode == 'slurm':
-            log.error('If SLURM refused the jobs over the account (no account given, invalid '
-                      'account), uncomment the slurm_account line under default-resources in %s '
-                      'and set it to an account you can submit under.', config_file)
-        return results
+        results = 1
     else:
-        log.info('Pipeline completed successfully. Summary: %s  Full detail: %s', summary_log, full_log)
-        return 0
+        if results != 0:
+            log.error('Pipeline FAILED (Snakemake exit code %d). The failed jobs are named above; '
+                      'the whole Snakemake run is in %s and what the tools printed is in %s. Each '
+                      'job also has its own log in %s', results, snakemake_log, full_log,
+                      os.path.join(out_dir, 'logs'))
+            if args.mode == 'slurm':
+                log.error('If SLURM refused the jobs over the account (no account given, invalid '
+                          'account), uncomment the slurm_account line under default-resources in %s '
+                          'and set it to an account you can submit under.', config_file)
+        else:
+            log.info('Pipeline completed successfully. Summary: %s  Full detail: %s', summary_log, full_log)
+
+    # Last, so that this process's own messages end up in the merged files as well.
+    accusnv_log.merge(out_dir, params)
+    return results
 
 
 def main():

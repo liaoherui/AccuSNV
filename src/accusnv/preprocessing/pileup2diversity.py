@@ -232,7 +232,7 @@ if __name__ == "__main__":
     accusnv_log.add_args(parser)
 
     args = parser.parse_args()
-    accusnv_log.setup('pileup2diversity', args.log, args.full_log)
+    accusnv_log.setup('pileup2diversity', args.log)
 
     diversity_arr = pileup2diversity(args.input,args.ref,args.sample)
 

@@ -96,6 +96,6 @@ if __name__ == '__main__':
     accusnv_log.add_args(parser)
 
     args = parser.parse_args()
-    accusnv_log.setup('vcf2quals', args.log, args.full_log)
+    accusnv_log.setup('vcf2quals', args.log)
 
     vcf_to_quals_snakemake(args.i,args.o,args.r,args.sample)

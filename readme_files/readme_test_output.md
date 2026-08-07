@@ -17,6 +17,7 @@ tree cae_pe_test_snakemake
 |-- accusnv.log
 |-- accusnv.full.log
 |-- accusnv.snakemake.log
+|-- logs
 |-- configs
 |   |-- config.yaml
 |   `-- pipeline.yaml
@@ -122,6 +123,7 @@ All paths below are relative to the group folder they sit in.
 | `accusnv.log`  | One line per step per sample saying what it did and what came out of it, plus every warning and error. This is the one to read first.
 | `accusnv.full.log`  | The same, plus the per-sample detail and everything bwa, samtools, bcftools, cutadapt and sickle printed.
 | `accusnv.snakemake.log`  | Everything Snakemake printed, verbatim. A failed job is already summarised in `accusnv.log` with its reason and resource tier; this is the surrounding detail.
+| `logs/`  | The two logs above are the merge of these, made when the run ends. Every job writes its own pair here, named for its step and the sample or group it ran on (`mapping-<sample>_ref_<reference>.log`, `annotate_snvs-group_<group>.full.log`), so one failed sample can be read on its own. A job retried at a higher resource tier appends its next attempt to the same pair.
 | `configs/config.yaml`, `configs/pipeline.yaml`  | The two config files generated for this run, with defaults filled in. Copy, edit and pass back with `-c` or `-p` to change them.
 
 ##  Re-running the downstream analyses

@@ -365,7 +365,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    accusnv_log.setup('dashboard', args.log, args.full_log)
+    accusnv_log.setup('dashboard', args.log)
     os.makedirs(args.output_dir, exist_ok=True)
     out_path = args.output_dir + '/snv_dashboard.html'
     group = args.group or os.path.basename(os.path.abspath(args.output_dir))
