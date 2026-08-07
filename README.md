@@ -64,7 +64,7 @@ conda install -c bioconda bwa bowtie2 samtools bcftools tabix sickle-trim cutada
 Then install **AccuSNV and Python dependencies** (requires Python>=3.9):
 
 ```
-git clone https://github.com/liaoherui/AccuSNV.git
+git clone https://github.com/acritschristoph/AccuSNV.git
 cd AccuSNV
 pip install .
 ```
