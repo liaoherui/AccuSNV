@@ -313,27 +313,38 @@ rule sam2bam:
         sam = rules.mapping.output.sam
     params:
         optdist = config.get("markdup_optical_distance", 100),
+        # samtools -@ counts threads beyond the first, so pass one less than we asked SLURM for.
+        extra_threads = lambda wc, threads: threads - 1,
+        # sort -m is per thread; the half leaves room for sort overshooting -m and markdup's buffer.
+        sortmem = lambda wc, threads, resources: f"{int(0.5 * resources.mem_mb / threads)}M",
     output:
         # The three intermediate BAMs are outputs rather than params so that Snakemake deletes
         # them when the rule finishes and also when it fails partway; the stats file is kept.
         bam     = temp(outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.bam"),
         mate    = temp(outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.fixmates.bam"),
         matesrt = temp(outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.sortedmates.bam"),
+        # samtools sort names its own spill files and decides at run time how many to write, so they
+        # go in a directory Snakemake owns instead. A killed job used to leave them next to the BAMs,
+        # where its retry could not overwrite them and silently merged the stale ones instead.
+        sorttmp = temp(directory(outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.sorttmp")),
         stats   = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}.bam.stats.txt",
         final_bam = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sorted.bam",
         bai = outdir + "/1-Mapping/alignment/{sampleID}_ref_{reference}_aligned.sorted.bam.bai",
+    threads: CORES
     resources:
         mem_mb  = lambda wc, attempt: res.mem('sam2bam', attempt),
         runtime = lambda wc, attempt: res.runtime('sam2bam', attempt),
     shell:
         ENV + job_log('sam2bam', SAMPLE_TAG) +
         note("{wildcards.sampleID}: sorting alignments and marking duplicates "
-             "(optical distance {params.optdist})") +
-        "samtools view -bS {input.sam} | samtools sort -n - -o {output.bam} " + TOOL_OUT + " ; "
-        "samtools fixmate -m {output.bam} {output.mate} " + TOOL_OUT + " ; "
-        "samtools sort -o {output.matesrt} {output.mate} " + TOOL_OUT + " ; "
-        "samtools markdup -r -s -f {output.stats} -d {params.optdist} -m s {output.matesrt} {output.final_bam} " + TOOL_OUT + " ; "
-        "samtools index {output.final_bam} {output.bai} " + TOOL_OUT + " ;"
+             "(optical distance {params.optdist}) on {threads} threads") +
+        # -u keeps the piped BAM uncompressed, so view stays cheap and sort gets the threads.
+        "mkdir -p {output.sorttmp} && "
+        "samtools view -uS {input.sam} | samtools sort -@ {params.extra_threads} -m {params.sortmem} -n -T {output.sorttmp}/byname - -o {output.bam} " + TOOL_OUT + " && "
+        "samtools fixmate -@ {params.extra_threads} -m {output.bam} {output.mate} " + TOOL_OUT + " && "
+        "samtools sort -@ {params.extra_threads} -m {params.sortmem} -T {output.sorttmp}/bypos -o {output.matesrt} {output.mate} " + TOOL_OUT + " && "
+        "samtools markdup -@ {params.extra_threads} -r -s -f {output.stats} -d {params.optdist} -m s {output.matesrt} {output.final_bam} " + TOOL_OUT + " && "
+        "samtools index -@ {params.extra_threads} {output.final_bam} {output.bai} " + TOOL_OUT
 
 
 rule samtools_idx:
@@ -372,10 +383,10 @@ rule mpileup2vcf:
         ENV + job_log('mpileup2vcf', SAMPLE_TAG) +
         note("{wildcards.sampleID}: calling variants (min mapping quality {params.minmapq}, "
              "max depth {params.maxdepth}, min alt-allele fraction {params.minaf})") +
-        "samtools mpileup -q{params.minmapq} -x -s -O -d{params.maxdepth} -f {params.ref} {input.bam} > {output.pileup} " + TOOL_ERR + " ; "
-        "bcftools mpileup -q{params.minmapq} --annotate FORMAT/SP -d{params.maxdepth} -f {params.ref} {input.bam} -Ou " + TOOL_ERR + " | bcftools call -c -Oz -o {output.strain} " + TOOL_ERR + " ; "
-        "bcftools view -Oz -v snps -q {params.minaf} {output.strain} > {output.variants} " + TOOL_ERR + " ; "
-        "tabix -p vcf {output.variants} " + TOOL_OUT + " ;"
+        "samtools mpileup -q{params.minmapq} -x -s -O -d{params.maxdepth} -f {params.ref} {input.bam} > {output.pileup} " + TOOL_ERR + " && "
+        "bcftools mpileup -q{params.minmapq} --annotate FORMAT/SP -d{params.maxdepth} -f {params.ref} {input.bam} -Ou " + TOOL_ERR + " | bcftools call -c -Oz -o {output.strain} " + TOOL_ERR + " && "
+        "bcftools view -Oz -v snps -q {params.minaf} {output.strain} > {output.variants} " + TOOL_ERR + " && "
+        "tabix -p vcf {output.variants} " + TOOL_OUT
 
 rule vcf2quals:
     ''' Reads the strain VCF and creates an FQ quality score vector
