@@ -345,12 +345,18 @@ def build_mutation_table( mut_positions, mut_quality, annotation_mutations, call
     return table.fillna('.').astype(str)
 
 
-def merge_two_tables(in_cnn_table, annotations, out_merge_tsv):
+def merge_two_tables(in_cnn_table, annotations, out_merge_tsv, exclude_positions=(),
+                     include_positions=()):
     '''
     Merges the CNN+filter table with an annotation table on genome_pos. Annotated positions
-    come first, then any positions only the CNN table has.
+    come first, then any positions only the CNN table has. Excluded positions are dropped here
+    as well as from the SNV set, so that they leave the tables entirely; included ones have
+    their verdict overridden to 1, which is what carries them into the final table. The other
+    columns are left alone, so the table still shows what the model and the filters decided.
     '''
     cnn = pd.read_csv(in_cnn_table, sep='\t', dtype=str)
+    cnn = cnn[~cnn['genome_pos'].astype(int).isin(exclude_positions)]
+    cnn.loc[cnn['genome_pos'].astype(int).isin(include_positions), 'Pred_label'] = '1'
     merged = annotations.merge(cnn, on='genome_pos', how='outer')
 
     # merge does not preserve the row order of either table, so impose it here.
@@ -384,8 +390,9 @@ def write_final_table(dir_output):
     draft = pd.read_csv(draft_path, sep='\t', dtype=str)
     final = draft[draft['Pred_label'].astype(int) != 0]
     final.to_csv(final_path, sep='\t', index=False)
-    log.info('snv_table_unfiltered.tsv holds all %s candidates with their filter verdicts; '
-             'snv_table_final.tsv holds the %s that passed', f'{len(draft):,}', f'{len(final):,}')
+    log.info('snv_table_unfiltered.tsv holds all %s candidate positions with the stage that '
+             'removed each one in Removed_by; snv_table_final.tsv holds the %s that passed',
+             f'{len(draft):,}', f'{len(final):,}')
 
 
 def annotate_main(args):
@@ -416,7 +423,9 @@ def annotate_main(args):
                   'Re-run the calling stage for this group.', group, filter_table)
         raise SystemExit(1)
 
-    st = snv.rebuild_state(state_path, args.ref_genome)
+    excluded = snv.read_positions_file(args.exclude_positions)
+    included = snv.read_positions_file(args.include_positions)
+    st = snv.rebuild_state(state_path, args.ref_genome, excluded, included)
 
     # The CNN can accept a candidate table yet leave zero good positions (e.g. a single
     # candidate that then filters out). There is nothing to annotate, and the ancestral-allele
@@ -469,7 +478,8 @@ def annotate_main(args):
     annotations = build_mutation_table(st.p_goodpos_all, st.mut_qual[0, st.goodpos_idx_all],
                                        mutations_annotated,
                                        st.calls_for_tree_raw, st.treesampleNamesLong)
-    merge_two_tables(filter_table, annotations, dir_output + '/snv_table_unfiltered.tsv')
+    merge_two_tables(filter_table, annotations, dir_output + '/snv_table_unfiltered.tsv',
+                     excluded, included)
 
     write_final_table(dir_output)
 
@@ -486,6 +496,10 @@ def parse_args():
     p.add_argument('-o', '--output_dir', dest='output_dir', type=str, required=True, help="Group output dir")
     p.add_argument('--maf', dest='maf', type=float, default=0.75,
                    help="Major-allele frequency cutoff when rebuilding calls for annotation (default 0.75).")
+    p.add_argument('--exclude_positions', default='',
+                   help="File of genome_pos values, one per line, to leave out of the SNV set.")
+    p.add_argument('--include_positions', default='',
+                   help="File of genome_pos values, one per line, to keep whatever the filters said.")
     p.add_argument('--group', default='group', help="Group name, for the log")
     accusnv_log.add_args(p)
     return p.parse_args()

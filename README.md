@@ -179,6 +179,38 @@ This reads the calling-stage output already in `<output_dir>/2-SNV-filtering/gro
 
 In the future, we plan to facilitate more interactive versions of these evolutionary analyses that allow the user to visualize, inspect, and interact with their data. 
 
+### 4. Overriding the call at specific SNV positions
+
+Filtering is otherwise threshold-based, but if inspecting the results convinces you that particular sites should not be trusted, list them in a text file and pass `--exclude_positions`:
+
+```
+accusnv -i <samples.csv> -r <reference_genomes_dir> -o <output_dir> --exclude_positions bad_sites.txt
+```
+
+The file holds one `genome_pos` per line, numbered as in `group_<group>_snv_table_final.tsv`. Blank lines, anything after a `#`, a `genome_pos` header line and any extra columns are ignored, so a set of lines cut from an SNV table works as-is:
+
+```
+# repeat region we do not trust
+37841
+211560   NC_018707.1   211560
+```
+
+Those positions are dropped from every table, from dN/dS, from tree building and dMRCA, and from the dashboard. The exclusions are applied after SNV calling, so `--downstream_only` is the quick way to revise the list:
+
+```
+accusnv --downstream_only -i <samples.csv> -r <reference_genomes_dir> -o <output_dir> --exclude_positions bad_sites.txt
+```
+
+`--include_positions` is the same idea the other way round: a file of positions to keep in the final set whatever the model and the filters decided.
+
+```
+accusnv -i <samples.csv> -r <reference_genomes_dir> -o <output_dir> --include_positions rescue.txt
+```
+
+Those positions are annotated and reported like any other SNV, and they reach dN/dS, the tree, dMRCA and the dashboard. Their `Pred_label` becomes 1, but the model score and the individual filter columns are left as they were, so `snv_table_unfiltered.tsv` still shows what would have happened without the override. A position can only be rescued if the run produced read evidence for it (it must appear in the candidate mutation table); any that do not are named in a warning rather than silently ignored. If a position is listed in both files, excluding wins.
+
+Both paths are recorded in `pipeline.yaml` (as `exclude_positions` and `include_positions`) and can be edited there instead. Note that the two files the calling stage itself writes, `2-SNV-filtering/group_<group>/candidate_mutation_table_final.npz` and `snv_table_cnn_raw.tsv`, are raw per-position output and are not affected by either flag.
+
 ## Output
 
 The results for each sample group are written at the top level of the output directory, one set per group (e.g., for **Quick Test**, `cae_pe_test_snakemake/group_pe_test_snv_table_final.tsv`). Raw data tables and diagnostic information are in: `2-SNV-filtering/group_[group_name]/` and `3-Analysis/group_[group_name]/`.
@@ -189,7 +221,8 @@ The results for each sample group are written at the top level of the output dir
 | ---  | --- | 
 | `group_<group>_snv_table_final.tsv`  | Final SNV report table (recommended primary output table). More details, including explanations of the columns in this file, can be found [here](readme_files/readme_annotation_table.md).
 | `group_<group>_snv_dashboard.html`  | Interactive final HTML report (recommended to view).
-| 2-SNV-filtering/group_<group>/snv_table_unfiltered.tsv` | Every position AccuSNV called with the CNN and rule-based filter breakdown for each.
+| `2-SNV-filtering/group_<group>/snv_table_unfiltered.tsv` | Every candidate position AccuSNV considered, kept or not, with the CNN and rule-based filter breakdown for each and a `Removed_by` column naming the stage that removed it.
+| `group_<group>_snv_table_rejected_upstream.tsv` | Positions where bcftools called a substitution but which never became candidates, and which of the two mapping-stage gates (`variant_min_af` or `max_fq`) dropped them.
 | `2-SNV-filtering/group_<group>/snv_table_cnn_raw.tsv` | Per-position CNN scores for every position scored. Note that this file does not include annotation information for each SNV.
 
 For final SNV calling results, please use:
@@ -212,7 +245,8 @@ For full documentation of all output files, please see [here](readme_files/readm
 ## Full command-line options
 
 ```
-usage: accusnv [-h] [-i CSV] [-r DIR] [-o DIR] [-c FILE] [-p FILE]
+usage: accusnv [-h] [-i CSV] [-r DIR] [-o DIR] [--exclude_positions FILE]
+        [--include_positions FILE] [-c FILE] [-p FILE]
         [-m {dryrun,slurm,local}] [-j N] [-sp PARTITIONS] [-e CMD] [output options]
 
 AccuSNV
@@ -222,6 +256,11 @@ Inputs and Outputs:
   -i, --input_sample_info CSV      Input sample CSV (required)
   -r, --ref_dir DIR                Reference genomes dir (required)
   -o, --output_dir DIR             Output dir (default: accusnv_output)
+  --exclude_positions FILE         File of genome_pos values, one per line, to
+                                   leave out of the SNV set (also written to
+                                   pipeline.yaml). Combine with
+                                   --downstream_only to change the list
+                                   without re-calling SNVs
 
 Config:
   -c, --config_file FILE           Execution settings + run paths

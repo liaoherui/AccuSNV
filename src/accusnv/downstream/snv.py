@@ -1130,7 +1130,10 @@ def generate_tokens_last(tokens,goodpos_idx,pre):
     rep=np.where(tokens==0)[0] #remain pos after all filters
 
     filt= np.setdiff1d(rep, goodpos_idx)
-    res=tokens
+    # A position an earlier filter already removed reads -1 for this one, as for every other
+    # filter. Carrying the earlier filter's own 1 through would credit this filter with a
+    # removal it did not make.
+    res=np.where(tokens==0,0,-1)
     res[filt]=1
     report_filter(pre, res)
     return res
@@ -1537,15 +1540,47 @@ def dec_final_lab(cnn,warr,wd,gap,freq,qual,check,cutoff):
                 return '1'
 
 
-def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dgap,my_cmt,cutoff):
+# The per-position filters, in the order they run, as (dpt key, name used in Removed_by).
+FILTER_ORDER = [('qual','Qual_filter'), ('cov','Cov_filter'), ('maf','MAF_filter'),
+                ('indel','Indel_filter'), ('mfas','MFAS_filter'), ('mmcp','MMCP_filter'),
+                ('cpn','CPN_filter'), ('fix','Fix_filter')]
+
+TABLE_COLUMNS = ('genome_pos\tPred_label\tCNN_pred\tWideVariant_pred\tCNN_prob\tQual_filter\t'
+                 'Cov_filter\tMAF_filter\tIndel_filter\tMFAS_filter\tMMCP_filter\tCPN_filter\t'
+                 'Fix_filter\tWhether_recomb\tFraction_ambiguous_samples\tGap_filter\t'
+                 'CNN_pred_raw\tCNN_prob_raw\tGap_reason\tRemoved_by\n')
+
+
+def removed_by(fl,dpt,p,gf,cnn_l,filt_l):
+    '''The one stage that removed this position, for the Removed_by column. Only the first
+    filter to fire reports 1 (later ones report -1), so this reads them in the order they ran.'''
+    if fl=='1':
+        return 'kept'
+    for key,name in FILTER_ORDER:
+        if dpt[key][p]==1:
+            return name
+    if gf=='1':
+        return 'Gap_filter'
+    if cnn_l=='skip':
+        return 'not_scored_by_CNN'
+    if filt_l=='1':
+        return 'CNN_rescue_declined'
+    return 'CNN'
+
+
+def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dgap,my_cmt,cutoff,dgap_reason=None):
     o=open(dir_output+'/snv_table_filtered_tmp.tsv','w+')
-    o.write('genome_pos\tPred_label\tCNN_pred\tWideVariant_pred\tCNN_prob\tQual_filter\tCov_filter\tMAF_filter\tIndel_filter\tMFAS_filter\tMMCP_filter\tCPN_filter\tFix_filter\tWhether_recomb\tFraction_ambiguous_samples\tGap_filter\n')
+    o.write(TABLE_COLUMNS)
     return_bool=[]
     return_bool_all=[]
     drb={}
     drba={}
     filt={}
-    freq_d,check_d=cal_freq_amb_samples(all_p,my_cmt)
+    written=set()
+    dgap_reason=dgap_reason or {}
+    # Every candidate position gets a row, so freq/check are needed for all of them. The
+    # calculation is per-position, so the values for all_p are the same either way.
+    freq_d,check_d=cal_freq_amb_samples(cmt_p,my_cmt)
     for p in all_p:
         drba[p] = ''
         if p not in dlab:
@@ -1578,9 +1613,22 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
         else:
             tem_warr=warr[0]
         if int(fl)==0 and int(tem_warr)==0 and int(filt_l)==0:
+            # Removed by both the model and the filters. This still counts as removed for the
+            # SNV set (filt), but the row is written so the reason is visible.
             filt[p]=''
+        o.write(str(p)+'\t'+fl+'\t'+warr[0]+'\t'+filt_l+'\t'+warr[1]+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+str(freq)+'\t'+gf+'\t'+cnn_l+'\t'+cnn_p+'\t'+dgap_reason.get(p,'.')+'\t'+removed_by(fl,dpt,p,gf,cnn_l,filt_l)+'\n')
+        written.add(p)
+    # Candidates neither the model nor the filters called. They were never considered above,
+    # so report them here with the filter verdicts that were already computed for them.
+    for p in cmt_p:
+        if p in written:
             continue
-        o.write(str(p)+'\t'+fl+'\t'+warr[0]+'\t'+filt_l+'\t'+warr[1]+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+str(freq)+'\t'+gf+'\n')
+        cnn_l=str(dlab[p]) if p in dlab else 'skip'
+        cnn_p=str(dprob[p]) if p in dprob else 'skip'
+        gf=dgap.get(p,'0')
+        recomb='1' if dpt['recomb'][p]==True else '0'
+        o.write(str(p)+'\t0\t'+cnn_l+'\t0\t'+cnn_p+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+"%.6f" % freq_d[p]+'\t'+gf+'\t'+cnn_l+'\t'+cnn_p+'\t'+dgap_reason.get(p,'.')+'\t'+removed_by('0',dpt,p,gf,cnn_l,'0')+'\n')
+    o.close()
     for p in cmt_p:
         if p in filt:
             return_bool.append(False)
@@ -1740,7 +1788,22 @@ def check_snv(data_file_cmt, odir):
     return dcs
 
 
-def rebuild_state(state_path, refg):
+def read_positions_file(path):
+    """Read an --exclude_positions or --include_positions file: one genome_pos per line, as
+    numbered in the SNV tables. Blank lines, anything after a '#', and any extra columns are
+    ignored, so a block pasted from snv_table_final.tsv works as long as genome_pos is the
+    first column."""
+    if not path:
+        return np.array([], dtype=int)
+    positions = []
+    for line in open(path):
+        line = line.split('#')[0].split()
+        if line and line[0].lower() != 'genome_pos':   # skip a pasted header
+            positions.append(int(line[0]))
+    return np.array(positions, dtype=int)
+
+
+def rebuild_state(state_path, refg, exclude_positions=(), include_positions=()):
     """Reconstruct the in-memory objects the annotate and report stages share, from the
     ``_snv_state.npz`` that stage 1 wrote plus the reference dir. Returns a namespace.
 
@@ -1754,11 +1817,28 @@ def rebuild_state(state_path, refg):
     my_calls_raw_for_ancestor = calls_object(my_cmt)  # == the unfiltered line-761 object
     my_rg = reference_genome_object(refg)
 
-    goodpos_bool_all = st['goodpos_bool_all']
+    # The user's own additions and removals are applied here, the one place the annotation, tree
+    # and dashboard stages all build from, so every stage sees the same set. Excluding wins where
+    # a position is named in both files. The counts are recomputed rather than read back from the
+    # state file for the same reason.
+    forced = np.isin(st['cmt_p'], include_positions)
+    goodpos_bool_all = (st['goodpos_bool_all'] | forced) & ~np.isin(st['cmt_p'], exclude_positions)
     calls_ancestral = st['calls_ancestral']
     mut_qual = st['mut_qual']
-    goodpos_idx_all = st['goodpos_idx_all']
-    num_goodpos_all = int(st['num_goodpos_all'])
+    goodpos_idx_all = np.where(goodpos_bool_all)[0]
+    num_goodpos_all = len(goodpos_idx_all)
+    added = int(np.count_nonzero(forced & ~st['goodpos_bool_all']))
+    dropped = int(st['num_goodpos_all']) + added - num_goodpos_all
+    if added or dropped:
+        log.info('Including %s and excluding %s SNV position(s) at the user\'s request; %s left',
+                 f'{added:,}', f'{dropped:,}', f'{num_goodpos_all:,}')
+    # A position with no row in the candidate mutation table has no read evidence to report, so
+    # it cannot be forced in; say so rather than leaving the user to notice it never appeared.
+    missing = np.setdiff1d(np.asarray(include_positions, dtype=int), st['cmt_p'])
+    if missing.size:
+        log.warning('%s --include_positions position(s) are not candidate positions in this run, '
+                    'so they cannot be added: %s', f'{missing.size:,}',
+                    ', '.join(str(p) for p in missing[:10]) + (' ...' if missing.size > 10 else ''))
     # Recombination flag over the goodpos_all positions (same order as p_goodpos_all /
     # calls_for_tree columns). Tree building and dMRCA use ~recomb_goodpos_all to exclude
     # recombinant SNVs; the annotation tables keep every position (recombinant ones flagged).

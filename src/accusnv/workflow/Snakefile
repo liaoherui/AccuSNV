@@ -136,6 +136,9 @@ onerror:
 
 # One SNV table for each Group, plus whichever downstream analyses are switched on.
 targets = expand(outdir + "/group_{cladeID}_snv_table_final.tsv", cladeID=sample_groups)
+if not config.get("downstream_only", False):
+    # Reads the mapping-stage VCFs, which --downstream_only is meant not to touch.
+    targets += expand(outdir + "/group_{cladeID}_snv_table_rejected_upstream.tsv", cladeID=sample_groups)
 
 if not config['skip_all_downstream']:
     analysis_dir = outdir + "/3-Analysis/group_{cladeID}/"
@@ -486,6 +489,42 @@ def clade_reference(cladeID):
     '''The reference FASTA for one clade. Every sample in a clade shares it.'''
     return sample_table[sample_table['Group'] == cladeID]['Reference_FASTA'].iloc[0]
 
+rule upstream_rejects:
+    ''' Records the positions bcftools called but dropped before candidate selection, and
+    which of the two gates dropped them. Nothing reads this; it exists so those removals are
+    not invisible. '''
+    input:
+        strain   = rules.mpileup2vcf.output.strain,
+        variants = rules.mpileup2vcf.output.variants,
+    params:
+        maxfq = config.get("max_fq", -30),
+    output:
+        rejects = outdir + "/1-Mapping/vcf/{sampleID}_ref_{reference}.upstream_rejects.tsv",
+    resources:
+        mem_mb  = lambda wc, attempt: res.mem('variants2positions', attempt),
+        runtime = lambda wc, attempt: res.runtime('variants2positions', attempt),
+    shell:
+        ENV + job_log('upstream_rejects', SAMPLE_TAG) +
+        "python -m accusnv.preprocessing.upstream_rejects --strain {input.strain} "
+        "--variant {input.variants} -q {params.maxfq} -o {output.rejects} "
+        "--sample {wildcards.sampleID} " + LOG_ARGS + " ;"
+
+
+rule combine_upstream_rejects:
+    ''' One table per group of everything dropped before candidate selection. '''
+    input:
+        rejects = lambda sample: clade_paths(sample.cladeID, rules.upstream_rejects.output.rejects, ingroup_only=True),
+    output:
+        combined = outdir + "/group_{cladeID}_snv_table_rejected_upstream.tsv",
+    resources:
+        mem_mb  = lambda wc, attempt: res.mem('combine_upstream_rejects', attempt),
+        runtime = lambda wc, attempt: res.runtime('combine_upstream_rejects', attempt),
+    shell:
+        ENV + job_log('combine_upstream_rejects', GROUP_TAG) +
+        "python -m accusnv.preprocessing.upstream_rejects --combine {input.rejects} "
+        "-o {output.combined} --group {wildcards.cladeID} " + LOG_ARGS + " ;"
+
+
 rule combine_positions:
     ''' Merge per-sample variants into a combined list per each clade. '''
     input:
@@ -549,6 +588,14 @@ rebuild_cutoff_few             = config.get("rebuild_cutoff_few", 0.25)
 recomb_distance_bp             = config.get("recomb_distance_bp", 1000)
 recomb_corr_threshold          = config.get("recomb_corr_threshold", 0.75)
 annotate_min_major_allele_freq = config.get("annotate_min_major_allele_freq", 0.75)
+
+# Positions the user wants left out of, or kept in, the SNV set whatever the filters decided.
+# Applied by the annotation, tree and dashboard stages rather than by the calling stage, so that
+# they take effect in --downstream_only runs too, where the calling stage does not re-run.
+exclude_positions = config.get("exclude_positions", "")
+include_positions = config.get("include_positions", "")
+position_flags = f'--exclude_positions "{exclude_positions}" ' if exclude_positions else ""
+position_flags += f'--include_positions "{include_positions}" ' if include_positions else ""
 
 # --downstream_only rebuilds only the annotation + evolutionary analyses from the SNV calls
 # already in the output dir. ancient() marks those calls as given, so Snakemake takes them off
@@ -614,7 +661,8 @@ rule annotate_snvs:
     shell:
         ENV + job_log('annotate_snvs', GROUP_TAG) +
         "python -m accusnv.downstream.annotate -r {params.ref} -o {params.out} "
-        "--maf {annotate_min_major_allele_freq} --group group_{wildcards.cladeID} " + LOG_ARGS + " && "
+        "--maf {annotate_min_major_allele_freq} --group group_{wildcards.cladeID} "
+        + position_flags + LOG_ARGS + " && "
         "cp {output.unfiltered} {output.deliverable_unfiltered} && "
         "cp {output.final} {output.deliverable_final} ;"
 
@@ -665,7 +713,7 @@ rule build_tree:
     shell:
         ENV + job_log('build_tree', GROUP_TAG) +
         "python -m accusnv.downstream.tree_building -r {params.ref} -i {params.source} "
-        "-o {params.out} -g group_{wildcards.cladeID} " + tree_flags + " " + LOG_ARGS + " && "
+        "-o {params.out} -g group_{wildcards.cladeID} " + tree_flags + " " + position_flags + LOG_ARGS + " && "
         "cp {output.tree} {output.deliverable} ;"
 
 # The dashboard shows the tree when there is one; with trees switched off it just leaves that
@@ -692,5 +740,5 @@ rule report_html:
     shell:
         ENV + job_log('report_html', GROUP_TAG) +
         "python -m accusnv.downstream.generate_dashboard -r {params.ref} -i {params.source} "
-        "-o {params.out} -g group_{wildcards.cladeID} -t {params.tree} " + LOG_ARGS + " && "
+        "-o {params.out} -g group_{wildcards.cladeID} -t {params.tree} " + position_flags + LOG_ARGS + " && "
         "cp {output.dashboard} {output.deliverable_dashboard} ;"

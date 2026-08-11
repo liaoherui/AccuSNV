@@ -166,6 +166,12 @@ main { flex: 1; display: flex; min-height: 0; }
          font-size: 12px; line-height: 1; color: var(--ink-3); text-align: right; }
 .readbar { display: block; width: 100%; min-width: 0;
            border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+/* The detail chart zooms with the wheel, so that individual samples can still be told apart in a
+   run with a hundred of them. The zoomer is what grows; the wrap around it scrolls. */
+.zoomwrap { overflow-x: auto; overscroll-behavior-x: contain; }
+.zoomer { width: 100%; }
+.zoomer:not(.named) .chartnames { visibility: hidden; }
+.zoomer .chartnames { margin-left: 0; }
 .key { display: inline-flex; gap: 8px; font-size: 13px; }
 .key span { display: inline-flex; align-items: center; gap: 3px; }
 .key i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
@@ -692,7 +698,7 @@ function drawChips() {
 /* ============================ read count charts ============================ */
 // One pair of bars per sample: reads on the forward strand, then reads on the reverse strand,
 // each stacked by base. A real variant looks the same on both strands in every sample.
-function readChart(i, height, gap) {
+function readChart(i, height, gap, zoomable) {
   let max = 1;
   for (let s = 0; s < NS; s++) {
     const r = readsOf(i, s);
@@ -715,9 +721,15 @@ function readChart(i, height, gap) {
     }
   }
   const bars = shape.map((d, b) => d && `<path d="${d}" fill="${BASE_COLOUR[BASES[b]]}"></path>`).join('');
-  return `<div class="readplot"><div class="yaxis"><span>${max}</span><span>0</span></div>` +
-         `<svg class="readbar" data-snv="${i}" style="height:${height}px" viewBox="0 0 ${width} 100" ` +
-         `preserveAspectRatio="none">${bars}</svg></div>`;
+  const svg = `<svg class="readbar" data-snv="${i}" style="height:${height}px" viewBox="0 0 ${width} 100" ` +
+              `preserveAspectRatio="none">${bars}</svg>`;
+  // The sample names ride inside the zoomer so they stay under their own bars at any zoom.
+  const inner = zoomable
+    ? `<div class="zoomwrap"><div class="zoomer">${svg}` +
+      `<div class="chartnames" style="grid-template-columns:repeat(${NS},1fr)">` +
+      SAMPLES.map(n => `<span>${esc(n)}</span>`).join('') + '</div></div></div>'
+    : svg;
+  return `<div class="readplot"><div class="yaxis"><span>${max}</span><span>0</span></div>${inner}</div>`;
 }
 
 const baseKey = () => '<span class="key">' +
@@ -839,20 +851,17 @@ function renderDetail() {
     ? 'Kept because ' + (d.cnn && d.wd ? 'both the AccuSNV neural network and the WideVariant checks called a variant here.'
       : d.cnn ? 'the AccuSNV neural network judged the read evidence to be a real variant.'
       : 'the WideVariant checks called a variant here and nothing else ruled it out.')
-    : `<b style="font-weight:400">Why this SNV was removed</b><ul>${d.why.map(w => `<li>${esc(w)}</li>`).join('')}</ul>`)
+    : `<b style="font-weight:400">Why this SNV was removed</b> &middot; <code>${esc(d.removedBy || '')}</code>`
+      + `<ul>${d.why.map(w => `<li>${esc(w)}</li>`).join('')}</ul>`
+      + (d.cnnRaw === 'skip' ? '' : `<div style="opacity:.75;font-size:14px">The model itself scored this position ${esc(d.probRaw)} and called it ${d.cnnRaw === '1' ? 'a real variant' : 'an artifact'}.</div>`))
     + '</div>';
 
-  // Every sample takes an equal share of the chart, so a grid of equal columns lines the
-  // names up under their bars. Past a dozen or so they no longer fit, and the table below says it.
-  const names = NS <= 14
-    ? `<div class="chartnames" style="grid-template-columns:repeat(${NS},1fr)">` +
-      SAMPLES.map(n => `<span>${esc(n)}</span>`).join('') + '</div>'
-    : `<div class="dsub">${NS} samples, in the order listed below.</div>`;
   let quality = `<div class="sect"><div class="head"><h3>Reads at this position</h3>
     <button class="button tight" data-chart="1">Open full barchart</button></div>
-    ${readChart(focus, 150, 1.6)}${names}
+    ${readChart(focus, 150, 1.6, true)}
     <div class="dsub" style="margin-top:6px">Two bars per sample: reads on the forward strand,
-    then on the reverse strand &nbsp;&middot;&nbsp; ${baseKey()}</div></div>`;
+    then on the reverse strand${NS > 14 ? ' &nbsp;&middot;&nbsp; scroll to zoom, which brings the sample names in' : ''}
+    &nbsp;&middot;&nbsp; ${baseKey()}</div></div>`;
 
   const confidentCalls = [...d.confident].filter(c => c !== 'N').length;
   quality += `<div class="sect"><h3>Quality of the evidence here</h3><dl class="facts">
@@ -944,6 +953,9 @@ function renderDetail() {
   if (look) look.onclick = () => window.open(
     'https://papers.genomics.lbl.gov/cgi-bin/litSearch.cgi?query=' + encodeURIComponent(protein), '_blank');
   box.querySelector('[data-chart]').onclick = () => showChart(d.p);
+  // At the starting zoom the names only fit for a small run; past that the wheel brings them in.
+  const zoomer = box.querySelector('.zoomer');
+  if (zoomer) zoomer.classList.toggle('named', zoomer.offsetWidth / NS >= 30);
   for (const b of box.querySelectorAll('.tab'))
     b.onclick = () => { tab = TABS.indexOf(b.textContent); described = null; renderDetail(); };
 }
@@ -1090,13 +1102,13 @@ function renderTree() {
 
 /* ============================ export ============================ */
 function exportTable() {
-  const head = ['genome_position', 'contig', 'contig_position', 'result', 'why_removed', 'called_by',
+  const head = ['genome_position', 'contig', 'contig_position', 'result', 'removed_by', 'why_removed', 'called_by',
     'model_confidence', 'gene', 'product', 'effect', 'protein_change', 'ancestral_base',
     'observed_bases', 'samples_with_variant', 'median_read_depth', 'possible_recombination', ...SAMPLES];
   const named = { both: 'AccuSNV model and WideVariant', cnn: 'AccuSNV model', wd: 'WideVariant', neither: 'neither' };
   const rows = view.map(i => {
     const d = S[i], gene = d.gene ? DATA.genes[d.gene] : null;
-    return [d.p, d.contig, d.cpos, d.kept ? 'kept' : 'removed', d.why.join(' '), named[callerOf(d)],
+    return [d.p, d.contig, d.cpos, d.kept ? 'kept' : 'removed', d.removedBy || '', d.why.join(' '), named[callerOf(d)],
       d.prob, d.gene || '', gene ? gene.product : '', (EFFECT[d.effect] || ['?'])[0], d.change,
       d.anc, d.alleles, d.nVariant, d.depth, d.recomb ? 'yes' : 'no', ...d.calls].join('\t');
   });
@@ -1191,6 +1203,22 @@ document.addEventListener('mouseover', e => {
   tip.style.left = Math.max(8, Math.min(window.innerWidth - box.width - 8, r.left)) + 'px';
   tip.style.top = (r.bottom + box.height + 12 > window.innerHeight ? r.top - box.height - 8 : r.bottom + 8) + 'px';
 });
+
+// The wheel zooms the detail chart horizontally, so that samples can still be told apart when
+// there are far more of them than fit across the sidebar. The sample under the pointer stays put,
+// and the names appear once each one has room to be read.
+document.addEventListener('wheel', e => {
+  const wrap = e.target.closest('.zoomwrap');
+  if (!wrap) return;
+  e.preventDefault();
+  const zoomer = wrap.firstElementChild;
+  const at = e.clientX - wrap.getBoundingClientRect().left;   // pointer, in viewport pixels
+  const was = zoomer.offsetWidth;
+  const now = Math.max(wrap.clientWidth, Math.min(40 * NS, was * (e.deltaY < 0 ? 1.25 : 0.8)));
+  zoomer.style.width = now + 'px';
+  wrap.scrollLeft = (wrap.scrollLeft + at) * (now / was) - at;
+  zoomer.classList.toggle('named', now / NS >= 30);
+}, { passive: false });
 
 // A reads chart is a handful of shapes rather than one element per sample, so which sample the
 // pointer is over is worked out from how far along the chart it sits.

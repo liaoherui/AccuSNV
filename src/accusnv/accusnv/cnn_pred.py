@@ -370,7 +370,9 @@ def remove_lp(combined_array,inp,my_cmt,my_calls, median_cov ):
     log.debug('CNN input: dropped %d of %d positions that the CNN cannot score, keeping %d',
               raw_p - len(inp), raw_p, len(inp))
     log.debug('Positions not scored by the CNN: %s', [p for p in rawp if p not in inp])
-    return combined_array,inp,pfgap,rawp
+    # pfgap mixes two causes; report which one applies so the tables can say so.
+    reason={p:('gap' if p in gap_pos else 'no_variation') for p in pfgap}
+    return combined_array,inp,pfgap,rawp,reason
 
 
 # filter low-quality samples and low-quality positions
@@ -546,7 +548,7 @@ def data_transform(infile,incov,samples_to_exclude,min_cov_samp):
     if not min_cov_samp==100:
         combined_array,p=remove_low_quality_samples(combined_array, min_cov_samp,p)
     #### Remove bad positions
-    combined_array,p,pfgap,praw=remove_lp(combined_array,p,my_cmt,my_calls,median_cov )
+    combined_array,p,pfgap,praw,dgap_reason=remove_lp(combined_array,p,my_cmt,my_calls,median_cov )
     dgap={}
     for s in praw:
         if s not in pfgap:
@@ -555,7 +557,7 @@ def data_transform(infile,incov,samples_to_exclude,min_cov_samp):
             dgap[s]='1'
     
 
-    return combined_array,p,dgap
+    return combined_array,p,dgap,dgap_reason
 
 
 def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp):
@@ -572,14 +574,14 @@ def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp)
     cov=incov
     test_datasets=[]
 
-    odata,pos,dgap=data_transform(mut,cov,samples_to_exclude,min_cov_samp)
+    odata,pos,dgap,dgap_reason=data_transform(mut,cov,samples_to_exclude,min_cov_samp)
     log.debug('CNN input tensor shape (positions, samples, channels, window): %s', odata.shape)
     if len(pos)==0:
         # No candidate position survived filtering (e.g. a clonal cohort with no SNVs).
         # There is nothing for the CNN to score, and torch cannot take an empty batch.
         log.warning('No candidate positions are left for the CNN to score. This is expected for a '
                     'clonal set of isolates with no SNVs between them.')
-        return np.array([],dtype=int),np.array([],dtype=int),np.array([],dtype=float),dgap
+        return np.array([],dtype=int),np.array([],dtype=int),np.array([],dtype=float),dgap,dgap_reason
     nlab=np.zeros(odata.shape[0])
     test_datasets.append((odata,nlab))
 
@@ -615,4 +617,4 @@ def CNN_predict(data_file_cmt,data_file_cov,out,samples_to_exclude,min_cov_samp)
     predictions = (np.array(predictions) > 0.5).astype(int)
     y_pred = predictions
     # Return all reamining positions and CNN's predicted probabilities array
-    return pos,y_pred,prob,dgap
+    return pos,y_pred,prob,dgap,dgap_reason

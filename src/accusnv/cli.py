@@ -171,6 +171,17 @@ def create_configs(args, run_parser, conf_dir):
             log.info('Command line sets %s', flag)
             pipeline_config[flag] = True
 
+    # Both position lists travel as absolute paths, because the workflow jobs run from the output
+    # directory rather than from where the user typed the command.
+    for flag, verb in (('exclude_positions', 'Leaving out'), ('include_positions', 'Keeping')):
+        path = getattr(args, flag)
+        if path:
+            if not os.path.exists(path):
+                fail(run_parser, f'--{flag} not found: {path}')
+            pipeline_config[flag] = os.path.abspath(path)
+            log.info('%s the SNV positions listed in %s (each group logs how many it applied)',
+                     verb, path)
+
     # One core setting for the whole run: it is what cutadapt and the aligner are given, what
     # SLURM is asked for as cpus-per-task for those two rules, and the budget of a local run.
     cores = args.cores or pipeline_config.get('cores') or 4
@@ -479,6 +490,14 @@ def build_parser():
     inputs.add_argument('-r', '--ref_dir', metavar='DIR', help='Reference genomes dir (required)')
     inputs.add_argument('-o', '--output_dir', metavar='DIR', default='accusnv_output',
                       help='Output dir (default: accusnv_output)')
+    inputs.add_argument('--exclude_positions', metavar='FILE', default=None,
+                      help='File of genome_pos values, one per line, to leave out of the SNV set \
+                      (also written to pipeline.yaml). Combine with --downstream_only to change \
+                      the list without re-calling SNVs')
+    inputs.add_argument('--include_positions', metavar='FILE', default=None,
+                      help='File of genome_pos values, one per line, to keep in the SNV set \
+                      whatever the model and filters decided. Excluding wins if a position is in \
+                      both files')
 
     configs = parser.add_argument_group('Config')
     configs.add_argument('-c', '--config_file', metavar='FILE', default=None,

@@ -1,8 +1,8 @@
 """Stage 5b: the interactive SNV dashboard (``snv_dashboard.html``).
 
 Reads the group's ``snv_table_unfiltered.tsv`` and ``_snv_state.npz`` from stage 2, plus the
-parsimony tree from stage 4, and writes one self-contained HTML page holding every SNV
-AccuSNV considered, why each was kept or dropped, its per-sample read counts, and the tree.
+parsimony tree from stage 4, and writes one self-contained HTML page holding every candidate position
+AccuSNV considered, kept or not, why each was kept or dropped, its per-sample read counts, and the tree.
 ``templates/dashboard.html`` is the page; this module only assembles the data it embeds.
 
 It also writes one detailed bar chart per SNV into ``per_snv_barcharts/`` (which the page links
@@ -86,22 +86,27 @@ def pack(array, dtype):
 
 def removal_reasons(row, ambig_cutoff):
     '''
-    Why this SNV is not in the final table, in plain words, following the same order of
-    decisions the calling stage made (accusnv.dec_final_lab). Empty when the SNV was kept.
+    Why this SNV is not in the final table, in plain words. Empty when the SNV was kept.
+
+    The checks run in order and only the first one to remove a position reports 1, so at most
+    one check is named here; the model's own verdict and the ambiguity cutoff are added on top.
     '''
     if row['Pred_label'] != 0:
         return []
-    if row['Qual_filter'] == 1:
-        return ['The variant caller was not confident there is a real difference here '
-                '(quality below the cutoff, default: 30).']
-    if row['WideVariant_pred'] == 0:
-        return ['Neither the AccuSNV model nor the WideVariant checks called a variant here.']
-    # WideVariant called it and the model did not; these are the two conditions that then
-    # decide against giving the SNV the benefit of the doubt.
-    why = ['The AccuSNV model judged the read evidence to be a sequencing or mapping artifact '
-           'rather than a real variant.']
-    if row['Gap_filter'] == 1:
-        why.append('Reads around this position do not align cleanly.')
+    why = [help for column, _, help in CHECKS if row[column] == 1]
+    # Gap_filter covers two conditions; say which one applied rather than the gap wording.
+    if row['Gap_filter'] == 1 and row['Gap_reason'] == 'no_variation':
+        why = ['Fewer than two different bases were called across the samples here, so there '
+               'was no difference to compare.' if 'align cleanly' in w or 'genome-wide median' in w
+               else w for w in why]
+    if not why and row['WideVariant_pred'] == 0 and str(row['CNN_pred_raw']) != '0':
+        why.append('The WideVariant checks found no difference to report here.')
+    if str(row['CNN_pred_raw']) == '0':
+        why.append('The AccuSNV model judged the read evidence to be a sequencing or mapping '
+                   'artifact rather than a real variant.')
+    elif str(row['CNN_pred_raw']) == 'skip':
+        why.append('The AccuSNV model could not score this position, so it was left out of the '
+                   'model half of the decision.')
     if row['Fraction_ambiguous_samples'] > ambig_cutoff:
         why.append('%.0f%% of samples do not have reads that agree on a single base here.'
                    % (100 * row['Fraction_ambiguous_samples']))
@@ -258,12 +263,12 @@ def make_calls_qc_heatmaps( my_cmt, my_calls, save_plots_bool, dir_save_fig, sho
         plt.savefig( dir_save_fig + "/snv_qc_heatmap_quals.png", dpi=400)
 
 
-def build_data(source, tree_path, group, ref_genome, out_dir):
+def build_data(source, tree_path, group, ref_genome, out_dir, exclude_positions='',
+               include_positions=''):
     '''Assemble everything the page embeds from the group's stage 2 and stage 4 outputs.'''
     table = pd.read_csv(source + '/snv_table_unfiltered.tsv', sep='\t', dtype=str).fillna('.')
     state = np.load(source + '/_snv_state.npz', allow_pickle=True)
     samples = [str(s) for s in state['cmt_sample_names']]
-    keep = state['goodpos_bool_all']
 
     for column in ['Pred_label', 'CNN_pred', 'WideVariant_pred', 'Whether_recomb'] + \
                   [column for column, _, _ in CHECKS]:
@@ -273,11 +278,11 @@ def build_data(source, tree_path, group, ref_genome, out_dir):
 
     # Read counts, per-call quality and the calls that survived filtering, in table row order.
     # Counts are [A T C G on forward reads, then the same four on reverse reads].
-    column_of = {p: i for i, p in enumerate(state['cmt_p'][keep])}
+    column_of = {p: i for i, p in enumerate(state['cmt_p'])}
     order = [column_of[p] for p in table['genome_pos'].astype(int)]
-    counts = state['cmt_counts'][:, keep, :][:, order, :].transpose(1, 0, 2)
-    quals = state['cmt_quals'][:, keep][:, order].T
-    confident = np.array(list('NATCG'))[state['calls_filtered'][:, keep][:, order].T]
+    counts = state['cmt_counts'][:, order, :].transpose(1, 0, 2)
+    quals = state['cmt_quals'][:, order].T
+    confident = np.array(list('NATCG'))[state['calls_filtered'][:, order].T]
 
     # Above 20 samples the calling stage demands cleaner agreement before it keeps a SNV the
     # model rejected; the dashboard explains removals with the same cutoff.
@@ -300,6 +305,8 @@ def build_data(source, tree_path, group, ref_genome, out_dir):
             'checks': [int(row[column]) for column, _, _ in CHECKS],
             'recomb': int(row['Whether_recomb']), 'ambig': round(float(row['Fraction_ambiguous_samples']), 4),
             'why': removal_reasons(row, ambig_cutoff),
+            'removedBy': row['Removed_by'], 'cnnRaw': str(row['CNN_pred_raw']),
+            'probRaw': str(row['CNN_prob_raw']), 'gapReason': row['Gap_reason'],
             'effect': row['mutation_type'], 'change': row['aa_mutation'].replace(',', ', '),
             'anc': row['ancestral_allele'], 'alleles': alleles,
             'gene': gene, 'ntPos': whole(row['gene_nt_position']), 'aaPos': whole(row['aa_pos']),
@@ -318,7 +325,9 @@ def build_data(source, tree_path, group, ref_genome, out_dir):
         write_barcharts(table, counts, samples, out_dir)
     if 0 < len(table) < 300:
         try:
-            st = snv.rebuild_state(source + '/_snv_state.npz', ref_genome)
+            st = snv.rebuild_state(source + '/_snv_state.npz', ref_genome,
+                                   snv.read_positions_file(exclude_positions),
+                                   snv.read_positions_file(include_positions))
             figdir = out_dir + '/diagnostic_figures'
             os.makedirs(figdir, exist_ok=True)
             make_calls_qc_heatmaps(st.my_cmt_goodpos_all, st.my_calls_goodpos_all, True, figdir, False)
@@ -357,6 +366,10 @@ def parse_args():
                    help="Where to write snv_dashboard.html")
     p.add_argument('-g', '--group', default='', help="Group name shown in the page header")
     p.add_argument('-t', '--tree', default='', help="Newick tree to show in the page (optional)")
+    p.add_argument('--exclude_positions', default='',
+                   help="File of genome_pos values, one per line, to leave out of the SNV set.")
+    p.add_argument('--include_positions', default='',
+                   help="File of genome_pos values, one per line, to keep whatever the filters said.")
     accusnv_log.add_args(p)
     p.add_argument('-r', '--rer', dest='ref_genome', default='',
                    help="Reference genome FASTA (or its directory); only its name is shown (optional)")
@@ -379,7 +392,8 @@ def main():
                          'genes': {}, 'snvs': [], 'counts': '', 'quals': ''}, out_path)
         return
 
-    data = build_data(args.input_dir, args.tree, group, args.ref_genome, args.output_dir)
+    data = build_data(args.input_dir, args.tree, group, args.ref_genome, args.output_dir,
+                      args.exclude_positions, args.include_positions)
     write_dashboard(data, out_path)
     log.info('Group %s: dashboard written with %s SNVs across %d samples%s -- %s', group,
              f"{len(data['snvs']):,}", len(data['samples']),

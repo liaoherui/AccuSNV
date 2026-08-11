@@ -3,7 +3,9 @@
 This is the only stage that runs the CNN (via ``cnn_pred.CNN_predict``). It writes
 ``_snv_state.npz`` (the hand-off the later stages read), the raw CNN scores
 ``snv_table_cnn_raw.tsv``, and ``snv_table_filtered_tmp.tsv``, which stage 2 folds into
-``snv_table_unfiltered.tsv`` and then deletes. For very large inputs (more candidate positions
+``snv_table_unfiltered.tsv`` and then deletes. That table carries a row for every candidate
+position, including the ones neither the CNN nor the filters called, so every removal has a
+recorded reason (``Removed_by``). For very large inputs (more candidate positions
 than ``--fast_mode_positions``) it takes a fast path that writes
 ``candidate_mutation_table_final.npz`` directly and signals the rest to skip.
 
@@ -127,7 +129,7 @@ def main():
 
     # ---- Run the CNN ----
     log.info('Group %s: scoring every candidate position with the AccuSNV CNN', group)
-    cnn_pos, cnn_pred, cnn_prob, dgap = cnn.CNN_predict(
+    cnn_pos, cnn_pred, cnn_prob, dgap, dgap_reason = cnn.CNN_predict(
         data_file_cmt, data_file_cov, odir, samples_to_exclude, min_cov_samp)
     log.info('Group %s: CNN scored %s positions and called %s of them real SNVs',
              group, f'{len(cnn_pos):,}', f'{int(np.sum(cnn_pred == 1)):,}')
@@ -200,10 +202,7 @@ def main():
         log.warning('Group %s: no candidate SNV positions survived upstream filtering, so there is '
                     'nothing to call. Writing empty tables and skipping the rest of the analysis.', group)
         with open(odir + '/snv_table_filtered_tmp.tsv', 'w') as f:
-            f.write('genome_pos\tPred_label\tCNN_pred\tWideVariant_pred\tCNN_prob\tQual_filter\t'
-                    'Cov_filter\tMAF_filter\tIndel_filter\tMFAS_filter\t'
-                    'MMCP_filter\tCPN_filter\tFix_filter\tWhether_recomb\t'
-                    'Fraction_ambiguous_samples\tGap_filter\n')
+            f.write(snv.TABLE_COLUMNS)
         empty = np.array([], dtype=int)
         np.savez_compressed(
             odir + '/candidate_mutation_table_final.npz',
@@ -374,7 +373,8 @@ def main():
     log.debug('Group %s: a filter-only SNV is kept if at most %s of samples have mixed read support '
               '(%d samples in this group)', group, ambiguity_cutoff, len(my_cmt_zero.sample_names))
     goodpos_bool, goodpos_bool_all = snv.generate_cnn_filter_table(
-        all_p, goodpos_idx_wd, dpt, dlab, dprob, dir_output, my_cmt.p, dgap, my_cmt_zero, ambiguity_cutoff)
+        all_p, goodpos_idx_wd, dpt, dlab, dprob, dir_output, my_cmt.p, dgap, my_cmt_zero, ambiguity_cutoff,
+        dgap_reason)
     goodpos_idx = np.where(goodpos_bool)[0]
     goodpos_idx_all = np.where(goodpos_bool_all)[0]
     num_goodpos = len(goodpos_idx)
@@ -406,6 +406,10 @@ def main():
         for line in f:
             ele = line.strip().split('\t')
             if len(ele) < 14:
+                continue
+            # The table also carries the candidates that neither the model nor the filters
+            # called, so a reader can see why they went. They are not part of the SNV set.
+            if ele[1] == '0' and ele[2] in ('0', 'skip') and ele[3] == '0':
                 continue
             dk[int(ele[0])] = 0 if ele[4] == 'skip' else float(ele[4])
             if int(ele[1]) == 0:

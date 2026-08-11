@@ -12,8 +12,10 @@ TIERS = {
     'mpileup2vcf':              [(1000, 30), (4000, 60), (64000, 240)],
     'vcf2quals':                [(2000, 30), (4000, 60), (64000, 240)],
     'variants2positions':       [(1000, 30), (4000, 60), (64000, 240)],
+    'upstream_rejects':         [(1000, 30), (4000, 60), (64000, 240)],
     'pileup2diversity':         [(8000, 30), (32000, 60), (128000, 240)],
     'combine_positions':        [(1000, 30), (4000, 60), (32000, 240)],
+    'combine_upstream_rejects': [(1000, 30), (4000, 60), (32000, 240)],
     'candidate_mutation_table': [(32000, 30), (64000, 60), (128000, 240)], ## can use a LOT of RAM
     'calling_accusnv':          [(16000, 30), (64000, 60), (128000, 240)], ## can use a decent amount of RAM
     'annotate_snvs':            [(4000, 30), (16000, 60), (64000, 240)],

@@ -63,8 +63,27 @@ Each filter column is a token: `1` means this filter is the one that removed the
 - `Whether_recomb`: recombination flag (1 yes, 0 no).
 - `Fraction_ambiguous_samples`: fraction of ambiguous calls at this site across samples.
 - `Gap_filter`: gap/region filter token.
+- `CNN_pred_raw`: the CNN's own class output, before the final decision rewrote `CNN_pred`.
+  Use this column, not `CNN_pred`, when you want to know what the model actually said.
+  `skip` means the CNN did not score this position.
+- `CNN_prob_raw`: the CNN's own confidence score, matching `CNN_pred_raw`.
+- `Gap_reason`: which of the two conditions behind `Gap_filter` applied -- `gap` (reads around
+  this position do not align cleanly) or `no_variation` (fewer than two distinct base calls
+  across samples, so there was nothing to compare).
+- `Removed_by`: the single stage that removed this position, or `kept`. This is the column to
+  read first. The filters run in order and only the first one to fire reports `1`, so this
+  names that filter. Values: `kept`, any of the nine filter names, `not_scored_by_CNN`,
+  `CNN_rescue_declined` (the filters called it, the model did not, and it did not meet the bar
+  for the benefit of the doubt), or `CNN`.
 
 The cutoffs above are the defaults and are set in `pipeline.yaml`.
+
+### `CNN_pred` vs `CNN_pred_raw`
+
+`CNN_pred` and `CNN_prob` are rewritten by the final decision step in two cases: when the
+quality filter removes a position (both are set to 0) and when the rule-based filters overrule
+a model rejection (`CNN_pred` is set to 1 and `CNN_prob` becomes `1 - probability`). The
+`_raw` columns always hold what the model actually output.
 
 Practical note: these columns explain why a site was kept or rejected. These filters are included in the output to facilitate checking and validation of the identified SNVs.
 

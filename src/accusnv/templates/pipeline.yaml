@@ -21,6 +21,13 @@ adapter_sequence: "CTGTCTCTTAT"  # 3' adapter trimmed by cutadapt (nextera in th
 min_cov_samp: "45"               # drop samples with more than this % zero-coverage positions
 min_cov_filt: "5"                # per-position minimum forward/reverse reads
 exclude_samp: "null"             # comma-separated sample names, an SNV-count cutoff, or null
+exclude_positions: ""            # path to a file of genome_pos values, one per line, to leave out
+                                 # of the SNV set (accusnv --exclude_positions writes it here).
+                                 # Applied after SNV calling, so --downstream_only picks up an
+                                 # edited list without re-calling
+include_positions: ""            # the same, for positions to keep whatever the model and the
+                                 # filters decided (accusnv --include_positions). A position named
+                                 # in both files is excluded
 
 # --- Read trimming / QC (sickle) ---
 sickle_quality: 20               # Phred quality threshold for sickle trimming

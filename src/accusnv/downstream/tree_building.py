@@ -313,6 +313,10 @@ def parse_args():
                    help="Skip building the parsimony tree (dnapars). dMRCA tables still run.")
     p.add_argument('--use_nj_tree', action='store_true',
                    help="Build a neighbor-joining tree (Biopython) instead of a parsimony tree (dnapars).")
+    p.add_argument('--exclude_positions', default='',
+                   help="File of genome_pos values, one per line, to leave out of the SNV set.")
+    p.add_argument('--include_positions', default='',
+                   help="File of genome_pos values, one per line, to keep whatever the filters said.")
     accusnv_log.add_args(p)
     p.add_argument('--build_snv_trees', action='store_true',
                    help="Write one annotated NEXUS tree per SNV, tips coloured by basecall (for FigTree).")
@@ -338,7 +342,9 @@ def main():
                     dataset)
         return
 
-    st = snv.rebuild_state(source + '/_snv_state.npz', args.ref_genome)
+    st = snv.rebuild_state(source + '/_snv_state.npz', args.ref_genome,
+                           snv.read_positions_file(args.exclude_positions),
+                           snv.read_positions_file(args.include_positions))
     # Recombinant SNVs are flagged in the tables but excluded from all phylogenetics by default
     keep = np.logical_not(st.recomb_goodpos_all)
 
@@ -363,6 +369,12 @@ def main():
     recomb_positions = set(int(x) for x in st.p_goodpos_all[st.recomb_goodpos_all])
     unfiltered = source + '/snv_table_unfiltered.tsv'
     if run_snv_trees and os.path.exists(unfiltered):
+        # The table also lists candidates neither the model nor the filters called, so that
+        # their removal has a recorded reason. Those are not SNVs and get no tree.
+        table = pd.read_csv(unfiltered, sep='\t', dtype=str)
+        uncalled = table[(table['Pred_label'] == '0') & (table['CNN_pred'].isin(['0', 'skip']))
+                         & (table['WideVariant_pred'] == '0')]
+        recomb_positions |= set(uncalled['genome_pos'].astype(int))
         try:
             mutationtypes(tree_file, unfiltered, d, skip_positions=recomb_positions)
         except Exception as e:
