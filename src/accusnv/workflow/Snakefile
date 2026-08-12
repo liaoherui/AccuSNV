@@ -136,6 +136,7 @@ onerror:
 
 # One SNV table for each Group, plus whichever downstream analyses are switched on.
 targets = expand(outdir + "/group_{cladeID}_snv_table_final.tsv", cladeID=sample_groups)
+targets += expand(outdir + "/group_{cladeID}_snv_table_invariant_positions.tsv", cladeID=sample_groups)
 if not config.get("downstream_only", False):
     # Reads the mapping-stage VCFs, which --downstream_only is meant not to touch.
     targets += expand(outdir + "/group_{cladeID}_snv_table_rejected_upstream.tsv", cladeID=sample_groups)
@@ -618,6 +619,8 @@ rule calling_accusnv:
     output:
         state    = outdir + "/2-SNV-filtering/group_{cladeID}/_snv_state.npz",
         npz      = outdir + "/2-SNV-filtering/group_{cladeID}/candidate_mutation_table_final.npz",
+        invariant = outdir + "/2-SNV-filtering/group_{cladeID}/snv_table_invariant_positions.tsv",
+        deliverable_invariant = outdir + "/group_{cladeID}_snv_table_invariant_positions.tsv",
     resources:
         mem_mb  = lambda wc, attempt: res.mem('calling_accusnv', attempt),
         runtime = lambda wc, attempt: res.runtime('calling_accusnv', attempt),
@@ -639,7 +642,8 @@ rule calling_accusnv:
             "--rebuild_cutoff_few {rebuild_cutoff_few} "
             "--recomb_distance {recomb_distance_bp} "
             "--recomb_corr {recomb_corr_threshold} "
-            "--group group_{wildcards.cladeID} " + LOG_ARGS + " ;"
+            "--group group_{wildcards.cladeID} " + LOG_ARGS + " && "
+            "cp {output.invariant} {output.deliverable_invariant} ;"
 
 rule annotate_snvs:
     # Annotate mutations by type of mutation (N vs S and AA changes).

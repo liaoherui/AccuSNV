@@ -31,39 +31,38 @@ log = logging.getLogger('accusnv')
 TEMPLATES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'templates')
 
 # The per-position checks, in the order they run, as (table column, short name, explanation).
+# The short names are worded as the problem the check finds, not the property it requires, because
+# clicking one in the dashboard filters to the positions that failed it.
 # Each cell is 1 (this check is what removed the variant), 0 (passed it) or -1 (an earlier
 # check had already removed it, so this one never got to look).
 # Several of these cutoffs are settable in pipeline.yaml, and the run that produced a given
 # dashboard may not have used the shipped value, so every number below is labelled "default:".
 # The column names in the first field are the literal table headers and must not be reworded.
 CHECKS = [
-    ('Qual_filter', 'Variant quality (bcftools)',
+    ('Qual_filter', 'Low variant quality',
      'Requires a bcftools FQ quality score above a cutoff (default: higher than 30). bcftools FQ '
      'scores are on a negative scale, so we take the negative of the score, meaning higher '
      'implies better quality.'),
-    ('Cov_filter', 'Reads on both strands',
+    ('Cov_filter', 'Too few reads on both strands',
      'Requires a minimum number of forward reads and reverse reads covering this position '
      '(default: at least 5 forward reads and 5 reverse reads).'),
-    ('MAF_filter', 'Reads agree on one base',
+    ('MAF_filter', 'Mixed basecalls at site',
      'Requires most of the reads in a sample to be assigned to one base, rejecting highly mixed '
      'positions (default: at least 85%).'),
-    ('Indel_filter', 'Insertions and deletions',
+    ('Indel_filter', 'Only on reads with insertions/deletions',
      'Requires few of the reads covering this position to have contained an insertion or deletion '
      'anywhere in the read, which could make the surrounding alignment unreliable '
      '(default: fewer than 33%).'),
-    ('MFAS_filter', 'Samples with a base call',
+    ('MFAS_filter', 'Too few samples with coverage at site',
      'Requires at least a set percentage of samples to have a confident base call at this '
      'position, so there are enough samples to compare (default: no minimum).'),
-    ('MMCP_filter', 'Depth across samples',
+    ('MMCP_filter', 'Low median depth across samples',
      'Requires a minimum median read depth across all samples (default: at least 5x).'),
-    ('CPN_filter', 'Repeated region',
+    ('CPN_filter', 'Unusually high or low coverage across samples',
      'Requires the read depth to stay close to the whole-genome read depth, to avoid SNVs arising '
      'from mismapped repeat regions (default: less than 4x on average, and less than 7x for any '
      'one sample).'),
-    ('Fix_filter', 'Differs from the ancestor',
-     'Requires at least one sample to carry a confident base that differs from the inferred '
-     'ancestor, so there is an actual difference to report.'),
-    ('Gap_filter', 'Clean read alignment',
+    ('Gap_filter', 'Unusual coverage compared to other samples',
      'Requires the samples carrying the variant not to drop far below their genome-wide median '
      'depth while the reference samples stay high, the signature of a gap or mismapping in the '
      'alignment (default: below 5% while reference samples stay above 20%).'),
@@ -94,6 +93,11 @@ def removal_reasons(row, ambig_cutoff):
     if row['Pred_label'] != 0:
         return []
     why = [help for column, _, help in CHECKS if row[column] == 1]
+    # Fix_filter is not in CHECKS: positions no ingroup sample varies at are dropped before the
+    # table is written, so it should never fire. Explain it rather than show a bare row if it does.
+    if row['Fix_filter'] == 1:
+        why.append('No sample carried a confident base differing from the inferred ancestor at '
+                   'sufficient mutation quality, so there was no difference to report.')
     # Gap_filter covers two conditions; say which one applied rather than the gap wording.
     if row['Gap_filter'] == 1 and row['Gap_reason'] == 'no_variation':
         why = ['Fewer than two different bases were called across the samples here, so there '
@@ -270,7 +274,8 @@ def build_data(source, tree_path, group, ref_genome, out_dir, exclude_positions=
     state = np.load(source + '/_snv_state.npz', allow_pickle=True)
     samples = [str(s) for s in state['cmt_sample_names']]
 
-    for column in ['Pred_label', 'CNN_pred', 'WideVariant_pred', 'Whether_recomb'] + \
+    # Fix_filter is not in CHECKS (the page does not show it) but removal_reasons still reads it.
+    for column in ['Pred_label', 'CNN_pred', 'WideVariant_pred', 'Whether_recomb', 'Fix_filter'] + \
                   [column for column, _, _ in CHECKS]:
         table[column] = pd.to_numeric(table[column], errors='coerce').fillna(0).astype(int)
     for column in ['CNN_prob', 'Fraction_ambiguous_samples', 'quality']:

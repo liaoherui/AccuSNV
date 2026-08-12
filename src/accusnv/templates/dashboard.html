@@ -66,7 +66,6 @@ small { font-size: 13px; }
 .search { border: 1px solid var(--line); border-radius: 4px; padding: 8px 13px; font: inherit;
           font-size: 15px; width: 250px; background: #fff; color: var(--ink); }
 .count-note { color: var(--ink-2); font-size: 15px; }
-.count-note b { font-weight: 400; color: var(--ink); }
 
 /* ---------- flow chart ---------- */
 .flow { display: flex; align-items: stretch; gap: 8px; flex-wrap: wrap; }
@@ -75,7 +74,7 @@ small { font-size: 13px; }
 .flow-card.half { flex: 1; min-width: 0; }
 .flow-title { font-size: 15.5px; color: var(--ink-2); margin-bottom: 6px; white-space: nowrap; }
 .flow-big { font-size: 31px; line-height: 1.15; }
-.flow-sub { color: var(--ink-2); font-size: 15.5px; width: 118px; }
+.flow-sub { color: var(--ink-2); font-size: 15.5px; width: 132px; }
 .flow-arrow { align-self: center; color: #b0b0b0; font-size: 19px; }
 
 .pick { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0;
@@ -88,8 +87,10 @@ small { font-size: 13px; }
 .pick .bar { width: 44px; height: 5px; background: var(--line-2); border-radius: 3px; flex: none; }
 .pick .bar i { display: block; height: 100%; background: #a3a3a3; border-radius: 3px; }
 .pick.zero { opacity: .45; }
-.check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); column-gap: 16px; }
+.check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); column-gap: 16px; }
 .check-grid .bar { display: none; }
+/* The check names are sentences, so let them wrap here rather than be cut off. */
+.check-grid .lbl { white-space: normal; line-height: 1.2; }
 
 /* ---------- histograms ---------- */
 .hists { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 14px; }
@@ -277,13 +278,13 @@ main { flex: 1; display: flex; min-height: 0; }
 
 <section class="controls" id="controls">
   <div class="band viewpick">
+    <span class="count-note">Show:</span>
     <div class="segmented" id="views">
       <button data-view="kept" aria-pressed="true">Final SNVs</button>
       <button data-view="all" aria-pressed="false">All candidates</button>
       <button data-view="removed" aria-pressed="false">Removed only</button>
     </div>
     <input class="search" id="search" placeholder="Search gene, product or position" autocomplete="off">
-    <div class="count-note" id="count-note"></div>
     <div class="spacer"></div>
     <button class="button" id="reset" hidden>Clear all filters</button>
   </div>
@@ -291,9 +292,9 @@ main { flex: 1; display: flex; min-height: 0; }
   <div class="band" id="filter-band">
     <div class="flow" id="flow">
         <div class="flow-card">
-          <div class="flow-title">Starting point</div>
-          <div class="flow-big" id="flow-all">0</div>
-          <div class="flow-sub" data-tip="Every position in the reference genome where either the AccuSNV neural network or the WideVariant checks saw a possible difference between your samples.">candidate positions</div>
+          <div class="flow-title">Showing</div>
+          <div class="flow-big" id="flow-shown">0</div>
+          <div class="flow-sub" data-tip="Every position in the reference genome where either the AccuSNV neural network or the WideVariant checks saw a possible difference between your samples.">of <span id="flow-all">0</span> candidate positions</div>
         </div>
         <div class="flow-arrow">&rarr;</div>
         <div class="flow-card grow">
@@ -526,6 +527,7 @@ function buildFlow() {
 }
 
 function drawFlow() {
+  $('flow-shown').textContent = view.length.toLocaleString();
   for (const b of $('flow').querySelectorAll('.pick'))
     b.setAttribute('aria-pressed', b.dataset.check ? filters.check === +b.dataset.check
                                  : b.dataset.caller ? filters.caller === b.dataset.caller
@@ -782,7 +784,7 @@ function rowHTML(i) {
     <div class="num">${d.prob.toFixed(2)}<div class="meter"><i style="width:${100 * d.prob}%"></i></div></div>
     <div class="result">${d.kept ? '<span class="tag kept">Kept</span>'
                   : `<span class="tag gone-t" data-tip="${esc(d.why[0] || '')}">Removed</span>`}
-         ${d.recomb ? '<span class="tag flagged" data-tip="This variant may come from recombination, so it is left out of the tree.">Recombinant</span>' : ''}</div>
+         ${d.recomb ? '<span class="tag flagged" data-tip="This variant may come from recombination, so it is left out of the tree.">Potential recombinant</span>' : ''}</div>
   </div>`;
 }
 
@@ -905,21 +907,20 @@ function renderDetail() {
       d.wd ? 'called a variant' : 'did not call a variant') + '</div></div>';
 
   const codonOf = b => (d.codons.length === 4 ? d.codons[BASES.indexOf(b)] : '') || '';
-  info += `<div class="sect"><h3>Position and gene</h3><dl class="facts">
-    <dt data-tip="The bcftools FQ quality score for this SNV position, negated so higher is better. It is taken from the best-supported pair of samples whose base calls differ.">Position quality</dt><dd>${d.quality}</dd>
-    <dt data-tip="Share of samples whose reads do not agree on a single base here.">Samples without clean agreement</dt><dd>${(100 * d.ambig).toFixed(0)}%</dd>
-    <dt>Median read depth</dt><dd>${d.depth} reads</dd>
+  info += `<div class="sect"><h3>Gene and effect</h3><dl class="facts">
+    <dt>Samples carrying the variant</dt>
+    <dd>${d.nVariant} of ${NS} (${(100 * d.nVariant / NS).toFixed(0)}%)</dd>
+    <dt>Gene</dt><dd>${gene ? esc(d.gene) : 'this variant is not inside a gene'}</dd>
     <dt>Effect</dt>
     <dd><span class="tag eff-${d.effect}">${esc((EFFECT[d.effect] || ['?'])[0])}</span></dd>` +
-    (gene ? `<dt>Gene</dt><dd>${esc(d.gene)}</dd>
-      <dt>Makes</dt><dd>${esc(gene.product)}</dd>
+    (gene ? `<dt>Gene annotation</dt><dd>${esc(gene.product)}</dd>
       <dt>Protein record</dt><dd>${esc(gene.proteinId)}</dd>
-      <dt data-tip="Which DNA strand the gene is read from.">Strand</dt><dd>${gene.strand}</dd>
+      <dt data-tip="Which DNA strand the gene is read from.">Gene strand</dt><dd>${gene.strand}</dd>
       <dt>Base within the gene</dt><dd>${esc(d.ntPos)} of ${gene.dna && gene.dna !== '.' ? gene.dna.length : '?'}</dd>
       <dt>Amino acid</dt><dd>${d.aaPos !== '.' ? esc(d.aaPos) : '–'}</dd>
-      <dt data-tip="The codon the ancestor carries and the codon a sample with the variant carries.">Codon</dt>
+      <dt data-tip="The codon the ancestor carries and the codon a sample with the variant carries.">Codon change</dt>
       <dd>${codonOf(d.anc) ? codonOf(d.anc) + ' &rarr; ' + ((d.alleles || '').slice(1).split('').map(codonOf).filter(Boolean).join(', ') || '–') : '–'}</dd>`
-    : '<dt>Gene</dt><dd>this variant is not inside a gene</dd>') + '</dl></div>';
+    : '') + '</dl></div>';
 
   if (seq && seq.dna) {
     info += `<div class="sect"><h3>Gene sequence with the variant</h3>${seqBox(seq.dna, seq.at)}
@@ -1131,7 +1132,6 @@ function dragging(down, move) {
 }
 
 function render() {
-  $('count-note').innerHTML = `Showing <b>${view.length.toLocaleString()}</b> of ${S.length.toLocaleString()} candidate positions`;
   $('export').textContent = `Export ${view.length.toLocaleString()} SNVs`;
   $('empty').hidden = view.length > 0;
   $('reset').hidden = !anyFilter();

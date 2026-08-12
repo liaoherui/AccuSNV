@@ -1568,7 +1568,7 @@ def removed_by(fl,dpt,p,gf,cnn_l,filt_l):
     return 'CNN'
 
 
-def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dgap,my_cmt,cutoff,dgap_reason=None):
+def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dgap,my_cmt,cutoff,dgap_reason=None,report_p=None):
     o=open(dir_output+'/snv_table_filtered_tmp.tsv','w+')
     o.write(TABLE_COLUMNS)
     return_bool=[]
@@ -1620,8 +1620,12 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
         written.add(p)
     # Candidates neither the model nor the filters called. They were never considered above,
     # so report them here with the filter verdicts that were already computed for them.
+    # report_p limits this to the positions worth reporting: a position where every ingroup
+    # sample makes the same call could never have been a SNV, and listing all of them buries
+    # the real candidates (they outnumber them ~50:1 against a reference outside the clade).
+    reportable = set(cmt_p if report_p is None else report_p)
     for p in cmt_p:
-        if p in written:
+        if p in written or p not in reportable:
             continue
         cnn_l=str(dlab[p]) if p in dlab else 'skip'
         cnn_p=str(dprob[p]) if p in dprob else 'skip'
@@ -1651,6 +1655,41 @@ def search_ref_name(refg):
     ``refg`` may be the FASTA file itself (any name) or a directory containing it.
     """
     return re.split(r'\.', os.path.basename(resolve_fasta_path(refg)))[0]
+
+
+def ingroup_variable(my_calls):
+    """Positions where the ingroup samples do not all agree on the same base.
+
+    A position where every ingroup sample makes the same call cannot be a SNV no matter how
+    well supported those calls are: the samples differ from the reference genome, not from each
+    other. Mapping a clade to a reference outside it produces tens of thousands of these.
+    """
+    ingroup = my_calls.calls[np.logical_not(my_calls.in_outgroup), :]
+    return np.array([len(np.unique(column[column != 0])) > 1 for column in ingroup.T], dtype=bool)
+
+
+def write_invariant_positions(invariant_p, my_calls, my_rg, dir_output):
+    """Records the positions dropped for showing no variation between the ingroup samples.
+
+    These are real differences from the reference genome, so they are worth being able to look
+    at; they just are not SNVs. One small file keeps them visible without putting them in the
+    SNV tables.
+    """
+    with open(dir_output + '/snv_table_invariant_positions.tsv', 'w') as f:
+        f.write('genome_pos\tcontig\tcontig_pos\tingroup_allele\treference_allele\tsamples_called\n')
+        if not len(invariant_p):
+            return
+        invariant_p = np.asarray(invariant_p)
+        ingroup = my_calls.calls[np.logical_not(my_calls.in_outgroup), :][:, np.isin(my_calls.p, invariant_p)]
+        # Every ingroup sample agrees by definition, so the highest call is the one they share
+        # (0 is "no call", so this is N only where no sample has one at all).
+        allele = ints2nts(ingroup.max(axis=0))
+        n_called = (ingroup != 0).sum(axis=0)
+        ref_nts = my_rg.get_ref_NTs(invariant_p)
+        contigpos = my_rg.p2contigpos(invariant_p)
+        for i, p in enumerate(invariant_p):
+            f.write(f'{p}\t{my_rg.contig_names[contigpos[i, 0] - 1]}\t{contigpos[i, 1]}\t'
+                    f'{allele[i]}\t{ref_nts[i]}\t{n_called[i]}\n')
 
 
 def remove_same(my_calls_in):

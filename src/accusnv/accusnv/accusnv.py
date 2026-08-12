@@ -103,6 +103,9 @@ def main():
     if snv.is_digit(exclude_samp):
         exclude_samp = int(exclude_samp)
     os.makedirs(odir, exist_ok=True)
+    # The rule declares this as an output, so it has to exist even on the paths that return
+    # early (no candidate positions, or fast mode). Rewritten with content once calling gets there.
+    snv.write_invariant_positions([], None, None, odir)
 
     dcs = snv.check_snv(input_mat, odir)
     log.info('Group %s: SNV calling starting for %d samples', group, len(dcs))
@@ -251,6 +254,19 @@ def main():
     # Keep unfiltered calls for ancestor inference and raw nucleotide output.
     my_calls_raw_for_ancestor = my_calls.copy()
 
+    # Which positions the ingroup samples disagree at, judged on the unfiltered calls. It has to
+    # be read before any filter runs: every filter works by removing the evidence for one allele,
+    # so a position that a filter fired on is monomorphic afterwards and would be mistaken for one
+    # of these. Positions the ingroup agrees on are differences from the reference genome, not
+    # SNVs, and no filter downstream can make anything of them, so they are left out of the SNV
+    # tables entirely rather than listed as rejected candidates (which they usually outnumber).
+    variable_bool = snv.ingroup_variable(my_calls)
+    log.info('Group %s: %s of %s candidate positions show no variation between the ingroup samples '
+             '(they differ from the reference genome, but not from each other) and are left out of '
+             'the SNV tables; they are listed in snv_table_invariant_positions.tsv', group,
+             f'{int(np.sum(~variable_bool)):,}', f'{len(my_calls.p):,}')
+    snv.write_invariant_positions(my_calls.p[~variable_bool], my_calls, my_rg, dir_output)
+
     # Quality
     my_calls_raw = copy.deepcopy(my_calls)
     my_calls.filter_calls_by_element(my_cmt.quals < filter_parameter_site_per_sample['min_qual_for_call'])
@@ -282,6 +298,7 @@ def main():
     tokens = snv.token_generate(my_calls_raw.calls.T, my_calls.calls.T,
                                 f'Indel_filter (over {args.max_indel_frac:.0%} of reads supporting an indel)')
     dpt['indel'] = dict(zip(my_calls.p, tokens))
+
 
     # Positions that look iffy across samples
     my_calls_raw = copy.deepcopy(my_calls)
@@ -374,7 +391,7 @@ def main():
               '(%d samples in this group)', group, ambiguity_cutoff, len(my_cmt_zero.sample_names))
     goodpos_bool, goodpos_bool_all = snv.generate_cnn_filter_table(
         all_p, goodpos_idx_wd, dpt, dlab, dprob, dir_output, my_cmt.p, dgap, my_cmt_zero, ambiguity_cutoff,
-        dgap_reason)
+        dgap_reason, report_p=my_calls.p[variable_bool])
     goodpos_idx = np.where(goodpos_bool)[0]
     goodpos_idx_all = np.where(goodpos_bool_all)[0]
     num_goodpos = len(goodpos_idx)
