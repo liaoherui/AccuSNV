@@ -72,7 +72,8 @@ def pileup2diversity(input_pileup, path_to_ref, sample='sample'):
     indelregion=3 #region surrounding each p where indels recorded 
     #get reference genome + position information
     chr_starts,genome_length,scaf_names = ghf.genomestats(path_to_ref)
-    
+    ref_seq = {r.id: str(r.seq) for r in ghf.read_fasta(path_to_ref)}
+
     #init
     data = np.zeros((genome_length,num_fields)) #format [[A T C G  a t c g],[...]]
         
@@ -80,10 +81,14 @@ def pileup2diversity(input_pileup, path_to_ref, sample='sample'):
     log.debug('%s: counting reads per base at every position of the %s bp reference',
               sample, f'{genome_length:,}')
     log.debug('%s: reading %s', sample, input_pileup)
-    mpileup = open(input_pileup)
+    # latin-1, not the default utf-8: the pileup is really bytes, and the call and quality columns
+    # are read back out as bytes below. Any stray non-ASCII byte would otherwise stop the read dead.
+    mpileup = open(input_pileup, encoding='latin-1')
 
     #####
     loading_bar=0
+    ambiguous=0 # positions skipped because the reference base there was not A, T, C or G
+    max_ambiguous=max(100, genome_length//10000) # a few of these is bad data, many is a bad reference
 
     for line in mpileup:
 
@@ -106,14 +111,10 @@ def pileup2diversity(input_pileup, path_to_ref, sample='sample'):
             position=int(chr_starts[np.where(scaf_names == chromo)[0][0]]) + int(lineinfo[1])
             #chr_starts starts at 0
         
-        #ref allele
-        ref_str = lineinfo[2]; # reference allele from pileup (usually A T C or G but sometimes a different symbol if nucleotide is ambiguous)
-        if ref_str in nts_dict.keys():
-            ref=nts_dict[ref_str] # convert to 0123
-            if ref >= 4:
-                ref = ref - 4
-        else:
-            ref=-1 # for cases where reference base is ambiguous
+        #ref allele, taken from the reference FASTA and not from column 3 of the pileup: samtools has
+        #been seen writing stray bytes into that column, and the FASTA is already loaded here.
+        ref_str = ref_seq[chromo][int(lineinfo[1])-1] # lineinfo[1] counts from 1 within its contig
+        ref = nts_dict[ref_str] % 4 if ref_str in nts_dict else -1 # -1 = ambiguous reference base
         
         #calls info (.copy(): frombuffer is read-only and calls is edited in place below)
         calls=np.frombuffer(lineinfo[4].encode('latin-1'), dtype=np.int8).copy() #to ASCII
@@ -171,11 +172,13 @@ def pileup2diversity(input_pileup, path_to_ref, sample='sample'):
         if ref >=0: # when reference allele is not ambiguous
             calls[np.where(calls==46)[0]]=ord(nts[ref]) #'.'
             calls[np.where(calls==44)[0]]=ord(nts[ref+4]) #','
-        else: # added 2022.09.23 by Arolyn: for cases where reference allele is ambiguous, confirm there are no ,'s or .'s
-            if np.any(calls==46) | np.any(calls==44):
-                log.error('%s: pileup line reports reads matching the reference at a position whose '
-                          'reference base is ambiguous: %s', sample, line.strip())
-                raise ValueError('Error! Calls at this position allegedly match reference allele even though reference allele was ambiguous.')
+        elif np.any(calls==46) | np.any(calls==44): # reads match a reference base we cannot resolve
+            ambiguous+=1
+            if ambiguous > max_ambiguous:
+                raise ValueError(f'{sample}: more than {max_ambiguous} positions have reads matching '
+                                 f'a reference base that is not A, T, C or G. Is this the right '
+                                 f'reference genome for this sample?')
+            continue # leave this position at zero, as though it had no coverage
 
         #index reads for finding scores
         simplecalls=calls[np.where(calls>0)[0]]
@@ -201,7 +204,11 @@ def pileup2diversity(input_pileup, path_to_ref, sample='sample'):
         
     #######
     mpileup.close()
-    
+
+    if ambiguous:
+        log.warning('%s: skipped %s position(s) where reads matched a reference base that was not '
+                    'A, T, C or G; they are reported as having no coverage', sample, f'{ambiguous:,}')
+
     #calc coverage: columns 0-7 hold the read counts; 8-39 hold average quality scores,
     #tail distances and indel counts, which are not reads and must not be summed in.
     coverage=np.sum(data[:,:8],1)
