@@ -1009,6 +1009,10 @@ function annotatedTree() {
 
 async function buildTree() {
   if (!DATA.tree) { $('treepanel').hidden = true; return; }
+  // PearTree renames the browser window after the tree file every time it loads one, which it
+  // does again on every recolour, so pin the title to ours before handing it the tree.
+  const title = document.title;
+  Object.defineProperty(document, 'title', { get: () => title, set: () => {} });
   tree = await PearTreeEmbed.embed({
     container: 'treebox', tree: annotatedTree(), filename: 'tree.nexus', height: '100%',
     settings: {
@@ -1023,7 +1027,6 @@ async function buildTree() {
           toolbarSections: ['navigation', 'zoom', 'order'] },
   });
 
-  document.title = 'AccuSNV report';
   // The panel is still settling when embed returns, and the tree has to be refitted whenever
   // it changes size, or the tip labels end up cut off at the right edge.
   let refit;

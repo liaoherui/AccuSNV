@@ -54,9 +54,9 @@ def guess_slurm_account():
     """The SLURM account to submit under, or None to leave it to Snakemake.
 
     Snakemake's SLURM plugin guesses the account from your recent jobs, but it hands sacct a shell
-    pipe as arguments, which older versions of sacct reject ("sacct: invalid option -- '1'"). So we
-    first run the plugin's own command: if it works the plugin can look after itself, and only if it
-    fails do we repeat the lookup properly and take the most recent account sacct reports.
+    pipe as arguments, which older versions of sacct reject ("sacct: invalid option -- '1'"). 
+    This is useful for older versions of SLURM.
+
     """
     user = getpass.getuser()
     try:
@@ -73,13 +73,10 @@ def guess_slurm_account():
 
 
 def describe_failure(block, started):
-    """One line for the AccuSNV log about a failed job: which one, why, and at which tier.
-
-    `block` is the fields Snakemake printed under 'Error in rule ...', `started` the ones it
-    printed when the job began, which is where the wildcards and the requested resources are.
+    """Writes a line in the AccuSNV log on a failed job.
     """
+
     who = block['rule'] + (f" ({started['wildcards']})" if started.get('wildcards') else '')
-    # On SLURM the executor plugin reports the state as its failure message; a local run has none.
     status = re.search(r"SLURM status is: '(\w+)'", block.get('message', ''))
     why = {'TIMEOUT': 'ran out of time', 'OUT_OF_MEMORY': 'ran out of memory'}.get(
         status.group(1) if status else '', 'failed')
@@ -97,13 +94,14 @@ def describe_failure(block, started):
 
 def run_snakemake(cmd, snakemake_log):
     """Run Snakemake, copying its output to the terminal and to accusnv.snakemake.log, and
-    summarising each job failure in the AccuSNV log. Returns Snakemake's exit code."""
+    summarising each job failure in the AccuSNV log."""
     block, failed, started = None, False, {}
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
     with open(snakemake_log, 'a') as tee:
         for line in proc.stdout:
             sys.stdout.write(line)
             tee.write(line)
+            # (claude-ism)
             # Snakemake prints one block per job, headed 'rule x:' (or 'localrule x:', or
             # 'Error in rule x:') and followed by indented 'key: value' lines. Anything
             # unindented ends the block. A retry reprints the header, so the resources we
@@ -134,8 +132,7 @@ def pipeline_params(args):
 def create_configs(args, run_parser, conf_dir):
     """Write the runtime copies of pipeline.yaml + config.yaml into <out>/configs.
     pipeline.yaml carries the workflow parameters
-    config.yaml is the Snakemake execution profile and
-    also carries the run inputs (sample_table / outdir)
+    config.yaml is the Snakemake execution profile and the run inputs (sample_table / outdir)
     under the 'config:' block, which Snakemake merges into the workflow config."""
 
     ## Find or create pipeline file
@@ -171,8 +168,6 @@ def create_configs(args, run_parser, conf_dir):
             log.info('Command line sets %s', flag)
             pipeline_config[flag] = True
 
-    # Both position lists travel as absolute paths, because the workflow jobs run from the output
-    # directory rather than from where the user typed the command.
     for flag, verb in (('exclude_positions', 'Leaving out'), ('include_positions', 'Keeping')):
         path = getattr(args, flag)
         if path:
@@ -182,8 +177,6 @@ def create_configs(args, run_parser, conf_dir):
             log.info('%s the SNV positions listed in %s (each group logs how many it applied)',
                      verb, path)
 
-    # One core setting for the whole run: it is what cutadapt and the aligner are given, what
-    # SLURM is asked for as cpus-per-task for those two rules, and the budget of a local run.
     cores = args.cores or pipeline_config.get('cores') or 4
     pipeline_config['cores'] = cores
 
@@ -192,19 +185,17 @@ def create_configs(args, run_parser, conf_dir):
     with open(pipeline_file_new, 'w') as f:
         yaml.safe_dump(pipeline_config, f, sort_keys=False, default_flow_style=False)
 
-    ## config.yaml: point at pipeline.yaml, inject the run paths, apply the run mode
+    ## config.yaml: point at pipeline.yaml, add the run paths, apply the run mode
     with open(config_file) as f:
         config = yaml.safe_load(f) or {}
 
-    # Snakemake reads `config:` (a list of KEY=VALUE) as --config and merges it into the
-    # workflow config dict, so the run paths live in config.yaml yet reach the Snakefile.
+    # Snakemake reads config: as --config and merges it into the workflow config dict.
     existing = {}
     for item in (config.get('config') or []):
         if '=' in str(item):
             k, v = str(item).split('=', 1)
             existing[k] = v
-    # -e overrides; if not passed, keep whatever env is already in the config.yaml. The unfilled
-    # template placeholder ("[passed by accusnv -e]") counts as unset -> empty.
+
     existing_env = existing.get('env', '')
     if str(existing_env).strip().startswith('[passed by accusnv'):
         existing_env = ''
@@ -241,12 +232,9 @@ def create_configs(args, run_parser, conf_dir):
         config['default-resources'] = [f'{k}={v}' for k, v in resources.items()]
 
     else:
-        # local/dryrun: the template ships the SLURM executor, so switch it back and drop
-        # the SLURM-only default resources, which the local executor does not understand.
+        # local/dryrun: the template ships the SLURM executor, so remove SLURM specifics
         config['executor'] = 'local'
         config.pop('jobs', None)
-        # Snakemake caps every rule's threads at this, so it has to match the cores the
-        # cutadapt and mapping rules ask for or they would quietly run narrower.
         config['cores'] = cores
         config['default-resources'] = [item for item in (config.get('default-resources') or [])
                                        if not str(item).startswith('slurm_')]
@@ -268,7 +256,6 @@ def create_configs(args, run_parser, conf_dir):
 def check_inputs_and_dependencies(args, run_parser):
     ''' Validates the existence of all input files and dependencies before run'''
 
-    ## aligner lives in pipeline.yaml
     aligner = pipeline_params(args).get('aligner') or 'bwa'
 
     env = None
@@ -283,12 +270,14 @@ def check_inputs_and_dependencies(args, run_parser):
 
     ## check for dependencies
     dependencies = list(TOOL_DEPS) + [aligner]
+
     # Only a parsimony tree needs dnapars. skip_trees and skip_all_downstream are also command-line
-    # flags; use_nj_tree is set in pipeline.yaml only.
+    # flags. use_nj_tree is set in pipeline.yaml only.
     params = pipeline_params(args)
     flag_on = lambda flag: getattr(args, flag, False) or params.get(flag, False)
     if not (flag_on('skip_trees') or flag_on('skip_all_downstream') or flag_on('use_nj_tree')):
         dependencies.append('dnapars')
+
     # samclip only runs on bwa alignments, and only when it has not been turned off.
     if aligner == 'bwa' and not flag_on('skip_samclip'):
         dependencies.append('samclip')
@@ -336,21 +325,25 @@ def check_inputs_and_dependencies(args, run_parser):
     rev_paths = []
 
     for index, row in sample_file.iterrows():
-        # Only the reads themselves. The glob also picks up sidecars sitting next to them, and
-        # those must not count towards the SE ambiguity check below; matching on the extension
-        # rather than a substring keeps out the ones that embed a read name (S1.fastq.gz.md5).
-        fastqs = [f for f in glob.glob(row['Path'].rstrip("/") + "/" + row['FileName'] + "*")
-                  if f.endswith(('.fastq', '.fq', '.fastq.gz', '.fq.gz'))]
+        # Only this sample's reads.
+        reads = {}                                     # path -> '1', '2', or '' if unmarked
+        for path in glob.glob(row['Path'].rstrip("/") + "/" + row['FileName'] + "*"):
+            # e.g. _1 / .R2 / -2, optionally followed by Illumina's _001, then the extension.
+            marker = re.fullmatch(r'(?:[-._]R?([12]))?(?:_001)?\.f(?:ast)?q(?:\.gz)?',
+                                  os.path.basename(path)[len(row['FileName']):])
+            if marker:
+                reads[path] = marker.group(1) or ''
+        fastqs = sorted(reads)
         fwd, rev = None, None
 
         for fastq in fastqs:
             if row['Type'] == 'PE' or row['Type'] == 'pe':
-                if '_R1.f' in fastq or '.1.f' in fastq or '_1.f' in fastq:
+                if reads[fastq] == '1':
                     if not fwd:
                         fwd = fastq
                     else:
                         fail(run_parser, "Error: two possible forward fastq files found for sample {}: {}".format(row['FileName'], fastqs))
-                elif '_R2.f' in fastq or '.2.f' in fastq or '_2.f' in fastq:
+                elif reads[fastq] == '2':
                     if not rev:
                         rev = fastq
                     else:
@@ -377,8 +370,15 @@ def check_inputs_and_dependencies(args, run_parser):
 
 
     ## check refs
-    # resolve_fasta_path is what the workflow stages use too, so a reference resolves to the
-    # same file here and downstream: any of .fasta/.fa/.fna (optionally .gz), genome.* first.
+    # Mapping outputs are named <sample>_ref_<reference>, so a reference whose own name has
+    # that delimiter cannot be read back out of the filename.
+    reserved = sorted({r for r in sample_file['Reference'] if r.startswith('ref_') or '_ref_' in r})
+    if reserved:
+        fail(run_parser, 'Error: reference names must not start with "ref_" or contain "_ref_", '
+             'because AccuSNV uses "_ref_" as a filename delimiter. Rename these references (for '
+             'example "<clade>_ref" rather than "ref_<clade>"): {}'.format(', '.join(reserved)))
+
+    # resolve_fasta_path: any of .fasta/.fa/.fna (optionally .gz)
     fastas = []
     for index, row in sample_file.iterrows():
         ref_dir = os.path.join(args.ref_dir, row['Reference'])
@@ -389,7 +389,7 @@ def check_inputs_and_dependencies(args, run_parser):
 
     sample_file['Reference_FASTA'] = fastas
 
-    # save sample file (index=False so the workflow reads clean, named columns)
+    # save sample file 
     new_sample_file = os.path.join(args.output_dir, 'samples.csv')
     log.info('Found the FASTQs and reference genome for all %d samples across %d group(s); '
              'references: %s', len(sample_file), sample_file['Group'].nunique(),
@@ -401,15 +401,12 @@ def check_inputs_and_dependencies(args, run_parser):
     ## check if downstream only
     if args.downstream_only:
         for group in sample_file['Group'].unique():
-            # _snv_state.npz is what the annotation and analysis stages actually load; the
-            # calling stage that writes it is not re-run in this mode.
+            # _snv_state.npz is what the annotation and analysis stages actually need.
             group_dir = os.path.join(args.output_dir, '2-SNV-filtering', 'group_' + str(group))
             state_file = os.path.join(group_dir, '_snv_state.npz')
             if not os.path.exists(state_file):
                 fail(run_parser, "Error: You are running in --downstream_only mode, but the SNV calling output for group {} was not found: {}".format(group, state_file))
-            # Annotation also needs the filter verdicts. Checking here rather than letting the
-            # rule fail matters: a failed rule makes Snakemake delete the tables it was
-            # rewriting, so the output directory would lose the results it already had.
+            # Annotation also needs the filter verdicts. 
             filter_table = os.path.join(group_dir, 'snv_table_filtered_tmp.tsv')
             state = np.load(state_file, allow_pickle=True)
             if not bool(state['fast_path']) and not os.path.exists(filter_table):
@@ -434,7 +431,7 @@ def _color_on():
     return sys.stdout.isatty() and os.environ.get('NO_COLOR') is None and os.environ.get('TERM') != 'dumb'
 
 def _bold(s):
-    """Bold `s` on a color-capable terminal, else return it unchanged."""
+    """Bold on a color-capable terminal, else return it unchanged."""
     return f'\033[1m{s}\033[0m' if _color_on() else s
 
 def _colorize(text):
@@ -468,14 +465,14 @@ class _HelpFormatter(argparse.RawDescriptionHelpFormatter):
         super().__init__(*args, **kwargs)
 
 class _Parser(argparse.ArgumentParser):
-    """ArgumentParser whose help drops the lone -h `options:` block and is colorized."""
+    """ArgumentParser whose help drops the lone -h options: block and is colorized."""
     def format_help(self):
         text = super().format_help()
         text = re.sub(r'  -h, --help[^\n]*\n', '', text)
         return _colorize(text)
 
 def build_parser():
-    """Build the (single, flat) `accusnv` argument parser."""
+    """Build the accusnv argument parser."""
 
     parser = _Parser(
         prog='accusnv',
@@ -491,24 +488,23 @@ def build_parser():
     inputs.add_argument('-o', '--output_dir', metavar='DIR', default='accusnv_output',
                       help='Output dir (default: accusnv_output)')
     inputs.add_argument('--exclude_positions', metavar='FILE', default=None,
-                      help='File of genome_pos values, one per line, to leave out of the SNV set \
-                      (also written to pipeline.yaml). Combine with --downstream_only to change \
-                      the list without re-calling SNVs')
+                      help='File of genome_pos values, one per line, to exclude from the SNV set \
+                      regardless of the model calls. \
+                      Combine with --downstream_only to change the list without re-calling SNVs.')
     inputs.add_argument('--include_positions', metavar='FILE', default=None,
                       help='File of genome_pos values, one per line, to keep in the SNV set \
-                      whatever the model and filters decided. Excluding wins if a position is in \
-                      both files')
+                      regardless of the model calls.')
 
     configs = parser.add_argument_group('Config')
     configs.add_argument('-c', '--config_file', metavar='FILE', default=None,
-                       help='Execution settings + run paths (config.yaml; default: autogenerated in out_dir)')
+                       help='Execution settings (config.yaml; default: autogenerated in out_dir)')
     configs.add_argument('-p', '--pipeline_file', metavar='FILE', default=None,
                        help='Pipeline params (pipeline.yaml; default: autogenerated in out_dir)')
     configs.add_argument('-m', '--mode', choices=['dryrun', 'slurm', 'local'], default='local',
                       help='Run mode (default: local)')
     configs.add_argument('-j', '--cores', metavar='N', type=int, default=None,
-                      help='Cores per cutadapt/mapping job, and the total cores a local run may \
-                      use (default: the cores value in pipeline.yaml, 4)')
+                      help='Cores per cutadapt/mapping job, or the total cores a local run uses \
+                       (default: the cores value in pipeline.yaml, 4)')
     configs.add_argument('-sp', '--partition', metavar='PARTITIONS', default=None,
                       help='SLURM partition(s) to submit to, comma-separated list for >1 (default: not specified)')
     configs.add_argument('--skip_samclip', action='store_true',
@@ -523,9 +519,8 @@ def build_parser():
                        help='Skip all downstream evolutionary analyses and report generation')
     outputs.add_argument('--skip_report', action='store_true', help='Skip generating the HTML report')
     outputs.add_argument('--skip_recombination', action='store_true',
-                       help='Skip recombination detection. On by default: recombinant SNVs are flagged and kept \
-                       in the SNV tables, but left out of dN/dS, tree building and dMRCA. Pass this to stop \
-                       flagging them, which counts them everywhere')
+                       help='Skip recombination detection. On by default: recombinant SNVs are flagged and \
+                       excluded frmo dN/dS, tree building and dMRCA. This stops excluding them')
     outputs.add_argument('--skip_dnds', action='store_true', help='Skip dN/dS calculations')
     outputs.add_argument('--skip_trees', action='store_true', help='Skip parsimony tree building (dnapars)')
     outputs.add_argument('--build_snv_trees', action='store_true',
@@ -551,9 +546,9 @@ def run_pipeline(args, run_parser):
         run_parser.error("Error: could not find existing directory for downstream_only run: {}".format(out_dir))
     os.makedirs(out_dir, exist_ok=True)
 
-    # Open this process's own log files before anything else that can fail, so the reason is
-    # recorded. Every workflow job writes its own pair alongside them; merge() at the end of the
-    # run gathers them all into summary_log and full_log.
+    # Open this process's own log files before anything fails, so the reason is recorded. 
+    # Every workflow job writes its own pair alongside them.
+    # merge() at the end of the run gathers them all into summary_log and full_log.
     params = pipeline_params(args)
     summary_log, full_log = accusnv_log.paths(out_dir, params)
     accusnv_log.setup('accusnv', accusnv_log.stem(out_dir, 'accusnv'))
@@ -573,17 +568,10 @@ def run_pipeline(args, run_parser):
     ### Run snakemake pipeline
     cmd = ['snakemake', '--snakefile', SNAKEFILE, '--workflow-profile', conf_dir, '--directory', out_dir]
     if args.downstream_only:
-        # Annotation's input is marked ancient() in this mode so the calling stage is not re-run,
-        # which also stops Snakemake re-running annotation itself. Ask for it explicitly, or it
-        # reports nothing to be done and any edited cutoffs are ignored. dN/dS, the tree and the
-        # dashboard then follow from annotation's rewritten tables.
         cmd += ['--forcerun', 'annotate_snvs']
     snakemake_log = os.path.join(os.path.dirname(summary_log), 'accusnv.snakemake.log')
     log.info('Handing the run to Snakemake; everything it prints is kept in %s', snakemake_log)
     log.debug('Snakemake command: %s', ' '.join(cmd))
-    # Everything this process says from here on is the wrap-up, so it goes to a second pair of
-    # files. They are written after the jobs are done and so land at the end of the merged logs,
-    # rather than back in the block holding the message the run opened with.
     accusnv_log.setup('accusnv', accusnv_log.stem(out_dir, 'accusnv', 'finished'))
     try:
         results = run_snakemake(cmd, snakemake_log)

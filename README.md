@@ -98,6 +98,14 @@ This submits the whole pipeline as Slurm jobs. `-sp` chooses the partition(s) to
 
 >*Note*: On some clusters you must activate your conda environment on the compute nodes. Pass `-e 'conda activate accusnv'` so every workflow rule activates it first.
 
+## Unit tests
+
+The checks AccuSNV makes on your inputs before a run (which FASTQs belong to a sample, which references resolve, the paths written into the configs) are covered by unit tests, which need no test data and take under a second:
+
+```
+python -m unittest discover -s tests
+```
+
 ## Changing config parameters
 
 There are two AccuSNV config yaml files:
