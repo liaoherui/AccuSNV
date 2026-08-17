@@ -88,7 +88,8 @@ def pileup2diversity(input_pileup, path_to_ref, sample='sample'):
     #####
     loading_bar=0
     ambiguous=0 # positions skipped because the reference base there was not A, T, C or G
-    max_ambiguous=max(100, genome_length//10000) # a few of these is bad data, many is a bad reference
+    malformed=0 # lines skipped because samtools did not write the expected 8 fields
+    max_bad=max(100, genome_length//10000) # a few of either is bad data, many is a bad reference or pileup
 
     for line in mpileup:
 
@@ -97,7 +98,17 @@ def pileup2diversity(input_pileup, path_to_ref, sample='sample'):
             log.debug('%s: %s pileup lines read so far', sample, f'{loading_bar:,}')
 
         lineinfo = line.strip().split('\t')
-        
+
+        #samtools has been seen writing stray bytes into column 3. A stray tab or newline among
+        #them splits the record or shifts its fields, so nothing on the line can be trusted. This
+        #comes before any field is read, because both halves of a split record land here.
+        if len(lineinfo) != 8:
+            malformed+=1
+            if malformed > max_bad:
+                raise ValueError(f'{sample}: more than {max_bad} pileup lines do not have the '
+                                 f'expected 8 fields. Is {input_pileup} truncated or corrupt?')
+            continue
+
         #holds info for each position before storing in data
         temp = np.zeros((num_fields))
         
@@ -174,8 +185,8 @@ def pileup2diversity(input_pileup, path_to_ref, sample='sample'):
             calls[np.where(calls==44)[0]]=ord(nts[ref+4]) #','
         elif np.any(calls==46) | np.any(calls==44): # reads match a reference base we cannot resolve
             ambiguous+=1
-            if ambiguous > max_ambiguous:
-                raise ValueError(f'{sample}: more than {max_ambiguous} positions have reads matching '
+            if ambiguous > max_bad:
+                raise ValueError(f'{sample}: more than {max_bad} positions have reads matching '
                                  f'a reference base that is not A, T, C or G. Is this the right '
                                  f'reference genome for this sample?')
             continue # leave this position at zero, as though it had no coverage
@@ -208,6 +219,10 @@ def pileup2diversity(input_pileup, path_to_ref, sample='sample'):
     if ambiguous:
         log.warning('%s: skipped %s position(s) where reads matched a reference base that was not '
                     'A, T, C or G; they are reported as having no coverage', sample, f'{ambiguous:,}')
+    if malformed:
+        log.warning('%s: skipped %s pileup line(s) that did not have the expected 8 fields, which '
+                    'samtools writes when it corrupts a record; those positions are reported as '
+                    'having no coverage. Consider upgrading samtools', sample, f'{malformed:,}')
 
     #calc coverage: columns 0-7 hold the read counts; 8-39 hold average quality scores,
     #tail distances and indel counts, which are not reads and must not be summed in.
