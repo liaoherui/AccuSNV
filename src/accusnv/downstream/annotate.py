@@ -359,6 +359,13 @@ def merge_two_tables(in_cnn_table, annotations, out_merge_tsv, exclude_positions
     cnn.loc[cnn['genome_pos'].astype(int).isin(include_positions), 'Pred_label'] = '1'
     merged = annotations.merge(cnn, on='genome_pos', how='outer')
 
+    # A position --include_positions forced in that the calling stage never scored (invariant
+    # across the ingroup and rejected by both the model and the filters) has no row in the CNN
+    # table, so the merge leaves its verdicts empty. These are the two the later stages read as
+    # numbers: the user kept it, and nothing flagged it as recombinant.
+    merged['Pred_label'] = merged['Pred_label'].fillna('1')
+    merged['Whether_recomb'] = merged['Whether_recomb'].fillna('0')
+
     # merge does not preserve the row order of either table, so impose it here.
     order = annotations['genome_pos'].tolist()
     order += [pos for pos in cnn['genome_pos'] if pos not in set(order)]
