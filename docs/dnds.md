@@ -1,0 +1,76 @@
+# dN/dS calculation
+
+AccuSNV computes a [*dN/dS*](https://pubmed.ncbi.nlm.nih.gov/25388108/) ratio within each group of isolates genome-wide and per gene. dN/dS is one metric that can measure whether diversifying or purifying selective pressures are acting on genes. The output for both will be in: `3-Analysis/group_<group>/dNdS_out/`. The calculation for *dN/dS* here is:
+
+$$\text{dN/dS} = \frac{p_\text{observed} / (1 - p_\text{observed})}{p_\text{expected} / (1 - p_\text{expected})}$$
+
+For the test data, we observe: (0.750 / 0.250) / (0.757 / 0.243) = 3.000 / 3.117 = **0.962**. 
+
+### Calculating observed substitutions
+
+For calculating the observed substitution rates, we just count the nonsynonymous (`mutation_type` = `N`) and synonymous (`S`) rows in `snv_table_final.tsv`, and take the fraction that are nonsynonymous:
+
+$$p_\text{observed} = \frac{N}{N + S}$$
+
+For the test data that is 6 / (6 + 2) = 0.750. 
+
+Promoter and intergenic SNVs are not counted.
+
+A 95% confidence interval is then calculated using [binomial sampling](https://en.wikipedia.org/wiki/Binomial_proportion_confidence_interval#Clopper%E2%80%93Pearson_interval) on those two counts. 
+
+
+
+### Calculating expected substitutions
+
+The expected substitution ratio is an estimate of **if a mutation happened at random somewhere in this genome's coding sequence, how likely is it to be nonsynonymous?**
+
+AccuSNV counts genome-wide codon frequencies using your provided gene annotations in the GFF. Genes annotated as tRNA or rRNA are skipped.
+
+AccuSNV then estimates the mutation spectrum, as not all mutations are equally likely and mutational biases will differ between organisms in a genome-wide manner. If you have more than 100 mutations, AccuSNV uses the observed mutational frequencies as an estimate of the likelihood of a given basepair transition or transversion. AccuSNV counts the observed frequencies of the six possible base substitution classes. With each codon's frequency and each possible base substitution class's frequency, AccuSNV calculates *the weighted average of the probability of a non-synonymous mutation*. When fewer than 100 mutations are observed, AccuSNV assumes a uniform spectrum of mutational bias, so all six classes are considered equally likely.
+
+## Genome wide output: `dnds_genomewide.tsv`
+
+The genome-wide file output has just one row:
+
+```text
+dNdS                CI_lower             CI_upper           num_muts_N  num_muts_S  p_nonsyn  probnonsyn_expected
+0.962385641738318   0.17208695240823418  9.749994939759997  6           2           0.75      0.7571196423687537
+```
+
+| Column                 | Description                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| `dNdS`                 | The ratio.                                                                       |
+| `CI_lower`, `CI_upper` | The 95% bounds, from the exact binomial interval on the N and S counts.          |
+| `num_muts_N`           | Nonsynonymous SNVs counted.                                                      |
+| `num_muts_S`           | Synonymous SNVs counted.                                                         |
+| `p_nonsyn`             | The observed nonsynonymous fraction, `N / (N + S)`.                              |
+| `probnonsyn_expected`  | The nonsynonymous fraction expected on this genome, given the mutation spectrum. |
+
+The same values are in `data_dNdS.npz` for loading with NumPy.
+
+## `dnds_per_gene.tsv`
+
+The per-gene file output has the same calculation, but for each gene with any observed SNVs separately. The expected fraction is recomputed from the codon composition within that particular gene.
+
+```text
+gene_num_global  locus_tag           product                                num_muts_N  num_muts_S  dNdS
+32               cds-WP_041446291.1  ATP-binding cassette domain-cont...    1           0           inf
+106              cds-WP_002515525.1  tRNA dihydrouridine synthase DusB      1           0           inf
+273              cds-WP_002514990.1  phosphoglucomutase                     0           1           0.0
+495              cds-WP_002516423.1  ATP-dependent DNA helicase UvrD2       0           1           0.0
+```
+
+| Column                     | Description                                               |
+| -------------------------- | --------------------------------------------------------- |
+| `gene_num_global`          | The gene number (`gene_num_global` in the SNV table).     |
+| `locus_tag`, `product`     | From the annotation.                                      |
+| `gene_length`              | Length of the gene in bases.                              |
+| `num_muts_N`, `num_muts_S` | Counts in this gene.                                      |
+| `p_nonsyn`                 | The observed fraction in this gene.                       |
+| `probnonsyn_expected`      | The expected fraction from this gene's codon composition. |
+| `dNdS`                     | The ratio.                                                |
+
+:::{note}
+`inf` is not an error. A gene with only nonsynonymous mutations has `p_nonsyn` of exactly 1, so its observed odds are infinite.
+
+:::

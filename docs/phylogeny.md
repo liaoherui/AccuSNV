@@ -1,0 +1,65 @@
+# Phylogeny and dMRCA
+
+By default, AccuSNV infers a phylogeny for each group of isolates in your set.
+
+Two results come out of the tree-building stage: a phylogeny of the isolates, and a genetic distance of each isolate from the inferred common ancestor of that isolate's group. 
+
+Phylogenetic results are in `3-Analysis/group_<group>/phylogeny/`, and the final tree produced is at `<outdir>/group_<group>_snv_tree_final.nwk.tree`.
+
+## Parsimony tree building with dnapars
+
+AccuSNV creates a FASTA alignment of the SNV base calls as one sequence of SNV sites per sample, and runs `dnapars` from the PHYLIP package to infer a maximum-parsimony tree. Both a Newick (`snv_tree_final.nwk.tree`) and a NEXUS (`tree.nexus`) tree are output.
+
+Two extra tips are placed in the tree along with your sequences:
+
+`inferred_ancestor`: The ancestral base at every SNV, as [inferred during SNV calling](filters.md#inferring-the-ancestral-allele). Ancestral inference is performed by comparing to the outgroup sequence(s). 
+
+`reference_genome`: The reference's sequence at every SNV position. 
+
+**Potential recombinant SNVs are excluded from the alignment and tree creation by default.** Recombination flagging in AccuSNV flags potential recombinant tracts, or adjacent loci of SNVs that correlate strongly with each other. These are removed from the tree by default, as recombinant blocks do not reflect clonal ancestry. However, if you find the recombination detection has been too aggressive on your data, you can turn it off with `--skip_recombination`.
+
+**The outgroup sample branch(es) are not shown.** Because AccuSNV only infers and identifies SNVs between in-group samples, any out-group-specific SNVs are not analyzed, and not put into the tree. Therefore, your outgroup sample will typically appear at the inferred ancestor sequence - the MRCA - in these trees. While this is still an accurately rooted tree, the outgroup's branch is not shown, and therefore it is recommended to remove the outgroup node from the tree in formal visualization.
+
+### Alternative: neighbor-joining tree
+
+The parameter `use_nj_tree: true` in `pipeline.yaml` will build a neighbor-joining tree using Biopython, instead of using dnapars. Consider using this if you cannot install PHYLIP or if the parsimony tree is too slow. For closely related isolates, the two will often agree closely.
+
+### Optional SNV-annotated trees
+
+The `--build_snv_trees` option also creates one NEXUS tree for each SNV in `phylogeny/snv_trees/`, with tips labeled by the SNV's base in that sample and colored accordingly for visualization in [FigTree](https://github.com/rambaut/figtree). With the (new!) interactive dashboard, you can also now interactively browse your tree and visualize the location of SNVs on it in the same way, so this is now off by default. These files are named like `p_<genome_pos>_<n>.tree`. 
+
+## dMRCA: distance to the most recent common ancestor
+
+dMRCA in number of mutations is also calculated for each isolate in your dataset, in two files:
+
+### `snv_table_tree_distances.tsv`
+
+This file has one row per sample, and one file is created for each group:
+
+```text
+sample_name    num_SNVs_to_ancestor
+strain1        1
+strain2        4
+strain3        2
+strain4        3
+```
+
+The count is the number of positions, among the final non-recombinant SNVs, where that sample has a confident base call that differs from the inferred ancestor. 
+
+### `snv_table_simple_stats.tsv`
+
+This file has one row summarizing the set for all groups in the run:
+
+```text
+dataset        genome  num_samples_ingroup  num_snvs  num_snvs_with_outgroup_allele  dmrca_median  dmrca_min  dmrca_max
+group_pe_test  genome  4                    10        10                             2.5           1          4
+```
+
+| Column                                   | Description                                                                                      |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `dataset`                                | The group name.                                                                                  |
+| `genome`                                 | The reference genome.                                                                            |
+| `num_samples_ingroup`                    | Number of in-group samples.                                                                      |
+| `num_snvs`                               | Number of SNVs in the group, in total.                                                           |
+| `num_snvs_with_outgroup_allele`          | Number of SNVs with an ancestral allele that could be resolved.                                  |
+| `dmrca_median`, `dmrca_min`, `dmrca_max` | The median, smallest and largest distance to the ancestor across the ingroup, in number of SNVs. |

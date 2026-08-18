@@ -1,0 +1,40 @@
+/* Wide reference tables (the SNV table column list) scroll instead of squeezing. */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal;
+}
+.wy-table-responsive {
+    overflow-x: auto;
+}
+
+/* Column tables read better with the first column kept on one line. */
+table.docutils td:first-child code.literal {
+    white-space: nowrap;
+}
+
+/* The theme caps content width quite narrowly; wide tables need more room. */
+.wy-nav-content {
+    max-width: 1050px;
+}
+
+/* Figures: keep SVG diagrams from overflowing on narrow screens. */
+img, svg {
+    max-width: 100%;
+    height: auto;
+}
+
+figure img {
+    border: 1px solid #e1e4e5;
+    border-radius: 4px;
+}
+
+figcaption p, .caption-text {
+    font-size: 0.9em;
+    color: #555;
+}
+
+/* The logo in the sidebar is square; give it a little breathing room. */
+.wy-side-nav-search > a img.logo {
+    max-width: 120px;
+    padding: 8px 0;
+}

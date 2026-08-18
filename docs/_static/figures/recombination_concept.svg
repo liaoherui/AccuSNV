@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 340" width="820" height="340"
+     font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+  <style>
+    .ttl  { font-size:13px; font-weight:600; fill:#1a202c; }
+    .sub  { font-size:11px; fill:#4a5568; }
+    .ax   { stroke:#a0aec0; stroke-width:1; }
+    .lbl  { font-size:10.5px; fill:#4a5568; }
+    .r    { fill:#c53030; }
+    .b    { fill:#2b6cb0; }
+    .g    { fill:#a0aec0; }
+    .panel{ fill:#ffffff; stroke:#cbd5e0; stroke-width:1; rx:6; }
+  </style>
+
+  <rect class="panel" x="10" y="10" width="390" height="290"/>
+  <text class="ttl" x="26" y="34">Independent mutations</text>
+  <text class="sub" x="26" y="52">each position varies on its own</text>
+
+  <line class="ax" x1="70" y1="250" x2="370" y2="250"/>
+  <line class="ax" x1="70" y1="80" x2="70" y2="250"/>
+  <text class="lbl" x="16" y="86">100%</text>
+  <text class="lbl" x="52" y="254">0</text>
+  <text class="lbl" x="150" y="278">samples 1 to 6</text>
+  <text class="lbl" x="90" y="296" fill="#c53030">position 41,200</text>
+  <text class="lbl" x="230" y="296" fill="#2b6cb0">position 41,650</text>
+
+  <rect class="r" x="82"  y="88"  width="18" height="162"/>
+  <rect class="r" x="122" y="242" width="18" height="8"/>
+  <rect class="r" x="162" y="88"  width="18" height="162"/>
+  <rect class="r" x="202" y="244" width="18" height="6"/>
+  <rect class="r" x="242" y="242" width="18" height="8"/>
+  <rect class="r" x="282" y="88"  width="18" height="162"/>
+
+  <rect class="b" x="104" y="243" width="18" height="7"/>
+  <rect class="b" x="144" y="88"  width="18" height="162"/>
+  <rect class="b" x="184" y="242" width="18" height="8"/>
+  <rect class="b" x="224" y="88"  width="18" height="162"/>
+  <rect class="b" x="264" y="244" width="18" height="6"/>
+  <rect class="b" x="304" y="243" width="18" height="7"/>
+
+  <text class="sub" x="26" y="322">Correlation across samples r = -0.71: kept as two separate SNVs</text>
+
+  <rect class="panel" x="420" y="10" width="390" height="290"/>
+  <text class="ttl" x="436" y="34">One recombined block</text>
+  <text class="sub" x="436" y="52">nearby positions vary together</text>
+
+  <line class="ax" x1="480" y1="250" x2="780" y2="250"/>
+  <line class="ax" x1="480" y1="80" x2="480" y2="250"/>
+  <text class="lbl" x="426" y="86">100%</text>
+  <text class="lbl" x="462" y="254">0</text>
+  <text class="lbl" x="560" y="278">samples 1 to 6</text>
+  <text class="lbl" x="500" y="296" fill="#c53030">position 88,120</text>
+  <text class="lbl" x="640" y="296" fill="#2b6cb0">position 88,390</text>
+
+  <rect class="r" x="492" y="88"  width="18" height="162"/>
+  <rect class="r" x="532" y="242" width="18" height="8"/>
+  <rect class="r" x="572" y="88"  width="18" height="162"/>
+  <rect class="r" x="612" y="244" width="18" height="6"/>
+  <rect class="r" x="652" y="88"  width="18" height="162"/>
+  <rect class="r" x="692" y="243" width="18" height="7"/>
+
+  <rect class="b" x="514" y="90"  width="18" height="160"/>
+  <rect class="b" x="554" y="243" width="18" height="7"/>
+  <rect class="b" x="594" y="88"  width="18" height="162"/>
+  <rect class="b" x="634" y="242" width="18" height="8"/>
+  <rect class="b" x="674" y="92"  width="18" height="158"/>
+  <rect class="b" x="714" y="244" width="18" height="6"/>
+
+  <text class="sub" x="436" y="322">Correlation across samples r = 1.0: both flagged Whether_recomb = 1</text>
+</svg>

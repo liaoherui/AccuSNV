@@ -1,0 +1,332 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recombinant SNV flagging &mdash; AccuSNV documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=52799c86" />
+
+  
+    <link rel="shortcut icon" href="_static/logo.png"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fc837d61"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+      <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Troubleshooting" href="troubleshooting.html" />
+    <link rel="prev" title="dN/dS calculation" href="dnds.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            AccuSNV
+              <img src="_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#conda-installation">Conda installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#pip-installation">Pip installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#using-a-different-environment">Using a different environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#basic-run-in-local-mode">Basic run in local mode</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#to-submit-the-same-run-to-a-slurm-cluster-instead">To submit the same run to a Slurm cluster instead:</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#resulting-outputs">Resulting outputs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#output-files">Output files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#the-interactive-report">The interactive report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#the-final-snv-table">The final SNV table</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#next-steps">Next steps</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Setting up a run</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="inputs.html">Input files</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="inputs.html#the-sample-sheet">The sample sheet</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="inputs.html#sample-groups">Sample groups</a></li>
+<li class="toctree-l3"><a class="reference internal" href="inputs.html#outgroup-samples">Outgroup samples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="inputs.html#the-fastq-files">The FASTQ files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="inputs.html#the-reference-genome-directory">The reference genome directory</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="inputs.html#annotation-files">Annotation files</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parameters.html">Adjusting parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parameters.html#pipeline-parameters-pipeline-yaml">Pipeline parameters: pipeline.yaml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#logging">Logging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#read-trimming-and-mapping">Read trimming and mapping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#pileup-and-variant-calling">Pileup and variant calling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#sample-level-filters">Sample-level filters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#per-basecall-filters">Per-basecall filters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#across-sample-position-filters">Across-sample position filters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#overruling-snvs-rejected-by-the-cnn">Overruling SNVs rejected by the CNN</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#recombination-detection">Recombination detection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#annotation">Annotation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#very-large-runs-fast-mode">Very large runs: “fast mode”</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#optional-stages">Optional stages</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="parameters.html#runtime-configuration-config-yaml">Runtime configuration: config.yaml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#slurm-job-resource-allocation">Slurm job resource allocation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="running.html">Running AccuSNV</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="running.html#the-command-line-options">The command-line options</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="running.html#inputs-and-outputs">Inputs and outputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="running.html#run-modes">Run modes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="running.html#config-files">Config files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="running.html#turning-particular-stages-on-and-off">Turning particular stages on and off</a></li>
+<li class="toctree-l3"><a class="reference internal" href="running.html#manually-excluding-and-including-particular-sites">Manually excluding and including particular sites</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#running-in-local-mode">Running in local mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#running-via-slurm-and-slurm-resource-requesting">Running via Slurm and Slurm resource requesting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#snakemake-dry-run">Snakemake dry run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#re-running-only-the-downstream-analyses">Re-running only the downstream analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#reading-output-logs-for-debugging">Reading output logs for debugging</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How AccuSNV works</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pipeline.html">Pipeline overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#stage-1-mapping-1-mapping">Stage 1: mapping (<code class="docutils literal notranslate"><span class="pre">1-Mapping/</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#stage-2-snv-filtering-2-snv-filtering">Stage 2: SNV filtering (<code class="docutils literal notranslate"><span class="pre">2-SNV-filtering/</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#stage-3-evolutionary-analysis-3-analysis">Stage 3: evolutionary analysis (<code class="docutils literal notranslate"><span class="pre">3-Analysis/</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#the-neural-network">The neural network</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#what-runs-when">What runs when</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filters.html">SNV filters and calls explained</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#the-two-verdicts">The two verdicts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#how-the-two-combine">How the two combine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#the-nine-checks">The nine checks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="filters.html#reading-a-filter-column">Reading a filter column</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filters.html#the-fraction-ambiguous-samples-column">The <code class="docutils literal notranslate"><span class="pre">Fraction_ambiguous_samples</span></code> column</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filters.html#the-quality-column">The <code class="docutils literal notranslate"><span class="pre">quality</span></code> column</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#inferring-the-ancestral-allele">Inferring the ancestral allele</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#sample-level-checks">Sample-level checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#where-each-position-ends-up">Where each position ends up</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#very-large-candidate-sets">Very large candidate sets</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interpreting results</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="outputs.html">Output files</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="outputs.html#the-directory">The directory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="outputs.html#the-results">The results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="outputs.html#positions-that-never-reached-the-snv-tables">Positions that never reached the SNV tables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="outputs.html#the-calling-stage">The calling stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="outputs.html#qc-figures-from-the-calling-stage">QC figures from the calling stage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="outputs.html#the-evolutionary-analyses">The evolutionary analyses</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="outputs.html#the-per-snv-bar-charts">The per-SNV bar charts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="outputs.html#the-qc-heatmaps">The QC heatmaps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="outputs.html#the-intermediate-files">The intermediate files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="outputs.html#the-logs">The logs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="outputs.html#empty-outputs">Empty outputs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="snv_table.html">The final SNV table</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="snv_table.html#snv-position-and-impact">SNV position and impact</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="snv_table.html#gene-coordinate-systems">Gene coordinate systems</a></li>
+<li class="toctree-l3"><a class="reference internal" href="snv_table.html#mutation-types">Mutation types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="snv_table.html#snv-calling-filters">SNV calling filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snv_table.html#detailed-snv-annotations">Detailed SNV annotations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snv_table.html#sample-allele-columns">Sample allele columns</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="snv_table.html#raw-cnn-probabilities-for-snvs">Raw CNN probabilities for SNVs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="phylogeny.html">Phylogeny and dMRCA</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="phylogeny.html#parsimony-tree-building-with-dnapars">Parsimony tree building with dnapars</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="phylogeny.html#alternative-neighbour-joining-tree">Alternative: neighbour-joining tree</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phylogeny.html#optional-snv-annotated-trees">Optional SNV-annotated trees</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="phylogeny.html#dmrca-distance-to-the-most-recent-common-ancestor">dMRCA: distance to the most recent common ancestor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="phylogeny.html#snv-table-tree-distances-tsv">### <code class="docutils literal notranslate"><span class="pre">snv_table_tree_distances.tsv</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phylogeny.html#snv-table-simple-stats-tsv"><code class="docutils literal notranslate"><span class="pre">snv_table_simple_stats.tsv</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dnds.html">dN/dS calculation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dnds.html#calculating-observed-substitutions">Calculating observed substitutions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dnds.html#calculating-expected-substitutions">Calculating expected substitutions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dnds.html#genome-wide-output-dnds-genomewide-tsv">Genome wide output: <code class="docutils literal notranslate"><span class="pre">dnds_genomewide.tsv</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dnds.html#dnds-per-gene-tsv"><code class="docutils literal notranslate"><span class="pre">dnds_per_gene.tsv</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Recombinant SNV flagging</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#interpretation">Interpretation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#recombination-diagnostic-figure">Recombination diagnostic figure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id1"></a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Help</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">AccuSNV</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Recombinant SNV flagging</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="recombinant-snv-flagging">
+<h1>Recombinant SNV flagging<a class="headerlink" href="#recombinant-snv-flagging" title="Link to this heading"></a></h1>
+<p>A clonal phylogeny assumes that each SNV arose independently, as do many inferences of evolutionary change (e.g., parallel mutations). However, homologous recombination of a tract of donor DNA can introduce multiple SNVs non-independently in the same locus. AccuSNV looks for the signature of such tracts and flags the SNVs that may arise by them. This detection is on by default, however, this is a conservative approach - it may flag SNVs that are real - and therefore you may wish to often turn it off.</p>
+<p>Recombinant SNV tracts are identified as SNVs that:</p>
+<ol class="arabic simple">
+<li><p>Occur within a close distance of each other (set by <code class="docutils literal notranslate"><span class="pre">--recomb_distance</span></code>, which is by default 1Kb).</p></li>
+<li><p>That are almost always found in the same set of isolates (set by <code class="docutils literal notranslate"><span class="pre">recomb_corr_threshold</span></code> (0.75), a pearson correlation cutoff):</p></li>
+</ol>
+<img title="" src="/home/alex/Documents/AccuSNV/readme_files/recombination_detection.png" alt="" data-align="left" />
+<p>This does not intend to capture all SNVs that are possibly recombinant - only <em>recombinant tracts</em>. Identifying all possible recombinant positions across a phylogeny would require more advanced phylogenetic inference.</p>
+<section id="interpretation">
+<h2>Interpretation<a class="headerlink" href="#interpretation" title="Link to this heading"></a></h2>
+<p>Flagged recombinant positions <strong>stay in the SNV tables</strong>, and are labeled with the column <code class="docutils literal notranslate"><span class="pre">Whether_recomb</span> <span class="pre">=</span> <span class="pre">1</span></code>.  However, these positions are by default removed from the analyses that assume independence of SNVs:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Analysis</p></th>
+<th class="head"><p>Recombinant SNVs</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">snv_table_final.tsv</span></code>, <code class="docutils literal notranslate"><span class="pre">snv_table_unfiltered.tsv</span></code></p></td>
+<td><p>kept, flagged</p></td>
+</tr>
+<tr class="row-odd"><td><p>dN/dS</p></td>
+<td><p>excluded</p></td>
+</tr>
+<tr class="row-even"><td><p>Parsimony tree</p></td>
+<td><p>excluded</p></td>
+</tr>
+<tr class="row-odd"><td><p>dMRCA distances</p></td>
+<td><p>excluded</p></td>
+</tr>
+</tbody>
+</table>
+<p>Passing <code class="docutils literal notranslate"><span class="pre">--skip_recombination</span></code> turns off detection of recombinant SNVs, and they are therefore counted in all analyses. Alternatively, if upon manual inspection you find that some of your recombinant sites are likely to be recombinant and others are not, you can manually specify the sites you want to include in downstream analyses with the <code class="docutils literal notranslate"><span class="pre">--include_positions</span> <span class="pre">[FILE]</span></code> parameter.</p>
+</section>
+<section id="recombination-diagnostic-figure">
+<h2>Recombination diagnostic figure<a class="headerlink" href="#recombination-diagnostic-figure" title="Link to this heading"></a></h2>
+<p>AccuSNV creates the file <code class="docutils literal notranslate"><span class="pre">2-SNV-filtering/group_&lt;group&gt;/snv_filter_recombo.png</span></code>, which shows SNV positions along the reference genome (contigs are concatenated in order), demonstrating the loci.</p>
+<figure class="align-default" id="id2">
+<a class="reference internal image-reference" href="_images/recombination_positions.png"><img alt="Genome-wide plot with blue lines for SNVs and red lines for flagged recombinant positions" src="_images/recombination_positions.png" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">A simulated cohort containing three recombined blocks. The dense red band near position 330,000
+is one imported tract; the scattered red lines elsewhere are pairs that happened to correlate.</span><a class="headerlink" href="#id2" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+</section>
+<section id="id1">
+<h2><a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="dnds.html" class="btn btn-neutral float-left" title="dN/dS calculation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="troubleshooting.html" class="btn btn-neutral float-right" title="Troubleshooting" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Lieberman Lab, MIT.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

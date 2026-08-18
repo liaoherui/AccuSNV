@@ -1,0 +1,644 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Output files &mdash; AccuSNV documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+      <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=52799c86" />
+
+  
+    <link rel="shortcut icon" href="_static/logo.png"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=fc837d61"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+      <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="The final SNV table" href="snv_table.html" />
+    <link rel="prev" title="SNV filters and calls explained" href="filters.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            AccuSNV
+              <img src="_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#conda-installation">Conda installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#pip-installation">Pip installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#using-a-different-environment">Using a different environment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#troubleshooting">Troubleshooting</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#basic-run-in-local-mode">Basic run in local mode</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#to-submit-the-same-run-to-a-slurm-cluster-instead">To submit the same run to a Slurm cluster instead:</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#resulting-outputs">Resulting outputs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#output-files">Output files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#the-interactive-report">The interactive report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#the-final-snv-table">The final SNV table</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#next-steps">Next steps</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Setting up a run</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="inputs.html">Input files</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="inputs.html#the-sample-sheet">The sample sheet</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="inputs.html#sample-groups">Sample groups</a></li>
+<li class="toctree-l3"><a class="reference internal" href="inputs.html#outgroup-samples">Outgroup samples</a></li>
+<li class="toctree-l3"><a class="reference internal" href="inputs.html#the-fastq-files">The FASTQ files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="inputs.html#the-reference-genome-directory">The reference genome directory</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="inputs.html#annotation-files">Annotation files</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parameters.html">Adjusting parameters</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parameters.html#pipeline-parameters-pipeline-yaml">Pipeline parameters: pipeline.yaml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#logging">Logging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#read-trimming-and-mapping">Read trimming and mapping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#pileup-and-variant-calling">Pileup and variant calling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#sample-level-filters">Sample-level filters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#per-basecall-filters">Per-basecall filters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#across-sample-position-filters">Across-sample position filters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#overruling-snvs-rejected-by-the-cnn">Overruling SNVs rejected by the CNN</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#recombination-detection">Recombination detection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#annotation">Annotation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#very-large-runs-fast-mode">Very large runs: “fast mode”</a></li>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#optional-stages">Optional stages</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="parameters.html#runtime-configuration-config-yaml">Runtime configuration: config.yaml</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="parameters.html#slurm-job-resource-allocation">Slurm job resource allocation</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="running.html">Running AccuSNV</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="running.html#the-command-line-options">The command-line options</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="running.html#inputs-and-outputs">Inputs and outputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="running.html#run-modes">Run modes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="running.html#config-files">Config files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="running.html#turning-particular-stages-on-and-off">Turning particular stages on and off</a></li>
+<li class="toctree-l3"><a class="reference internal" href="running.html#manually-excluding-and-including-particular-sites">Manually excluding and including particular sites</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#running-in-local-mode">Running in local mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#running-via-slurm-and-slurm-resource-requesting">Running via Slurm and Slurm resource requesting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#snakemake-dry-run">Snakemake dry run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#re-running-only-the-downstream-analyses">Re-running only the downstream analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="running.html#reading-output-logs-for-debugging">Reading output logs for debugging</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">How AccuSNV works</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pipeline.html">Pipeline overview</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#stage-1-mapping-1-mapping">Stage 1: mapping (<code class="docutils literal notranslate"><span class="pre">1-Mapping/</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#stage-2-snv-filtering-2-snv-filtering">Stage 2: SNV filtering (<code class="docutils literal notranslate"><span class="pre">2-SNV-filtering/</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#stage-3-evolutionary-analysis-3-analysis">Stage 3: evolutionary analysis (<code class="docutils literal notranslate"><span class="pre">3-Analysis/</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#the-neural-network">The neural network</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pipeline.html#what-runs-when">What runs when</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="filters.html">SNV filters and calls explained</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#the-two-verdicts">The two verdicts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#how-the-two-combine">How the two combine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#the-nine-checks">The nine checks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="filters.html#reading-a-filter-column">Reading a filter column</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filters.html#the-fraction-ambiguous-samples-column">The <code class="docutils literal notranslate"><span class="pre">Fraction_ambiguous_samples</span></code> column</a></li>
+<li class="toctree-l3"><a class="reference internal" href="filters.html#the-quality-column">The <code class="docutils literal notranslate"><span class="pre">quality</span></code> column</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#inferring-the-ancestral-allele">Inferring the ancestral allele</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#sample-level-checks">Sample-level checks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#where-each-position-ends-up">Where each position ends up</a></li>
+<li class="toctree-l2"><a class="reference internal" href="filters.html#very-large-candidate-sets">Very large candidate sets</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Interpreting results</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Output files</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-directory">The directory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-results">The results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#positions-that-never-reached-the-snv-tables">Positions that never reached the SNV tables</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-calling-stage">The calling stage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#qc-figures-from-the-calling-stage">QC figures from the calling stage</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-evolutionary-analyses">The evolutionary analyses</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-per-snv-bar-charts">The per-SNV bar charts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-qc-heatmaps">The QC heatmaps</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-intermediate-files">The intermediate files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-logs">The logs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#empty-outputs">Empty outputs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="snv_table.html">The final SNV table</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="snv_table.html#snv-position-and-impact">SNV position and impact</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="snv_table.html#gene-coordinate-systems">Gene coordinate systems</a></li>
+<li class="toctree-l3"><a class="reference internal" href="snv_table.html#mutation-types">Mutation types</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="snv_table.html#snv-calling-filters">SNV calling filters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snv_table.html#detailed-snv-annotations">Detailed SNV annotations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="snv_table.html#sample-allele-columns">Sample allele columns</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="snv_table.html#raw-cnn-probabilities-for-snvs">Raw CNN probabilities for SNVs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="phylogeny.html">Phylogeny and dMRCA</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="phylogeny.html#parsimony-tree-building-with-dnapars">Parsimony tree building with dnapars</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="phylogeny.html#alternative-neighbour-joining-tree">Alternative: neighbour-joining tree</a></li>
+<li class="toctree-l3"><a class="reference internal" href="phylogeny.html#optional-snv-annotated-trees">Optional SNV-annotated trees</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="phylogeny.html#dmrca-distance-to-the-most-recent-common-ancestor">dMRCA: distance to the most recent common ancestor</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="phylogeny.html#snv-table-tree-distances-tsv">### <code class="docutils literal notranslate"><span class="pre">snv_table_tree_distances.tsv</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="phylogeny.html#snv-table-simple-stats-tsv"><code class="docutils literal notranslate"><span class="pre">snv_table_simple_stats.tsv</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dnds.html">dN/dS calculation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dnds.html#calculating-observed-substitutions">Calculating observed substitutions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dnds.html#calculating-expected-substitutions">Calculating expected substitutions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dnds.html#genome-wide-output-dnds-genomewide-tsv">Genome wide output: <code class="docutils literal notranslate"><span class="pre">dnds_genomewide.tsv</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="dnds.html#dnds-per-gene-tsv"><code class="docutils literal notranslate"><span class="pre">dnds_per_gene.tsv</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="recombination.html">Recombinant SNV flagging</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="recombination.html#interpretation">Interpretation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="recombination.html#recombination-diagnostic-figure">Recombination diagnostic figure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="recombination.html#id1"></a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Help</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">AccuSNV</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Output files</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section class="tex2jax_ignore mathjax_ignore" id="output-files">
+<h1>Output files<a class="headerlink" href="#output-files" title="Link to this heading"></a></h1>
+<p>Everything a run produces, and which files you actually need. The six per-group files sit at the
+top level of the output directory; everything behind them is under the three numbered
+directories.</p>
+<section id="the-directory">
+<h2>The directory<a class="headerlink" href="#the-directory" title="Link to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>my_output/
+├── group_pe_test_snv_table_final.tsv          ← start here
+├── group_pe_test_snv_table_unfiltered.tsv
+├── group_pe_test_snv_dashboard.html           ← and here
+├── group_pe_test_snv_tree_final.nwk.tree
+├── group_pe_test_snv_table_invariant_positions.tsv
+├── group_pe_test_snv_table_rejected_upstream.tsv
+├── samples.csv
+├── accusnv.log
+├── accusnv.full.log
+├── accusnv.snakemake.log
+├── configs/
+│   ├── config.yaml
+│   └── pipeline.yaml
+├── logs/                   one .log and .full.log per job
+├── 1-Mapping/
+│   ├── alignment/          BAMs, indexes, duplicate stats
+│   │   └── trimmed_filtered_reads/   trimmed and quality-filtered FASTQs
+│   ├── vcf/                per-sample VCFs and upstream-reject tables
+│   ├── quals/              per-sample call-quality vectors and candidate positions
+│   └── diversity/          per-sample read-count and coverage matrices
+├── 2-SNV-filtering/
+│   ├── raw_tables/
+│   │   ├── group_pe_test_candidate_mutation_table.npz
+│   │   ├── group_pe_test_coverage_matrix_raw.npz
+│   │   ├── group_pe_test_coverage_matrix_norm.npz
+│   │   └── group_pe_test_allpositions.pickle
+│   └── group_pe_test/
+│       ├── snv_table_final.tsv
+│       ├── snv_table_unfiltered.tsv
+│       ├── snv_table_cnn_raw.tsv
+│       ├── snv_table_invariant_positions.tsv
+│       ├── candidate_mutation_table_final.npz
+│       ├── snvs_per_sample.tsv
+│       ├── snvs_per_sample.png
+│       ├── snvs_histogram_per_sample.png
+│       ├── ZOOMED_snvs_histogram_per_sample.png
+│       ├── snvs_from_recombo.csv (only if something was flagged)
+│       ├── snv_filter_recombo.png
+│       ├── snv_filter_sample_coverage_hist.png
+│       ├── snv_filter_sample_toomanyNs_hist.png
+│       ├── snv_table_filtered_tmp.tsv
+│       └── _snv_state.npz
+└── 3-Analysis/
+    └── group_pe_test/
+        ├── snv_dashboard.html
+        ├── dNdS_out/
+        │   ├── data_dNdS.npz
+        │   ├── dnds_genomewide.tsv
+        │   └── dnds_per_gene.tsv
+        ├── phylogeny/
+        │   ├── snv_tree_final.nwk.tree
+        │   ├── snv_table_tree_distances.tsv
+        │   ├── snv_table_simple_stats.tsv
+        │   ├── alignment.fa
+        │   ├── alignment.phylip
+        │   ├── tree.nexus
+        │   ├── dnapars.log
+        │   ├── dnapars_options.txt
+        │   ├── dnapars_report.txt
+        │   ├── snvChart.csv         (only with --build_snv_trees)
+        │   └── snv_trees/           (only with --build_snv_trees)
+        ├── diagnostic_figures/
+        │   ├── snv_qc_heatmap_calls.png
+        │   ├── snv_qc_heatmap_coverage.png
+        │   └── snv_qc_heatmap_quals.png
+        └── per_snv_barcharts/
+            ├── p_11476_bar_chart.png
+            └── ...
+</pre></div>
+</div>
+<p>With more than one group in the sample sheet, the six top-level files appear once per group, and
+<code class="docutils literal notranslate"><span class="pre">2-SNV-filtering/</span></code> and <code class="docutils literal notranslate"><span class="pre">3-Analysis/</span></code> get one subdirectory per group.</p>
+<p><code class="docutils literal notranslate"><span class="pre">samples.csv</span></code> is the sample sheet you passed with <code class="docutils literal notranslate"><span class="pre">-i</span></code>, rewritten with the FASTQ and reference
+paths AccuSNV resolved for each sample. It is what the workflow actually read, so it is the file
+to check when a sample was mapped against something you did not expect.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">use_nj_tree:</span> <span class="pre">true</span></code> the four <code class="docutils literal notranslate"><span class="pre">dnapars*</span></code> and <code class="docutils literal notranslate"><span class="pre">alignment.phylip</span></code> files are absent, since
+<code class="docutils literal notranslate"><span class="pre">dnapars</span></code> never runs.</p>
+</section>
+<section id="the-results">
+<h2>The results<a class="headerlink" href="#the-results" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>File</p></th>
+<th class="head"><p>What it is</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">group_&lt;group&gt;_snv_table_final.tsv</span></code></p></td>
+<td><p>The SNV calls, fully annotated. One row per position, one column per sample, plus the gene, the amino-acid change and every filter verdict. See <a class="reference internal" href="snv_table.html"><span class="std std-doc">The final SNV table</span></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">group_&lt;group&gt;_snv_dashboard.html</span></code></p></td>
+<td><p>Every candidate position, the read counts behind it, the gene and protein sequence, and the tree, in one offline page. See <a class="reference internal" href="#dashboard.md"><span class="xref myst">The interactive report</span></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">group_&lt;group&gt;_snv_table_unfiltered.tsv</span></code></p></td>
+<td><p>The same table with the rejected candidates included, so you can see what was dropped and by which check.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">group_&lt;group&gt;_snv_tree_final.nwk.tree</span></code></p></td>
+<td><p>The maximum-parsimony tree in Newick. See <a class="reference internal" href="phylogeny.html"><span class="std std-doc">Phylogeny and dMRCA</span></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">group_&lt;group&gt;_snv_table_invariant_positions.tsv</span></code></p></td>
+<td><p>Candidate positions where every ingroup sample agrees. They differ from the reference genome but not from each other, so they are not SNVs and are kept out of the SNV tables.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">group_&lt;group&gt;_snv_table_rejected_upstream.tsv</span></code></p></td>
+<td><p>Positions <code class="docutils literal notranslate"><span class="pre">bcftools</span></code> called but that never became candidates, and which gate dropped them.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Each of these is a copy, except the last. The SNV tables and the invariant positions are also in
+<code class="docutils literal notranslate"><span class="pre">2-SNV-filtering/group_&lt;group&gt;/</span></code>, the dashboard in <code class="docutils literal notranslate"><span class="pre">3-Analysis/group_&lt;group&gt;/</span></code>, and the tree in
+<code class="docutils literal notranslate"><span class="pre">3-Analysis/group_&lt;group&gt;/phylogeny/</span></code>.</p>
+<section id="positions-that-never-reached-the-snv-tables">
+<h3>Positions that never reached the SNV tables<a class="headerlink" href="#positions-that-never-reached-the-snv-tables" title="Link to this heading"></a></h3>
+<p>Two of the six files exist so that positions dropped before any SNV call have somewhere to be
+looked at. Neither is needed for a normal run; both matter when a SNV you expected is missing.</p>
+<dl class="simple myst">
+<dt><code class="docutils literal notranslate"><span class="pre">snv_table_invariant_positions.tsv</span></code></dt><dd><p>Columns <code class="docutils literal notranslate"><span class="pre">genome_pos</span></code>, <code class="docutils literal notranslate"><span class="pre">contig</span></code>, <code class="docutils literal notranslate"><span class="pre">contig_pos</span></code>, <code class="docutils literal notranslate"><span class="pre">ingroup_allele</span></code>, <code class="docutils literal notranslate"><span class="pre">reference_allele</span></code> and
+<code class="docutils literal notranslate"><span class="pre">samples_called</span></code>. Mapping a group against a reference from outside it puts tens of thousands
+of rows here, and that is normal: they are the fixed differences between your isolates and the
+reference, not differences between the isolates. The count is in <code class="docutils literal notranslate"><span class="pre">accusnv.log</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">snv_table_rejected_upstream.tsv</span></code></dt><dd><p>One row per sample per position, with the <code class="docutils literal notranslate"><span class="pre">bcftools</span></code> evidence (<code class="docutils literal notranslate"><span class="pre">qual</span></code>, <code class="docutils literal notranslate"><span class="pre">DP4</span></code>, <code class="docutils literal notranslate"><span class="pre">FQ</span></code>, <code class="docutils literal notranslate"><span class="pre">genotype</span></code>)
+and a <code class="docutils literal notranslate"><span class="pre">removed_by</span></code> value of either <code class="docutils literal notranslate"><span class="pre">variant_min_af</span></code> or <code class="docutils literal notranslate"><span class="pre">max_fq</span></code>, naming which of the two
+mapping-stage gates dropped it. This is the only place those removals are visible, because
+such a position never becomes a candidate and so has no row in any SNV table. Look here when a
+SNV you were expecting is in neither <code class="docutils literal notranslate"><span class="pre">snv_table_final.tsv</span></code> nor <code class="docutils literal notranslate"><span class="pre">snv_table_unfiltered.tsv</span></code>.
+It is not rebuilt by <code class="docutils literal notranslate"><span class="pre">--downstream_only</span></code>, which does not touch the mapping-stage VCFs.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="the-calling-stage">
+<h2>The calling stage<a class="headerlink" href="#the-calling-stage" title="Link to this heading"></a></h2>
+<p>Everything in <code class="docutils literal notranslate"><span class="pre">2-SNV-filtering/group_&lt;group&gt;/</span></code>.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>File</p></th>
+<th class="head"><p>What it is</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">snv_table_cnn_raw.tsv</span></code></p></td>
+<td><p>The network’s raw output: <code class="docutils literal notranslate"><span class="pre">genome_pos</span></code>, <code class="docutils literal notranslate"><span class="pre">CNN_pred</span></code> (0 or 1) and <code class="docutils literal notranslate"><span class="pre">CNN_prob</span></code>, one row per position it scored. This is the only place the unmodified probability survives, because a position rescued from the network’s rejection has its <code class="docutils literal notranslate"><span class="pre">CNN_pred</span></code> rewritten in the main tables.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">candidate_mutation_table_final.npz</span></code></p></td>
+<td><p>The machine-readable final result: sample names, positions, the 8 read counts per sample per position, call qualities, outgroup flags, indel counts, and the <code class="docutils literal notranslate"><span class="pre">label</span></code>, <code class="docutils literal notranslate"><span class="pre">prob</span></code> and <code class="docutils literal notranslate"><span class="pre">recomb</span></code> arrays. Load it with <code class="docutils literal notranslate"><span class="pre">numpy.load(path,</span> <span class="pre">allow_pickle=True)</span></code>. This is the file to build your own analysis on.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">snvs_per_sample.tsv</span></code></p></td>
+<td><p>Rough per-sample SNV count, computed before filtering. Two columns: <code class="docutils literal notranslate"><span class="pre">sample</span></code>, <code class="docutils literal notranslate"><span class="pre">snv_count</span></code>. Useful for spotting a contaminated isolate.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">snv_table_invariant_positions.tsv</span></code></p></td>
+<td><p>The candidate positions the whole ingroup agrees on, described above.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">snvs_from_recombo.csv</span></code></p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">genome_pos</span></code> of every position flagged as recombinant, one per line. Only written when something was flagged; the same flag is the <code class="docutils literal notranslate"><span class="pre">Whether_recomb</span></code> column of the SNV tables.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">snv_table_filtered_tmp.tsv</span></code></p></td>
+<td><p>The filter verdicts before annotation merges them in. Kept so that <code class="docutils literal notranslate"><span class="pre">--downstream_only</span></code> can re-annotate; not otherwise interesting.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">_snv_state.npz</span></code></p></td>
+<td><p>The internal hand-off between stages: read counts, qualities, filtered calls, the inferred ancestor, the recombination mask. The dashboard and the tree builder read it. Do not edit it.</p></td>
+</tr>
+</tbody>
+</table>
+<section id="qc-figures-from-the-calling-stage">
+<h3>QC figures from the calling stage<a class="headerlink" href="#qc-figures-from-the-calling-stage" title="Link to this heading"></a></h3>
+<dl class="simple myst">
+<dt><code class="docutils literal notranslate"><span class="pre">snvs_per_sample.png</span></code></dt><dd><p>The rough per-sample count as a scatter plot. Sample names are shown for up to 20 samples;
+above that the axis is left blank and any sample with more than 1000 SNVs is labelled in red.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">snvs_histogram_per_sample.png</span></code> and <code class="docutils literal notranslate"><span class="pre">ZOOMED_snvs_histogram_per_sample.png</span></code></dt><dd><p>The distribution of those counts. The zoomed version covers only samples under 1000 SNVs and
+draws a line at 100, which is the useful view on a large cohort.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">snv_filter_sample_coverage_hist.png</span></code></dt><dd><p>Median depth per sample. The figure for a healthy run has all samples in one cluster; a
+straggler near zero is a failed library. The red cutoff line sits at zero, because this
+particular filter is disabled by default — read the histogram itself, not the line. The filter
+that does drop samples is <code class="docutils literal notranslate"><span class="pre">min_cov_samp</span></code>, which counts zero-coverage positions rather than
+median depth and draws no figure.</p>
+</dd>
+</dl>
+<figure class="align-default" id="id1">
+<a class="reference internal image-reference" href="_images/sample_coverage_hist.png"><img alt="Histogram of median per-sample coverage for four test isolates, all near 15x" src="_images/sample_coverage_hist.png" style="width: 80%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">The four test isolates, all at about 14 to 15x.</span><a class="headerlink" href="#id1" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+<dl class="simple myst">
+<dt><code class="docutils literal notranslate"><span class="pre">snv_filter_sample_toomanyNs_hist.png</span></code></dt><dd><p>The fraction of SNV positions where each sample has no confident base call. Drawn twice during
+a run; the file you end up with covers the final SNV set.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">snv_filter_recombo.png</span></code></dt><dd><p>SNV positions along the genome, blue for kept and red for flagged as recombinant. See
+<a class="reference internal" href="recombination.html#recombination-diagnostic-figure"><span class="std std-ref">Recombination</span></a>.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="the-evolutionary-analyses">
+<h2>The evolutionary analyses<a class="headerlink" href="#the-evolutionary-analyses" title="Link to this heading"></a></h2>
+<p>Everything in <code class="docutils literal notranslate"><span class="pre">3-Analysis/group_&lt;group&gt;/</span></code>.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>File</p></th>
+<th class="head"><p>What it is</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dNdS_out/dnds_genomewide.tsv</span></code></p></td>
+<td><p>One row: <code class="docutils literal notranslate"><span class="pre">dNdS</span></code>, its confidence bounds, the nonsynonymous and synonymous counts, the observed and expected fraction of nonsynonymous mutations. See <a class="reference internal" href="dnds.html"><span class="std std-doc">dN/dS</span></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">dNdS_out/dnds_per_gene.tsv</span></code></p></td>
+<td><p>The same, one row per gene carrying at least one SNV.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">dNdS_out/data_dNdS.npz</span></code></p></td>
+<td><p>The same numbers as a NumPy archive.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">phylogeny/snv_tree_final.nwk.tree</span></code></p></td>
+<td><p>The tree, Newick.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">phylogeny/tree.nexus</span></code></p></td>
+<td><p>The same tree, NEXUS.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">phylogeny/snv_table_tree_distances.tsv</span></code></p></td>
+<td><p>Per-sample distance to the inferred ancestor: <code class="docutils literal notranslate"><span class="pre">sample_name</span></code>, <code class="docutils literal notranslate"><span class="pre">num_SNVs_to_ancestor</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">phylogeny/snv_table_simple_stats.tsv</span></code></p></td>
+<td><p>One row summarising the SNV set behind the tree: sample count, SNV count, and the median, minimum and maximum dMRCA.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">phylogeny/alignment.fa</span></code>, <code class="docutils literal notranslate"><span class="pre">alignment.phylip</span></code>, <code class="docutils literal notranslate"><span class="pre">dnapars.log</span></code>, <code class="docutils literal notranslate"><span class="pre">dnapars_options.txt</span></code>, <code class="docutils literal notranslate"><span class="pre">dnapars_report.txt</span></code></p></td>
+<td><p>What <code class="docutils literal notranslate"><span class="pre">dnapars</span></code> was given and what it printed. Worth reading if the tree looks wrong.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">phylogeny/snv_trees/</span></code></p></td>
+<td><p>One NEXUS tree per SNV, tips coloured by base call, only with <code class="docutils literal notranslate"><span class="pre">--build_snv_trees</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">phylogeny/snvChart.csv</span></code></p></td>
+<td><p>The per-sample base calls those per-SNV trees were drawn from. Only with <code class="docutils literal notranslate"><span class="pre">--build_snv_trees</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">per_snv_barcharts/p_&lt;pos&gt;_bar_chart.png</span></code></p></td>
+<td><p>Read counts at one position for every sample, forward then reverse, stacked by base. Written for runs with 1000 SNVs or fewer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">diagnostic_figures/snv_qc_heatmap_*.png</span></code></p></td>
+<td><p>Three heatmaps over samples by SNV position: base calls, coverage, call quality. Written for runs with fewer than 300 SNVs.</p></td>
+</tr>
+</tbody>
+</table>
+<p>The bar charts and the heatmaps are made by the report stage, so <code class="docutils literal notranslate"><span class="pre">--skip_report</span></code> skips them too
+even though they are separate files.</p>
+<section id="the-per-snv-bar-charts">
+<h3>The per-SNV bar charts<a class="headerlink" href="#the-per-snv-bar-charts" title="Link to this heading"></a></h3>
+<p>One PNG per position, the same chart the report links to from its “Open full barchart” button.
+Two bars per sample, forward reads then reverse, stacked by base.</p>
+<figure class="align-default" id="id2">
+<a class="reference internal image-reference" href="_images/barchart_p11476.png"><img alt="Stacked bar chart of read counts by base for four samples at position 11476" src="_images/barchart_p11476.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-text">Position 11,476 in the test data. Three isolates are solidly G on both strands; <code class="docutils literal notranslate"><span class="pre">strain4</span></code> is
+solidly T on both strands. Both strands agreeing, and no minor-allele smear anywhere, is what a
+clean variant looks like.</span><a class="headerlink" href="#id2" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+<p>Charts to be suspicious of: a variant present on one strand only, a sample where two colours are
+mixed in similar proportions, or depth at this position wildly above every other sample’s.</p>
+</section>
+<section id="the-qc-heatmaps">
+<h3>The QC heatmaps<a class="headerlink" href="#the-qc-heatmaps" title="Link to this heading"></a></h3>
+<figure class="align-default" id="id3">
+<a class="reference internal image-reference" href="_images/qc_heatmap_calls.png"><img alt="Heatmap of base calls for four samples across ten SNV positions" src="_images/qc_heatmap_calls.png" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">snv_qc_heatmap_calls.png</span></code>: the base each sample carries at each SNV. White means no confident
+call. Reading down a column tells you which isolates carry the variant; reading across a row
+tells you whether one isolate is missing calls everywhere, which points at coverage rather than
+biology.</span><a class="headerlink" href="#id3" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+<figure class="align-default" id="id4">
+<a class="reference internal image-reference" href="_images/qc_heatmap_coverage.png"><img alt="Heatmap of read depth for four samples across ten SNV positions" src="_images/qc_heatmap_coverage.png" style="width: 100%;" />
+</a>
+<figcaption>
+<p><span class="caption-text"><code class="docutils literal notranslate"><span class="pre">snv_qc_heatmap_coverage.png</span></code>: read depth at the same positions. A column much brighter than the
+rest is a repeated or duplicated region; a dark cell next to a white cell in the calls heatmap
+explains the missing call.</span><a class="headerlink" href="#id4" title="Link to this image"></a></p>
+</figcaption>
+</figure>
+<p>The third, <code class="docutils literal notranslate"><span class="pre">snv_qc_heatmap_quals.png</span></code>, shows call quality on the same grid.</p>
+</section>
+</section>
+<section id="the-intermediate-files">
+<h2>The intermediate files<a class="headerlink" href="#the-intermediate-files" title="Link to this heading"></a></h2>
+<p>Rarely needed, but worth knowing about when a run goes wrong or you want to reuse the data.</p>
+<dl class="simple myst">
+<dt><code class="docutils literal notranslate"><span class="pre">1-Mapping/alignment/</span></code></dt><dd><p>One deduplicated, sorted, indexed BAM per sample (<code class="docutils literal notranslate"><span class="pre">*_aligned.sorted.bam</span></code> and <code class="docutils literal notranslate"><span class="pre">.bai</span></code>) plus the
+duplicate statistics from <code class="docutils literal notranslate"><span class="pre">samtools</span> <span class="pre">markdup</span></code> (<code class="docutils literal notranslate"><span class="pre">*.bam.stats.txt</span></code>). The SAM and intermediate BAMs
+are deleted as the pipeline goes.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">1-Mapping/alignment/trimmed_filtered_reads/</span></code></dt><dd><p>Per sample, <code class="docutils literal notranslate"><span class="pre">*_R1_trimmed.fastq.gz</span></code> and <code class="docutils literal notranslate"><span class="pre">*_R2_trimmed.fastq.gz</span></code> from <code class="docutils literal notranslate"><span class="pre">cutadapt</span></code>, then
+<code class="docutils literal notranslate"><span class="pre">*_R1_filtered.fastq.gz</span></code> and <code class="docutils literal notranslate"><span class="pre">*_R2_filtered.fastq.gz</span></code> from <code class="docutils literal notranslate"><span class="pre">sickle</span></code>, which are what gets
+mapped. <code class="docutils literal notranslate"><span class="pre">*_unpaired.fastq.gz</span></code> holds reads whose mate did not survive trimming; AccuSNV does
+not map them.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">1-Mapping/vcf/</span></code></dt><dd><p>Per sample, the whole-genome <code class="docutils literal notranslate"><span class="pre">strain.vcf.gz</span></code> and the SNP-only <code class="docutils literal notranslate"><span class="pre">variant.vcf.gz</span></code>, plus
+<code class="docutils literal notranslate"><span class="pre">*.upstream_rejects.tsv</span></code>, this sample’s share of the combined rejected-upstream table. The
+pileup file is deleted once the read-count matrix is built, because it is enormous.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">1-Mapping/quals/</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">*.quals.pickle.gz</span></code>, the <code class="docutils literal notranslate"><span class="pre">bcftools</span></code> FQ score at every position of the genome, and
+<code class="docutils literal notranslate"><span class="pre">*.positions.pickle</span></code>, the candidate variant positions from that sample.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">1-Mapping/diversity/</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">*.diversity.pickle.gz</span></code>, 40 statistics for every position of the genome: read counts per base
+per strand, average base quality, mapping quality and tail distance per base, and indel
+support. AccuSNV uses the counts and the indel columns; the rest is carried for completeness.
+<code class="docutils literal notranslate"><span class="pre">*.coverage.pickle.gz</span></code> alongside it is the per-position depth pulled out of the same pileup.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">2-SNV-filtering/raw_tables/</span></code></dt><dd><p>The group’s candidate mutation table and the two genome-wide coverage matrices, raw and
+normalised, before any judgement about what is real. Also <code class="docutils literal notranslate"><span class="pre">*_allpositions.pickle</span></code>, the merged
+candidate position list.</p>
+</dd>
+</dl>
+</section>
+<section id="the-logs">
+<h2>The logs<a class="headerlink" href="#the-logs" title="Link to this heading"></a></h2>
+<dl class="simple myst">
+<dt><code class="docutils literal notranslate"><span class="pre">accusnv.log</span></code></dt><dd><p>One line per step per sample, plus every warning and error. A failed job is logged here in
+plain terms — which job, whether it ran out of time or memory, and the tier it was running at:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>ERROR [accusnv] mapping (sampleID=strain3) ran out of time at tier 1 of 3 (8000 MB, 120 min)
+</pre></div>
+</div>
+<p>Read this first when something looks off.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">accusnv.full.log</span></code></dt><dd><p>The same, plus per-sample detail and everything <code class="docutils literal notranslate"><span class="pre">bwa</span></code>, <code class="docutils literal notranslate"><span class="pre">samtools</span></code>, <code class="docutils literal notranslate"><span class="pre">bcftools</span></code>, <code class="docutils literal notranslate"><span class="pre">cutadapt</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sickle</span></code> printed. Read this when a rule failed and you need the tool’s own message.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">logs/</span></code></dt><dd><p>The per-job logs the two files above are merged from, named <code class="docutils literal notranslate"><span class="pre">&lt;step&gt;-&lt;sample</span> <span class="pre">or</span> <span class="pre">group&gt;.log</span></code> and
+<code class="docutils literal notranslate"><span class="pre">.full.log</span></code>. Go straight here when you know which step failed and do not want to search a
+whole run’s output for it.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">accusnv.snakemake.log</span></code></dt><dd><p>Everything Snakemake printed, kept verbatim: the job graph, every job as it starts with the
+resources it asked for, and the full error block for anything that failed. Read this when
+<code class="docutils literal notranslate"><span class="pre">accusnv.log</span></code> says a job failed and you want the surrounding detail.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">.snakemake/log/</span></code></dt><dd><p>Snakemake’s own copy of the same, plus its scheduling decisions.</p>
+</dd>
+</dl>
+</section>
+<section id="empty-outputs">
+<h2>Empty outputs<a class="headerlink" href="#empty-outputs" title="Link to this heading"></a></h2>
+<p>Some situations produce empty rather than missing files, because the workflow declares them as
+outputs and Snakemake requires them to exist:</p>
+<ul class="simple">
+<li><p><strong>A clonal group with no SNVs:</strong> the tables are written empty, the tree file is empty, and the
+dashboard renders with nothing in it. The log says so.</p></li>
+<li><p><strong>Fast mode</strong>, above 100,000 candidate positions: the run writes <code class="docutils literal notranslate"><span class="pre">snv_table_cnn_raw.tsv</span></code> and
+<code class="docutils literal notranslate"><span class="pre">candidate_mutation_table_final.npz</span></code> and stops. <code class="docutils literal notranslate"><span class="pre">snv_table_final.tsv</span></code> is a copy of the raw
+network scores rather than the usual annotated columns, and nothing downstream runs.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">--skip_*</span></code> flags:</strong> the stage does not run and its output directory is not created.</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="filters.html" class="btn btn-neutral float-left" title="SNV filters and calls explained" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="snv_table.html" class="btn btn-neutral float-right" title="The final SNV table" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Lieberman Lab, MIT.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
