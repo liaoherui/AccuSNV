@@ -4,7 +4,7 @@ project = 'AccuSNV'
 copyright = '2026, Lieberman Lab, MIT'
 author = 'Herui Liao, Alex Crits-Christoph and the Lieberman Lab'
 release = '1.1.0'
-version = '1.1'
+version = '1.1.0'
 
 extensions = [
     'myst_parser',
