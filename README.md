@@ -2,7 +2,8 @@
 
 # <img src="readme_files/logo.png" width = "100" height = "100" >  High-accuracy SNV calling for bacterial isolates using AccuSNV 
 
-### Version: V1.1.0 (Last update on 2026-August)
+### Version: V1.1.0 (Last update on 2026-August). 
+Documentation: [accusnv.readthedocs.io](https://accusnv.readthedocs.io/)
 
 AccuSNV is a computational pipeline designed to identify single nucleotide variants (SNVs) in short-read whole genome sequencing data between genomes in a group of bacterial isolates. 
 
@@ -14,8 +15,9 @@ The architecture of the AccuSNV convolutional neural network:
 
 # <img src="readme_files/method_fix.jpg" width = "800" height = "500" >  
 
-
 ## Overview
+
+The full AccuSNV documentation is available at: https://accusnv.readthedocs.io/.
 
 This pipeline is used to identify and analyze single nucleotide differences between bacterial isolates from short read WGS data. 
 
@@ -50,6 +52,7 @@ Note: This tool is based on the Lieberman and Key Lab SNV calling pipeline - [Wi
 -------------------------------------------------
 
 ## Install
+[Full installation documentation](https://accusnv.readthedocs.io/en/latest/installation.html)
 
 **Install dependencies** with conda or mamba, or otherwise have them installed system-wide:
 
@@ -64,9 +67,7 @@ conda install -c conda-forge -c bioconda bwa bowtie2 samtools bcftools tabix sic
 Then install **AccuSNV and Python dependencies** (requires Python>=3.9):
 
 ```
-git clone https://github.com/acritschristoph/AccuSNV.git
-cd AccuSNV
-pip install .
+pip install accusnv
 ```
 
 The default aligner for AccuSNV is `BWA-MEM` (with `samclip`), but you can also use `bowtie2` by changing the aligner value in the config file.
@@ -94,19 +95,12 @@ accusnv -m slurm -sp <partition> -i Test_data/samples_cae_test_pe.csv -r Test_da
 
 This submits the whole pipeline as Slurm jobs. `-sp` chooses the partition(s) to submit to. This can be comma-separated for more than one (e.g. `-sp short,long`), or you can omit it to let sbatch use your cluster default. 
 
->For a description of the resulting output files, see [Output files of AccuSNV](readme_files/readme_test_output.md), or read on below.
+>For a description of the resulting output files, see [Output files of AccuSNV](https://accusnv.readthedocs.io/en/latest/outputs.html), or read on below.
 
 >*Note*: On some clusters you must activate your conda environment on the compute nodes. Pass `-e 'conda activate accusnv'` so every workflow rule activates it first.
 
-## Unit tests
-
-The checks AccuSNV makes on your inputs before a run (which FASTQs belong to a sample, which references resolve, the paths written into the configs) are covered by unit tests, which need no test data and take under a second:
-
-```
-python -m unittest discover -s tests
-```
-
 ## Changing config parameters
+[Parameter documentation](https://accusnv.readthedocs.io/en/latest/parameters.html)
 
 There are two AccuSNV config yaml files:
 
@@ -135,7 +129,7 @@ AccuSNV requires three types of inputs:
 - **A sample sheet CSV** 
   - Same format as the **Quick Test** CSV files. Examples can be found in the folder [Test_data](Test_data/) (e.g. `Test_data/samples_cae_test_pe.csv`).
   - In this sample sheet, individual samples can be assigned to sample *groups*. Samples within the same Group are analyzed together and separately from other samples.
-  - Detailed description for this file can be found [here](readme_files/readme_input_csv.md).
+  - Detailed description for this file can be found [here](https://accusnv.readthedocs.io/en/latest/inputs.html).
 
 - **A directory of FASTQ files.** 
   - AccuSNV does not take FASTQ paths directly. For each sample it locates the reads by combining the Path (the folder to search) and the FileName (the read-file prefix) columns from your sample sheet, and then searching the Path folder for files that match.
@@ -151,7 +145,7 @@ AccuSNV requires three types of inputs:
 
 
 
-A detailed description of the input directory structure and files can be found here: [Input files of AccuSNV](readme_files/readme_input_csv.md).
+A detailed description of the input directory structure and files can be found here: [Input files of AccuSNV](https://accusnv.readthedocs.io/en/latest/inputs.html).
 
 ### 2.  Run the Snakemake pipeline
 
@@ -220,6 +214,7 @@ Those positions are annotated and reported like any other SNV, and they reach dN
 Both paths are recorded in `pipeline.yaml` (as `exclude_positions` and `include_positions`) and can be edited there instead. Note that the two files the calling stage itself writes, `2-SNV-filtering/group_<group>/candidate_mutation_table_final.npz` and `snv_table_cnn_raw.tsv`, are raw per-position output and are not affected by either flag.
 
 ## Output
+[Output documentation](https://accusnv.readthedocs.io/en/latest/outputs.html)
 
 The results for each sample group are written at the top level of the output directory, one set per group (e.g., for **Quick Test**, `cae_pe_test_snakemake/group_pe_test_snv_table_final.tsv`). Raw data tables and diagnostic information are in: `2-SNV-filtering/group_[group_name]/` and `3-Analysis/group_[group_name]/`.
 
@@ -227,7 +222,7 @@ The results for each sample group are written at the top level of the output dir
 
 | File or Folder |  Description |
 | ---  | --- | 
-| `group_<group>_snv_table_final.tsv`  | Final SNV report table (recommended primary output table). More details, including explanations of the columns in this file, can be found [here](readme_files/readme_annotation_table.md).
+| `group_<group>_snv_table_final.tsv`  | Final SNV report table (recommended primary output table). More details, including explanations of the columns in this file, can be found [here](https://accusnv.readthedocs.io/en/latest/snv_table.html).
 | `group_<group>_snv_dashboard.html`  | Interactive final HTML report (recommended to view).
 | `2-SNV-filtering/group_<group>/snv_table_unfiltered.tsv` | Every candidate position AccuSNV considered, kept or not, with the CNN and rule-based filter breakdown for each and a `Removed_by` column naming the stage that removed it.
 | `group_<group>_snv_table_rejected_upstream.tsv` | Positions where bcftools called a substitution but which never became candidates, and which of the two mapping-stage gates (`variant_min_af` or `max_fq`) dropped them.
@@ -237,7 +232,7 @@ For final SNV calling results, please use:
 
 `group_<group>_snv_table_final.tsv` as the primary human-readable SNV result table.
 
-For full documentation of all output files, please see [here](readme_files/readme_test_output.md).
+For full documentation of all output files, please see [here](https://accusnv.readthedocs.io/en/latest/outputs.html).
 
 ### Downstream evolutionary analysis output files:
 | File or Folder |  Description |
@@ -253,57 +248,39 @@ For full documentation of all output files, please see [here](readme_files/readm
 ## Full command-line options
 
 ```
-usage: accusnv [-h] [-i CSV] [-r DIR] [-o DIR] [--exclude_positions FILE]
-        [--include_positions FILE] [-c FILE] [-p FILE]
-        [-m {dryrun,slurm,local}] [-j N] [-sp PARTITIONS] [-e CMD] [output options]
+usage: accusnv [-h] [--version] [-i CSV] [-r DIR] [-o DIR] [--exclude_positions FILE] [--include_positions FILE] [-c FILE] [-p FILE] [-m {dryrun,slurm,local}] [-j N] [-sp PARTITIONS] [--skip_samclip] [-e CMD] [output options]
 
-AccuSNV
+AccuSNV v1.1.0
 High-accuracy SNV calling for bacterial isolates using deep learning.
+
+options:
+  --version                        Show version and exit
 
 Inputs and Outputs:
   -i, --input_sample_info CSV      Input sample CSV (required)
   -r, --ref_dir DIR                Reference genomes dir (required)
   -o, --output_dir DIR             Output dir (default: accusnv_output)
-  --exclude_positions FILE         File of genome_pos values, one per line, to
-                                   leave out of the SNV set (also written to
-                                   pipeline.yaml). Combine with
-                                   --downstream_only to change the list
-                                   without re-calling SNVs
+  --exclude_positions FILE         File of genome_pos values, one per line, to exclude from the SNV set regardless of the model calls. Combine with --downstream_only to change the list without re-calling
+                                   SNVs.
+  --include_positions FILE         File of genome_pos values, one per line, to keep in the SNV set regardless of the model calls.
 
 Config:
-  -c, --config_file FILE           Execution settings + run paths
-                                   (config.yaml; default: autogenerated in
-                                   out_dir)
-  -p, --pipeline_file FILE         Pipeline params (pipeline.yaml; default:
-                                   autogenerated in out_dir)
+  -c, --config_file FILE           Execution settings (config.yaml; default: autogenerated in out_dir)
+  -p, --pipeline_file FILE         Pipeline params (pipeline.yaml; default: autogenerated in out_dir)
   -m, --mode {dryrun,slurm,local}  Run mode (default: local)
-  -j, --cores N                    Cores for local execution (default: value
-                                   in config.yaml, 4)
-  -sp, --partition PARTITIONS      SLURM partition(s) to submit to, comma-
-                                   separated list for >1 (default: not
-                                   specified)
-  -e, --env CMD                    Environment activation command, e.g. 'conda
-                                   activate accusnv' (default: inherit current
-                                   environment)
+  -j, --cores N                    Cores per cutadapt/mapping job, or the total cores a local run uses (default: the cores value in pipeline.yaml, 4)
+  -sp, --partition PARTITIONS      SLURM partition(s) to submit to, comma-separated list for >1 (default: not specified)
+  --skip_samclip                   Do not pipe bwa alignments through samclip, which drops soft-clipped reads (on by default with bwa; samclip is never used with bowtie2)
+  -e, --env CMD                    Environment activation command, e.g. 'conda activate accusnv' (default: inherit current environment)
 
 Output options:
-  --skip_all_downstream            Skip all downstream evolutionary analyses
-                                   and report generation
+  --skip_all_downstream            Skip all downstream evolutionary analyses and report generation
   --skip_report                    Skip generating the HTML report
-  --skip_recombination             Skip recombination detection. On by
-                                   default: recombinant SNVs are flagged and
-                                   kept in the SNV tables, but left out of
-                                   dN/dS, tree building and dMRCA. Pass this
-                                   to stop flagging them, which counts them
-                                   everywhere
+  --skip_recombination             Skip recombination detection. On by default: recombinant SNVs are flagged and excluded frmo dN/dS, tree building and dMRCA. This stops excluding them
   --skip_dnds                      Skip dN/dS calculations
   --skip_trees                     Skip parsimony tree building (dnapars)
-  --build_snv_trees                Write one NEXUS tree per SNV, tips coloured
-                                   by basecall, for viewing in FigTree
-                                   (default: off)
-  --downstream_only                Run only downstream analyses (Assumes
-                                   AccuSNV SNV tables and output directory
-                                   already exist)
+  --build_snv_trees                Write one NEXUS tree per SNV, tips coloured by basecall, for viewing in FigTree (default: off)
+  --downstream_only                Run only downstream analyses (Assumes AccuSNV SNV tables and output directory already exist)
 ```
 
 Every other parameter is in the two YAML files, which are written into `<output_dir>/configs` with defaults on each run:
