@@ -62,6 +62,9 @@ CHECKS = [
      'Requires the read depth to stay close to the whole-genome read depth, to avoid SNVs arising '
      'from mismapped repeat regions (default: less than 4x on average, and less than 7x for any '
      'one sample).'),
+    ('Edge_filter', 'At a contig end, with reads on one strand only',
+     'Rejects positions that are close to the ends of contigs (default <100 bp) and have strong '
+     'strand bias (default: <30% of reads are one strand).'),
     ('Gap_filter', 'Unusual coverage compared to other samples',
      'Requires the samples carrying the variant not to drop far below their genome-wide median '
      'depth while the reference samples stay high, the signature of a gap or mismapping in the '

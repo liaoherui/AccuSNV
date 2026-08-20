@@ -582,6 +582,8 @@ max_frac_ambiguous_samples     = config.get("max_frac_ambiguous_samples", 1)
 min_median_coverage_position   = config.get("min_median_coverage_position", 5)
 max_mean_copynum               = config.get("max_mean_copynum", 4)
 max_max_copynum                = config.get("max_max_copynum", 7)
+contig_edge_bp                 = config.get("contig_edge_bp", 100)
+max_strand_imbalance           = config.get("max_strand_imbalance", 0.3)
 fast_mode_positions            = config.get("fast_mode_positions", 100000)
 rebuild_sample_count           = config.get("rebuild_sample_count", 20)
 rebuild_cutoff_many            = config.get("rebuild_cutoff_many", 0.1)
@@ -636,6 +638,8 @@ rule calling_accusnv:
             "--min_median_coverage_position {min_median_coverage_position} "
             "--max_mean_copynum {max_mean_copynum} "
             "--max_max_copynum {max_max_copynum} "
+            "--contig_edge_bp {contig_edge_bp} "
+            "--max_strand_imbalance {max_strand_imbalance} "
             "--fast_mode_positions {fast_mode_positions} "
             "--rebuild_sample_count {rebuild_sample_count} "
             "--rebuild_cutoff_many {rebuild_cutoff_many} "

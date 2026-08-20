@@ -1514,8 +1514,8 @@ def find_recombination_positions( my_calls, my_cmt, calls_ancestral, mut_qual, m
     return p_nonsnp, nonsnp_bool
 
 
-def dec_final_lab(cnn,warr,wd,gap,freq,qual,check,cutoff):
-    if str(qual)=='1':
+def dec_final_lab(cnn,warr,wd,gap,freq,qual,check,cutoff,edge):
+    if str(qual)=='1' or str(edge)=='1':
         warr[0]='0'
         warr[1]='0'
         return '0'
@@ -1543,11 +1543,11 @@ def dec_final_lab(cnn,warr,wd,gap,freq,qual,check,cutoff):
 # The per-position filters, in the order they run, as (dpt key, name used in Removed_by).
 FILTER_ORDER = [('qual','Qual_filter'), ('cov','Cov_filter'), ('maf','MAF_filter'),
                 ('indel','Indel_filter'), ('mfas','MFAS_filter'), ('mmcp','MMCP_filter'),
-                ('cpn','CPN_filter'), ('fix','Fix_filter')]
+                ('cpn','CPN_filter'), ('edge','Edge_filter'), ('fix','Fix_filter')]
 
 TABLE_COLUMNS = ('genome_pos\tPred_label\tCNN_pred\tWideVariant_pred\tCNN_prob\tQual_filter\t'
                  'Cov_filter\tMAF_filter\tIndel_filter\tMFAS_filter\tMMCP_filter\tCPN_filter\t'
-                 'Fix_filter\tWhether_recomb\tFraction_ambiguous_samples\tGap_filter\t'
+                 'Fix_filter\tWhether_recomb\tFraction_ambiguous_samples\tGap_filter\tEdge_filter\t'
                  'CNN_pred_raw\tCNN_prob_raw\tGap_reason\tRemoved_by\n')
 
 
@@ -1606,7 +1606,7 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
             gf=dgap[p]
         freq=freq_d[p]
         check=check_d[p]
-        fl=dec_final_lab(cnn_l,warr,filt_l,gf,freq,dpt['qual'][p],check,cutoff)
+        fl=dec_final_lab(cnn_l,warr,filt_l,gf,freq,dpt['qual'][p],check,cutoff,dpt['edge'][p])
         freq="%.6f" % freq
         if re.search('skip',str(warr[0])):
             tem_warr=0
@@ -1616,7 +1616,7 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
             # Removed by both the model and the filters. This still counts as removed for the
             # SNV set (filt), but the row is written so the reason is visible.
             filt[p]=''
-        o.write(str(p)+'\t'+fl+'\t'+warr[0]+'\t'+filt_l+'\t'+warr[1]+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+str(freq)+'\t'+gf+'\t'+cnn_l+'\t'+cnn_p+'\t'+dgap_reason.get(p,'.')+'\t'+removed_by(fl,dpt,p,gf,cnn_l,filt_l)+'\n')
+        o.write(str(p)+'\t'+fl+'\t'+warr[0]+'\t'+filt_l+'\t'+warr[1]+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+str(freq)+'\t'+gf+'\t'+str(dpt['edge'][p])+'\t'+cnn_l+'\t'+cnn_p+'\t'+dgap_reason.get(p,'.')+'\t'+removed_by(fl,dpt,p,gf,cnn_l,filt_l)+'\n')
         written.add(p)
     # Candidates neither the model nor the filters called. They were never considered above,
     # so report them here with the filter verdicts that were already computed for them.
@@ -1631,7 +1631,7 @@ def generate_cnn_filter_table(all_p,filt_res,dpt,dlab,dprob,dir_output,cmt_p,dga
         cnn_p=str(dprob[p]) if p in dprob else 'skip'
         gf=dgap.get(p,'0')
         recomb='1' if dpt['recomb'][p]==True else '0'
-        o.write(str(p)+'\t0\t'+cnn_l+'\t0\t'+cnn_p+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+"%.6f" % freq_d[p]+'\t'+gf+'\t'+cnn_l+'\t'+cnn_p+'\t'+dgap_reason.get(p,'.')+'\t'+removed_by('0',dpt,p,gf,cnn_l,'0')+'\n')
+        o.write(str(p)+'\t0\t'+cnn_l+'\t0\t'+cnn_p+'\t'+str(dpt['qual'][p])+'\t'+str(dpt['cov'][p])+'\t'+str(dpt['maf'][p])+'\t'+str(dpt['indel'][p])+'\t'+str(dpt['mfas'][p])+'\t'+str(dpt['mmcp'][p])+'\t'+str(dpt['cpn'][p])+'\t'+str(dpt['fix'][p])+'\t'+recomb+'\t'+"%.6f" % freq_d[p]+'\t'+gf+'\t'+str(dpt['edge'][p])+'\t'+cnn_l+'\t'+cnn_p+'\t'+dgap_reason.get(p,'.')+'\t'+removed_by('0',dpt,p,gf,cnn_l,'0')+'\n')
     o.close()
     for p in cmt_p:
         if p in filt:

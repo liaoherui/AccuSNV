@@ -58,6 +58,12 @@ min_median_coverage_position: 5  # MMCP_filter: drop a position whose median dep
 max_mean_copynum: 4              # CPN_filter: drop a position whose depth averages more than this many times
                                  # the genome-wide median depth (catches repeats and duplications)
 max_max_copynum: 7               # CPN_filter: ...or exceeds this multiple in any one sample
+contig_edge_bp: 100              # Edge_filter: drop a position this close to a contig end when its
+                                 # reads are also one-sided. Near a contig end only reads pointing
+                                 # inwards keep their mate on the contig, so mismapped reads there
+                                 # are never competed away. Set to 0 to turn the filter off
+max_strand_imbalance: 0.3        # Edge_filter: a position counts as one-sided when the quieter
+                                 # strand carries less than this share of its reads
 
 fast_mode_positions: 100000      # above this many candidate SNV positions, switch to fast mode:
                                  # score with the CNN only, and skip annotation, dN/dS, trees and the dashboard
