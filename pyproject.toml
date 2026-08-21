@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "accusnv"
-version = "1.1.0"
+version = "1.1.1"
 description = "High-accuracy SNV calling for bacterial isolates (Snakemake pipeline + CNN filter)."
 readme = "README.md"
 requires-python = ">=3.11"
