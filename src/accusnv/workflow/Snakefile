@@ -388,7 +388,10 @@ rule mpileup2vcf:
         note("{wildcards.sampleID}: calling variants (min mapping quality {params.minmapq}, "
              "max depth {params.maxdepth}, min alt-allele fraction {params.minaf})") +
         "samtools mpileup -q{params.minmapq} -x -s -O -d{params.maxdepth} -f {params.ref} {input.bam} > {output.pileup} " + TOOL_ERR + " && "
-        "bcftools mpileup -q{params.minmapq} --annotate FORMAT/SP -d{params.maxdepth} -f {params.ref} {input.bam} -Ou " + TOOL_ERR + " | bcftools call -c -Oz -o {output.strain} " + TOOL_ERR + " && "
+        # -Q13 rather than whatever bcftools defaults to: newer versions default to 1, so a single base
+        # the sequencer already called junk adds a second alt allele, and variants2positions drops any
+        # site with two alt alleles as ambiguous, taking the real SNV with it.
+        "bcftools mpileup -q{params.minmapq} -Q13 --annotate FORMAT/SP -d{params.maxdepth} -f {params.ref} {input.bam} -Ou " + TOOL_ERR + " | bcftools call -c -Oz -o {output.strain} " + TOOL_ERR + " && "
         "bcftools view -Oz -v snps -q {params.minaf} {output.strain} > {output.variants} " + TOOL_ERR + " && "
         "tabix -p vcf {output.variants} " + TOOL_OUT
 
