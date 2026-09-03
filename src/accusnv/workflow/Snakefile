@@ -388,9 +388,8 @@ rule mpileup2vcf:
         note("{wildcards.sampleID}: calling variants (min mapping quality {params.minmapq}, "
              "max depth {params.maxdepth}, min alt-allele fraction {params.minaf})") +
         "samtools mpileup -q{params.minmapq} -x -s -O -d{params.maxdepth} -f {params.ref} {input.bam} > {output.pileup} " + TOOL_ERR + " && "
-        # -Q13 rather than whatever bcftools defaults to: newer versions default to 1, so a single base
-        # the sequencer already called junk adds a second alt allele, and variants2positions drops any
-        # site with two alt alleles as ambiguous, taking the real SNV with it.
+        # New versions of bcftools dropped a default -Q13, so having this restores old WideVariant
+        # BQ filtering.
         "bcftools mpileup -q{params.minmapq} -Q13 --annotate FORMAT/SP -d{params.maxdepth} -f {params.ref} {input.bam} -Ou " + TOOL_ERR + " | bcftools call -c -Oz -o {output.strain} " + TOOL_ERR + " && "
         "bcftools view -Oz -v snps -q {params.minaf} {output.strain} > {output.variants} " + TOOL_ERR + " && "
         "tabix -p vcf {output.variants} " + TOOL_OUT
@@ -586,7 +585,7 @@ min_median_coverage_position   = config.get("min_median_coverage_position", 5)
 max_mean_copynum               = config.get("max_mean_copynum", 4)
 max_max_copynum                = config.get("max_max_copynum", 7)
 contig_edge_bp                 = config.get("contig_edge_bp", 100)
-max_strand_imbalance           = config.get("max_strand_imbalance", 0.3)
+max_edge_strand_imbalance      = config.get("max_edge_strand_imbalance", 0.3)
 fast_mode_positions            = config.get("fast_mode_positions", 100000)
 rebuild_sample_count           = config.get("rebuild_sample_count", 20)
 rebuild_cutoff_many            = config.get("rebuild_cutoff_many", 0.1)
@@ -642,7 +641,7 @@ rule calling_accusnv:
             "--max_mean_copynum {max_mean_copynum} "
             "--max_max_copynum {max_max_copynum} "
             "--contig_edge_bp {contig_edge_bp} "
-            "--max_strand_imbalance {max_strand_imbalance} "
+            "--max_edge_strand_imbalance {max_edge_strand_imbalance} "
             "--fast_mode_positions {fast_mode_positions} "
             "--rebuild_sample_count {rebuild_sample_count} "
             "--rebuild_cutoff_many {rebuild_cutoff_many} "

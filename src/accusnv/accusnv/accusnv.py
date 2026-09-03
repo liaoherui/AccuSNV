@@ -66,7 +66,7 @@ def parse_args():
     p.add_argument('--contig_edge_bp', dest='contig_edge_bp', type=float, default=100,
                    help="Drop a position within this many bp of a contig end when its reads are "
                         "also one-sided (default 100; 0 turns the filter off).")
-    p.add_argument('--max_strand_imbalance', dest='max_strand_imbalance', type=float, default=0.3,
+    p.add_argument('--max_edge_strand_imbalance', dest='max_edge_strand_imbalance', type=float, default=0.3,
                    help="A position counts as one-sided when the quieter strand carries less than "
                         "this share of its reads (default 0.3).")
     p.add_argument('--fast_mode_positions', dest='fast_mode_positions', type=int, default=100000,
@@ -335,24 +335,19 @@ def main():
                                 f'CPN_filter (depth over {args.max_mean_copynum}x the genome median on average, or {args.max_max_copynum}x in one sample)')
     dpt['cpn'] = dict(zip(my_calls.p, tokens))
 
-    # Near a contig end only reads pointing inwards keep their mate on the contig, so the pileup
-    # goes one-sided and a mismapped read there is never competed away by the reads that would
-    # outscore it. Both conditions are required: contig ends carry real SNVs, and so do regions
-    # that simply map one-sided.
+    # Mismapped reads at a contig end, where the pileup is one-sided and nothing outscores them.
     my_calls_raw = copy.deepcopy(my_calls)
     ends = np.append(my_rg.contig_starts[1:] - 1, my_rg.genome_length)
     contig = np.searchsorted(my_rg.contig_starts, my_calls.p, 'right') - 1
     to_end = np.minimum(my_calls.p - my_rg.contig_starts[contig], ends[contig] - my_calls.p)
     fwd, rev = my_cmt.fwd_cov.sum(axis=0), my_cmt.rev_cov.sum(axis=0)
     quieter_strand = np.minimum(fwd, rev) / np.maximum(fwd + rev, 1)
-    edge = (to_end < args.contig_edge_bp) & (quieter_strand < args.max_strand_imbalance)
+    edge = (to_end < args.contig_edge_bp) & (quieter_strand < args.max_edge_strand_imbalance)
     my_calls.filter_calls_by_position(edge)
-    # token_generate reports what this filter removed and, by reassigning tokens, keeps Fix_filter
-    # from reporting the positions it took as its own. dpt holds the test itself rather than the
-    # token, because the verdict below has to stand even where an earlier filter also fired.
+    # dpt holds the test, not the token, so the verdict stands where an earlier filter also fired.
     tokens = snv.token_generate(my_calls_raw.calls.T, my_calls.calls.T,
                                 f'Edge_filter (within {args.contig_edge_bp:.0f} bp of a contig end and '
-                                f'under {args.max_strand_imbalance:.0%} of reads on the quieter strand)')
+                                f'under {args.max_edge_strand_imbalance:.0%} of reads on the quieter strand)')
     dpt['edge'] = dict(zip(my_calls.p, edge.astype(int)))
 
     # Samples with too many ambiguous calls (histogram only; not applied to the table)
