@@ -1,22 +1,21 @@
-# AccuSNV pipeline: preprocess -> map -> call candidate SNVs -> AccuSNV CNN.
-# One workflow for both local and SLURM runs; only the launch profile differs.
+# AccuSNV pipeline
+# Steps are: 
+# 1. preprocess then map reads
+# 2. read pileups and call candidate SNVs 
+# 3. AccuSNV CNN classification
+# 4. Annotate, calculate dNdS, create tree, create dashboard
 
 import os
-import re
 import sys
-import glob
 import gzip
 import pickle
-import subprocess
 import numpy as np
 import pandas as pd
-from itertools import compress
 from snakemake.logging import logger
 from snakemake.exceptions import WorkflowError
 
 ## AccuSNV pipeline imports
 from accusnv import log as accusnv_log
-from accusnv.preprocessing import utils
 
 
 # Get conda env if specified
@@ -26,8 +25,7 @@ else:
     ENV = ""
 
 aligner = config.get("aligner", "bwa")
-# Cores for the two rules that can use more than one. On SLURM this is also what the executor
-# requests as cpus-per-task, because it takes that from each rule's threads.
+# Mumber of for the two rules that use more than 1
 CORES = int(config.get("cores", 4))
 IDX_SUFFIX = ".bwt" if aligner == "bwa" else ".1.bt2"
 # samclip discards reads with soft-clipped ends, which bwa produces around indels and repeat edges
@@ -37,27 +35,23 @@ outdir = config['outdir'].rstrip("/")
 
 # --- Logging ---------------------------------------------------------------
 # Each job writes its own pair of log files in <outdir>/logs, named for its rule and the sample or
-# group it ran on, rather than every job appending to one shared pair. The run's two log files are
-# the merge of those, made when the run finishes. Every rule starts its shell with job_log(), which
-# names its files in $L; Python steps are then handed $L with LOG_ARGS and log themselves, and
-# rules that only run external tools write a summary line with note() and send the tool's output
-# to $L.full.log.
+# group it ran on, rather than every job appending to one shared pair. 
 
 FULL_LOG = accusnv_log.paths(outdir, config)[1]
 LOG_ARGS = '--log "$L"'
-TOOL_OUT = '>> "$L.full.log" 2>&1'    # tool writes its data to files; all its output is chatter
-TOOL_ERR = '2>> "$L.full.log"'        # tool writes its data to stdout, so only capture stderr
+TOOL_OUT = '>> "$L.full.log" 2>&1'    
+TOOL_ERR = '2>> "$L.full.log"'        # when tools write data to stdout, only capture stderr
 
-# The tags naming a job's log files, in the same form as its output filenames.
+# The tags naming a job's log files (in the same form as its output filenames)
 SAMPLE_TAG = "{wildcards.sampleID}_ref_{wildcards.reference}"
 GROUP_TAG = "group_{wildcards.cladeID}"
 
 def job_log(step, tag=None):
-    '''Shell prefix putting this job's log files in $L, for LOG_ARGS, TOOL_OUT and note().'''
+    '''Shell prefix for this job's log files.'''
     return f'L="{accusnv_log.stem(outdir, step, tag)}" ; '
 
 def note(message):
-    '''Shell fragment that writes one summary-log line, for rules that only run external tools.'''
+    '''Writes one summary-log line for rules that only run external tools.'''
     return f'python -m accusnv.log "$L" "{message}" ; '
 
 ################# SAMPLE SHEET AND OUTPUTS #################
@@ -83,7 +77,7 @@ def sample_row(sampleID):
 REF_FASTA = dict(zip(sample_table['Reference'], sample_table['Reference_FASTA']))
 
 # --- Dynamic resources -----------------------------------------------------
-# Every job starts in its first memory/runtime tier; a retry bumps it to the next tier up.
+# Every job starts in its first memory/runtime tier. Retrying bumps it to the next tier up.
 sys.path.insert(0, workflow.basedir)
 import resources as res
 
@@ -93,11 +87,9 @@ def _genome_len(fasta):
         return sum(int(l.split('\t')[1]) for l in open(fai))
     return sum(len(l.strip()) for l in open(fasta) if not l.startswith('>'))
 
-GENOME_LEN = {f: _genome_len(f) for f in sample_table['Reference_FASTA'].unique()}
 
-
-# --- Run banner ------------------------------------------------------------
-# These hooks fire once in the main Snakemake process, so they describe the run as a whole. On
+# --- Run ------------------------------------------------------------
+# These commands are run once in the main Snakemake process, so they describe the run as a whole. On
 # SLURM each job re-reads this file, which is why the overview lives here and not at top level.
 
 onstart:
@@ -110,14 +102,13 @@ onstart:
         ref = rows['Reference_FASTA'].iloc[0]
         log.info('Group %s: %d samples (%d ingroup, %d outgroup) against %s (%s bp)',
                  clade, len(rows), len(ingroup), len(rows) - len(ingroup),
-                 rows['Reference'].iloc[0], f"{GENOME_LEN[ref]:,}")
+                 rows['Reference'].iloc[0], f"{_genome_len(ref):,}")
         log.debug('Group %s reference FASTA: %s', clade, ref)
         log.debug('Group %s samples: %s', clade, ', '.join(rows['Sample']))
 
-# Both hooks write to a second pair of files, so that their message lands at the end of the merged
-# logs rather than back with the overview above. Both then merge the per-job logs, so a run started
-# with snakemake directly still ends with the two log files; a run started with the accusnv CLI is
-# merged again there, after its own last message.
+# onsuccess and onerror write to a second pair of files at the end of the merged logs 
+# rather than back with the overview above. Both then merge the per-job logs, so a run started
+# with snakemake still ends with the two log files.
 
 onsuccess:
     accusnv_log.setup('workflow', accusnv_log.stem(outdir, 'workflow', 'finished')).info(
@@ -454,6 +445,8 @@ rule pileup2diversity:
 
 def combine_positions(positions_files, output_p_file, ref_genome, cladeID):
     ''' Function called by combine_positions rule to create clade-wide positions lists.'''
+
+    from accusnv.preprocessing import utils
     log = accusnv_log.setup('combine_positions', accusnv_log.stem(outdir, 'combine_positions', f'group_{cladeID}'))
     log.info('Group %s: merging candidate variant positions from %d ingroup samples',
              cladeID, len(positions_files))

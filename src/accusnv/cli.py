@@ -54,9 +54,7 @@ def guess_slurm_account():
     """The SLURM account to submit under, or None to leave it to Snakemake.
 
     Snakemake's SLURM plugin guesses the account from your recent jobs, but it hands sacct a shell
-    pipe as arguments, which older versions of sacct reject ("sacct: invalid option -- '1'"). 
-    This is useful for older versions of SLURM.
-
+    pipe as arguments, which older versions of sacct reject. This is useful for older versions of SLURM.
     """
     user = getpass.getuser()
     try:
