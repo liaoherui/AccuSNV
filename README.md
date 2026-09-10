@@ -54,6 +54,17 @@ Note: This tool is based on the Lieberman and Key Lab SNV calling pipeline - [Wi
 ## Install
 [Full installation documentation](https://accusnv.readthedocs.io/en/latest/installation.html)
 
+- **From bioconda**
+- 
+The simplest way to install AccuSNV is via bioconda, in a new environment with Python 3.12:
+```
+conda create -n accusnv python=3.12
+conda activate accusnv
+conda install -c bioconda accusnv
+```
+
+- **From source**
+  
 **Install dependencies** with conda or mamba, or otherwise have them installed system-wide:
 
 ```
