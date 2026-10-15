@@ -2,7 +2,7 @@
 
 # <img src="readme_files/logo.png" width = "100" height = "100" >  High-accuracy SNV calling for bacterial isolates using AccuSNV 
 
-### Version: V1.1.2 (Last update on 2026-September). 
+### Version: V1.1.3 (Last update on 2026-October). 
 Documentation: [accusnv.readthedocs.io](https://accusnv.readthedocs.io/)
 
 AccuSNV is a computational pipeline designed to identify single nucleotide variants (SNVs) in short-read whole genome sequencing data between genomes in a group of bacterial isolates. 
@@ -265,7 +265,7 @@ For full documentation of all output files, please see [here](https://accusnv.re
 ```
 usage: accusnv [-h] [--version] [-i CSV] [-r DIR] [-o DIR] [--exclude_positions FILE] [--include_positions FILE] [-c FILE] [-p FILE] [--workflow {filter_reads,map_reads,candidate_mutation_table,final_mutation_table,all}] [-m {dryrun,slurm,local}] [-j N] [-sp PARTITIONS] [--skip_samclip] [-e CMD] [output options]
 
-AccuSNV v1.1.1
+AccuSNV v1.1.3
 High-accuracy SNV calling for bacterial isolates using deep learning.
 
 options:
